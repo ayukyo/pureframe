@@ -4,8 +4,8 @@
   "status": "in_progress",
   "priority": 1,
   "createdAt": "2026-03-31T02:45:00Z",
-  "lastActivity": "2026-03-31T06:55:00Z",
-  "progress": 40,
+  "lastActivity": "2026-03-31T07:20:00Z",
+  "progress": 45,
   "description": "文艺极简本地视频播放器 + 磁链下载 + 边下边播",
   "tags": ["android", "video-player", "kotlin", "compose"],
   "githubRepo": "ayukyo/pureframe",
@@ -14,35 +14,35 @@
     {"name": "需求分析", "status": "completed", "progress": 100},
     {"name": "技术设计", "status": "completed", "progress": 100},
     {"name": "GitHub Actions 配置", "status": "completed", "progress": 100},
-    {"name": "基础架构搭建", "status": "in_progress", "progress": 60},
+    {"name": "基础架构搭建", "status": "in_progress", "progress": 70},
     {"name": "播放器核心", "status": "pending", "progress": 0},
     {"name": "下载引擎", "status": "pending", "progress": 0},
     {"name": "UI 界面", "status": "pending", "progress": 0},
     {"name": "边下边播", "status": "pending", "progress": 0},
     {"name": "测试优化", "status": "pending", "progress": 0}
   ],
-  "currentTask": "创建 Domain 层数据模型",
+  "currentTask": "创建 Repository 层",
   "currentStage": "基础架构搭建",
   "buildStatus": {
-    "lastRunId": 23771217861,
+    "lastRunId": 23771535408,
     "status": "completed",
     "conclusion": "success",
-    "fixAttempts": 1,
+    "fixAttempts": 2,
     "fixedErrors": [
-      "PreferencesKeys 导入问题 - 使用显式引用"
+      "PreferencesKeys 导入问题",
+      "VideoEntity/PlaybackHistoryEntity 字段名映射"
     ]
   },
   "notes": [
     "纯黑沉浸主题，无广告，极简设计",
     "已创建需求分析和技术设计文档",
     "已配置 GitHub Actions 自动构建",
-    "构建成功！",
     "已添加播放服务和下载服务基础架构",
     "已添加 Hilt 依赖注入模块",
     "已创建 Room 数据库实体和 DAO",
     "已创建导航图和底部 Tab UI 结构",
-    "已创建 HomeScreen/DownloadScreen/SettingsScreen/PlayerScreen 骨架",
-    "已添加 DataStore 用户偏好设置 (ST-004)"
+    "已添加 DataStore 用户偏好设置 (ST-004 ✅)",
+    "已创建 Domain 层数据模型 (ST-005 ✅)"
   ],
   "nextTasks": [
     {
@@ -72,7 +72,7 @@
     {
       "id": "ST-005",
       "name": "创建 Domain 层数据模型",
-      "status": "in_progress",
+      "status": "completed",
       "priority": 2
     },
     {

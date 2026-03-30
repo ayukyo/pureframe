@@ -6,6 +6,13 @@ import com.pureframe.player.data.database.AppDatabase
 import com.pureframe.player.data.dao.VideoDao
 import com.pureframe.player.data.dao.DownloadTaskDao
 import com.pureframe.player.data.dao.PlaybackHistoryDao
+import com.pureframe.player.data.repository.VideoRepository
+import com.pureframe.player.data.repository.VideoRepositoryImpl
+import com.pureframe.player.data.repository.DownloadRepository
+import com.pureframe.player.data.repository.DownloadRepositoryImpl
+import com.pureframe.player.data.repository.PlaybackRepository
+import com.pureframe.player.data.repository.PlaybackRepositoryImpl
+import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -48,4 +55,30 @@ object DatabaseModule {
     fun providePlaybackHistoryDao(database: AppDatabase): PlaybackHistoryDao {
         return database.playbackHistoryDao()
     }
+}
+
+/**
+ * Hilt 模块 - 绑定 Repository 接口到实现
+ */
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class RepositoryModule {
+    
+    @Binds
+    @Singleton
+    abstract fun bindVideoRepository(
+        impl: VideoRepositoryImpl
+    ): VideoRepository
+    
+    @Binds
+    @Singleton
+    abstract fun bindDownloadRepository(
+        impl: DownloadRepositoryImpl
+    ): DownloadRepository
+    
+    @Binds
+    @Singleton
+    abstract fun bindPlaybackRepository(
+        impl: PlaybackRepositoryImpl
+    ): PlaybackRepository
 }
