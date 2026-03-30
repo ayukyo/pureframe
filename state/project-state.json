@@ -4,8 +4,8 @@
   "status": "in_progress",
   "priority": 1,
   "createdAt": "2026-03-31T02:45:00Z",
-  "lastActivity": "2026-03-31T03:55:00Z",
-  "progress": 20,
+  "lastActivity": "2026-03-31T04:35:00Z",
+  "progress": 25,
   "description": "文艺极简本地视频播放器 + 磁链下载 + 边下边播",
   "tags": ["android", "video-player", "kotlin", "compose"],
   "githubRepo": "ayukyo/pureframe",
@@ -14,44 +14,49 @@
     {"name": "需求分析", "status": "completed", "progress": 100},
     {"name": "技术设计", "status": "completed", "progress": 100},
     {"name": "GitHub Actions 配置", "status": "completed", "progress": 100},
-    {"name": "基础架构搭建", "status": "in_progress", "progress": 0},
+    {"name": "基础架构搭建", "status": "in_progress", "progress": 20},
     {"name": "播放器核心", "status": "pending", "progress": 0},
     {"name": "下载引擎", "status": "pending", "progress": 0},
     {"name": "UI 界面", "status": "pending", "progress": 0},
     {"name": "边下边播", "status": "pending", "progress": 0},
     {"name": "测试优化", "status": "pending", "progress": 0}
   ],
-  "currentTask": "等待 GitHub Actions 构建完成，然后继续搭建基础架构",
+  "currentTask": "创建 Room 数据库实体和 DAO (ST-001)",
   "currentStage": "基础架构搭建",
   "buildStatus": {
-    "lastRunId": 23764642495,
-    "status": "in_progress",
-    "conclusion": null,
-    "fixAttempts": 4,
+    "lastRunId": 23767050604,
+    "status": "completed",
+    "conclusion": "success",
+    "fixAttempts": 7,
     "fixedErrors": [
       "缺少 gradlew 文件",
       "gradlew 语法错误",
       "缺少 android.useAndroidX",
-      "缺少图标资源"
+      "缺少图标资源",
+      "缺少 Hilt Gradle 插件",
+      "缺少 PlaybackService/DownloadService 类",
+      "缺少 Notification 导入",
+      "PlaybackService 无效的方法重写"
     ]
   },
   "notes": [
     "纯黑沉浸主题，无广告，极简设计",
     "已创建需求分析和技术设计文档",
     "已配置 GitHub Actions 自动构建",
-    "持续修复构建错误直到成功"
+    "构建成功！已添加播放服务和下载服务基础架构",
+    "已添加 Hilt 依赖注入模块"
   ],
   "nextTasks": [
     {
       "id": "ST-001",
       "name": "创建 Room 数据库实体和 DAO",
-      "status": "pending",
+      "status": "in_progress",
       "priority": 1
     },
     {
       "id": "ST-002",
       "name": "配置 Hilt 依赖注入模块",
-      "status": "pending",
+      "status": "completed",
       "priority": 1
     },
     {
