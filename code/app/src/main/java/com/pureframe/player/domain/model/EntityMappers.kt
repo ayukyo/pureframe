@@ -93,35 +93,38 @@ fun DownloadTask.toEntity(): DownloadTaskEntity {
 
 /**
  * PlaybackHistoryEntity -> PlaybackHistory
+ * 
+ * 注意：PlaybackHistoryEntity 没有 videoTitle/videoPath 字段，
+ * 需要通过 videoId 关联查询 VideoEntity 获取
  */
-fun PlaybackHistoryEntity.toDomainModel(): PlaybackHistory {
+fun PlaybackHistoryEntity.toDomainModel(videoTitle: String = "", videoPath: String = "", videoDuration: Long = 0): PlaybackHistory {
     return PlaybackHistory(
         id = id,
         videoId = videoId,
         videoTitle = videoTitle,
         videoPath = videoPath,
-        position = position,
-        duration = duration,
-        lastPlayedAt = lastPlayedAt,
-        playCount = playCount,
-        completed = completed
+        position = lastPosition,
+        duration = videoDuration,
+        lastPlayedAt = startTime,
+        playCount = 1, // Entity 中没有累计次数，每个记录是单独的播放事件
+        completed = isCompleted
     )
 }
 
 /**
  * PlaybackHistory -> PlaybackHistoryEntity
+ * 
+ * 注意：videoTitle/videoPath 不存储在 PlaybackHistoryEntity 中
  */
 fun PlaybackHistory.toEntity(): PlaybackHistoryEntity {
     return PlaybackHistoryEntity(
         id = id,
         videoId = videoId,
-        videoTitle = videoTitle,
-        videoPath = videoPath,
-        position = position,
-        duration = duration,
-        lastPlayedAt = lastPlayedAt,
-        playCount = playCount,
-        completed = completed
+        startTime = lastPlayedAt,
+        endTime = null,
+        lastPosition = position,
+        playDuration = duration,
+        isCompleted = completed
     )
 }
 
