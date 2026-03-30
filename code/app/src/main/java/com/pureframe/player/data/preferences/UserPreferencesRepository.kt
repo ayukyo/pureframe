@@ -3,7 +3,6 @@ package com.pureframe.player.data.preferences
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
-import com.pureframe.player.data.preferences.PreferencesKeys.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
@@ -26,34 +25,34 @@ class UserPreferencesRepository @Inject constructor(
     val userPreferencesFlow: Flow<UserPreferences> = dataStore.data.map { preferences ->
         UserPreferences(
             // 播放器设置
-            autoPlay = preferences[AUTO_PLAY] ?: true,
-            loopPlay = preferences[LOOP_PLAY] ?: false,
-            defaultPlaySpeed = preferences[DEFAULT_PLAY_SPEED] ?: 1.0f,
-            rememberPlaySpeed = preferences[REMEMBER_PLAY_SPEED] ?: true,
-            showSubtitle = preferences[SHOW_SUBTITLE] ?: true,
+            autoPlay = preferences[PreferencesKeys.AUTO_PLAY] ?: true,
+            loopPlay = preferences[PreferencesKeys.LOOP_PLAY] ?: false,
+            defaultPlaySpeed = preferences[PreferencesKeys.DEFAULT_PLAY_SPEED] ?: 1.0f,
+            rememberPlaySpeed = preferences[PreferencesKeys.REMEMBER_PLAY_SPEED] ?: true,
+            showSubtitle = preferences[PreferencesKeys.SHOW_SUBTITLE] ?: true,
             
             // 下载设置
-            maxConcurrentDownloads = preferences[MAX_CONCURRENT_DOWNLOADS] ?: 3,
-            downloadPath = preferences[DOWNLOAD_PATH] ?: "",
-            autoDownloadOnWifi = preferences[AUTO_DOWNLOAD_ON_WIFI] ?: true,
-            downloadQuality = preferences[DOWNLOAD_QUALITY]?.let { 
+            maxConcurrentDownloads = preferences[PreferencesKeys.MAX_CONCURRENT_DOWNLOADS] ?: 3,
+            downloadPath = preferences[PreferencesKeys.DOWNLOAD_PATH] ?: "",
+            autoDownloadOnWifi = preferences[PreferencesKeys.AUTO_DOWNLOAD_ON_WIFI] ?: true,
+            downloadQuality = preferences[PreferencesKeys.DOWNLOAD_QUALITY]?.let { 
                 DownloadQuality.valueOf(it) 
             } ?: DownloadQuality.HIGH,
             
             // 界面设置
-            themeMode = preferences[THEME_MODE]?.let { 
+            themeMode = preferences[PreferencesKeys.THEME_MODE]?.let { 
                 ThemeMode.valueOf(it) 
             } ?: ThemeMode.SYSTEM,
-            fullScreenMode = preferences[FULL_SCREEN_MODE] ?: false,
-            showThumbnail = preferences[SHOW_THUMBNAIL] ?: true,
-            sortBy = preferences[SORT_BY]?.let { 
+            fullScreenMode = preferences[PreferencesKeys.FULL_SCREEN_MODE] ?: false,
+            showThumbnail = preferences[PreferencesKeys.SHOW_THUMBNAIL] ?: true,
+            sortBy = preferences[PreferencesKeys.SORT_BY]?.let { 
                 SortBy.valueOf(it) 
             } ?: SortBy.DATE_DESC,
             
             // 其他设置
-            keepScreenOn = preferences[KEEP_SCREEN_ON] ?: true,
-            brightnessGesture = preferences[BRIGHTNESS_GESTURE] ?: true,
-            volumeGesture = preferences[VOLUME_GESTURE] ?: true
+            keepScreenOn = preferences[PreferencesKeys.KEEP_SCREEN_ON] ?: true,
+            brightnessGesture = preferences[PreferencesKeys.BRIGHTNESS_GESTURE] ?: true,
+            volumeGesture = preferences[PreferencesKeys.VOLUME_GESTURE] ?: true
         )
     }
     
@@ -62,7 +61,7 @@ class UserPreferencesRepository @Inject constructor(
      */
     suspend fun updateAutoPlay(enabled: Boolean) {
         dataStore.edit { preferences ->
-            preferences[AUTO_PLAY] = enabled
+            preferences[PreferencesKeys.AUTO_PLAY] = enabled
         }
     }
     
@@ -71,7 +70,7 @@ class UserPreferencesRepository @Inject constructor(
      */
     suspend fun updateLoopPlay(enabled: Boolean) {
         dataStore.edit { preferences ->
-            preferences[LOOP_PLAY] = enabled
+            preferences[PreferencesKeys.LOOP_PLAY] = enabled
         }
     }
     
@@ -80,7 +79,7 @@ class UserPreferencesRepository @Inject constructor(
      */
     suspend fun updateDefaultPlaySpeed(speed: Float) {
         dataStore.edit { preferences ->
-            preferences[DEFAULT_PLAY_SPEED] = speed
+            preferences[PreferencesKeys.DEFAULT_PLAY_SPEED] = speed
         }
     }
     
@@ -89,7 +88,7 @@ class UserPreferencesRepository @Inject constructor(
      */
     suspend fun updateRememberPlaySpeed(enabled: Boolean) {
         dataStore.edit { preferences ->
-            preferences[REMEMBER_PLAY_SPEED] = enabled
+            preferences[PreferencesKeys.REMEMBER_PLAY_SPEED] = enabled
         }
     }
     
@@ -98,7 +97,7 @@ class UserPreferencesRepository @Inject constructor(
      */
     suspend fun updateShowSubtitle(enabled: Boolean) {
         dataStore.edit { preferences ->
-            preferences[SHOW_SUBTITLE] = enabled
+            preferences[PreferencesKeys.SHOW_SUBTITLE] = enabled
         }
     }
     
@@ -107,7 +106,7 @@ class UserPreferencesRepository @Inject constructor(
      */
     suspend fun updateMaxConcurrentDownloads(count: Int) {
         dataStore.edit { preferences ->
-            preferences[MAX_CONCURRENT_DOWNLOADS] = count.coerceIn(1, 5)
+            preferences[PreferencesKeys.MAX_CONCURRENT_DOWNLOADS] = count.coerceIn(1, 5)
         }
     }
     
@@ -116,7 +115,7 @@ class UserPreferencesRepository @Inject constructor(
      */
     suspend fun updateDownloadPath(path: String) {
         dataStore.edit { preferences ->
-            preferences[DOWNLOAD_PATH] = path
+            preferences[PreferencesKeys.DOWNLOAD_PATH] = path
         }
     }
     
@@ -125,7 +124,7 @@ class UserPreferencesRepository @Inject constructor(
      */
     suspend fun updateAutoDownloadOnWifi(enabled: Boolean) {
         dataStore.edit { preferences ->
-            preferences[AUTO_DOWNLOAD_ON_WIFI] = enabled
+            preferences[PreferencesKeys.AUTO_DOWNLOAD_ON_WIFI] = enabled
         }
     }
     
@@ -134,7 +133,7 @@ class UserPreferencesRepository @Inject constructor(
      */
     suspend fun updateDownloadQuality(quality: DownloadQuality) {
         dataStore.edit { preferences ->
-            preferences[DOWNLOAD_QUALITY] = quality.name
+            preferences[PreferencesKeys.DOWNLOAD_QUALITY] = quality.name
         }
     }
     
@@ -143,7 +142,7 @@ class UserPreferencesRepository @Inject constructor(
      */
     suspend fun updateThemeMode(mode: ThemeMode) {
         dataStore.edit { preferences ->
-            preferences[THEME_MODE] = mode.name
+            preferences[PreferencesKeys.THEME_MODE] = mode.name
         }
     }
     
@@ -152,7 +151,7 @@ class UserPreferencesRepository @Inject constructor(
      */
     suspend fun updateFullScreenMode(enabled: Boolean) {
         dataStore.edit { preferences ->
-            preferences[FULL_SCREEN_MODE] = enabled
+            preferences[PreferencesKeys.FULL_SCREEN_MODE] = enabled
         }
     }
     
@@ -161,7 +160,7 @@ class UserPreferencesRepository @Inject constructor(
      */
     suspend fun updateShowThumbnail(enabled: Boolean) {
         dataStore.edit { preferences ->
-            preferences[SHOW_THUMBNAIL] = enabled
+            preferences[PreferencesKeys.SHOW_THUMBNAIL] = enabled
         }
     }
     
@@ -170,7 +169,7 @@ class UserPreferencesRepository @Inject constructor(
      */
     suspend fun updateSortBy(sortBy: SortBy) {
         dataStore.edit { preferences ->
-            preferences[SORT_BY] = sortBy.name
+            preferences[PreferencesKeys.SORT_BY] = sortBy.name
         }
     }
     
@@ -179,7 +178,7 @@ class UserPreferencesRepository @Inject constructor(
      */
     suspend fun updateKeepScreenOn(enabled: Boolean) {
         dataStore.edit { preferences ->
-            preferences[KEEP_SCREEN_ON] = enabled
+            preferences[PreferencesKeys.KEEP_SCREEN_ON] = enabled
         }
     }
     
@@ -188,7 +187,7 @@ class UserPreferencesRepository @Inject constructor(
      */
     suspend fun updateBrightnessGesture(enabled: Boolean) {
         dataStore.edit { preferences ->
-            preferences[BRIGHTNESS_GESTURE] = enabled
+            preferences[PreferencesKeys.BRIGHTNESS_GESTURE] = enabled
         }
     }
     
@@ -197,7 +196,7 @@ class UserPreferencesRepository @Inject constructor(
      */
     suspend fun updateVolumeGesture(enabled: Boolean) {
         dataStore.edit { preferences ->
-            preferences[VOLUME_GESTURE] = enabled
+            preferences[PreferencesKeys.VOLUME_GESTURE] = enabled
         }
     }
     
@@ -207,28 +206,28 @@ class UserPreferencesRepository @Inject constructor(
     suspend fun updateUserPreferences(preferences: UserPreferences) {
         dataStore.edit { prefs ->
             // 播放器设置
-            prefs[AUTO_PLAY] = preferences.autoPlay
-            prefs[LOOP_PLAY] = preferences.loopPlay
-            prefs[DEFAULT_PLAY_SPEED] = preferences.defaultPlaySpeed
-            prefs[REMEMBER_PLAY_SPEED] = preferences.rememberPlaySpeed
-            prefs[SHOW_SUBTITLE] = preferences.showSubtitle
+            prefs[PreferencesKeys.AUTO_PLAY] = preferences.autoPlay
+            prefs[PreferencesKeys.LOOP_PLAY] = preferences.loopPlay
+            prefs[PreferencesKeys.DEFAULT_PLAY_SPEED] = preferences.defaultPlaySpeed
+            prefs[PreferencesKeys.REMEMBER_PLAY_SPEED] = preferences.rememberPlaySpeed
+            prefs[PreferencesKeys.SHOW_SUBTITLE] = preferences.showSubtitle
             
             // 下载设置
-            prefs[MAX_CONCURRENT_DOWNLOADS] = preferences.maxConcurrentDownloads
-            prefs[DOWNLOAD_PATH] = preferences.downloadPath
-            prefs[AUTO_DOWNLOAD_ON_WIFI] = preferences.autoDownloadOnWifi
-            prefs[DOWNLOAD_QUALITY] = preferences.downloadQuality.name
+            prefs[PreferencesKeys.MAX_CONCURRENT_DOWNLOADS] = preferences.maxConcurrentDownloads
+            prefs[PreferencesKeys.DOWNLOAD_PATH] = preferences.downloadPath
+            prefs[PreferencesKeys.AUTO_DOWNLOAD_ON_WIFI] = preferences.autoDownloadOnWifi
+            prefs[PreferencesKeys.DOWNLOAD_QUALITY] = preferences.downloadQuality.name
             
             // 界面设置
-            prefs[THEME_MODE] = preferences.themeMode.name
-            prefs[FULL_SCREEN_MODE] = preferences.fullScreenMode
-            prefs[SHOW_THUMBNAIL] = preferences.showThumbnail
-            prefs[SORT_BY] = preferences.sortBy.name
+            prefs[PreferencesKeys.THEME_MODE] = preferences.themeMode.name
+            prefs[PreferencesKeys.FULL_SCREEN_MODE] = preferences.fullScreenMode
+            prefs[PreferencesKeys.SHOW_THUMBNAIL] = preferences.showThumbnail
+            prefs[PreferencesKeys.SORT_BY] = preferences.sortBy.name
             
             // 其他设置
-            prefs[KEEP_SCREEN_ON] = preferences.keepScreenOn
-            prefs[BRIGHTNESS_GESTURE] = preferences.brightnessGesture
-            prefs[VOLUME_GESTURE] = preferences.volumeGesture
+            prefs[PreferencesKeys.KEEP_SCREEN_ON] = preferences.keepScreenOn
+            prefs[PreferencesKeys.BRIGHTNESS_GESTURE] = preferences.brightnessGesture
+            prefs[PreferencesKeys.VOLUME_GESTURE] = preferences.volumeGesture
         }
     }
     
