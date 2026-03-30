@@ -2,6 +2,8 @@ package com.pureframe.player.data.database
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
+import androidx.room.TypeConverters
+import com.pureframe.player.data.converter.DateTypeConverter
 import com.pureframe.player.data.dao.DownloadTaskDao
 import com.pureframe.player.data.dao.PlaybackHistoryDao
 import com.pureframe.player.data.dao.VideoDao
@@ -23,6 +25,7 @@ import com.pureframe.player.data.entity.VideoEntity
     version = 1,
     exportSchema = true
 )
+@TypeConverters(DateTypeConverter::class)
 abstract class AppDatabase : RoomDatabase() {
     
     abstract fun videoDao(): VideoDao
