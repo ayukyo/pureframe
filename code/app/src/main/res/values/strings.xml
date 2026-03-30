@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">纯帧</string>
+    
+    <!-- 底部导航 -->
+    <string name="tab_home">首页</string>
+    <string name="tab_download">下载</string>
+    <string name="tab_mine">我的</string>
+    
+    <!-- 首页 -->
+    <string name="home_local_videos">本地视频</string>
+    <string name="home_recent">最近播放</string>
+    <string name="home_favorites">收藏</string>
+    
+    <!-- 下载 -->
+    <string name="download_input">磁链输入</string>
+    <string name="download_ing">下载中</string>
+    <string name="download_completed">已完成</string>
+    
+    <!-- 播放 -->
+    <string name="player_cached">已缓存 %d%%</string>
+    
+    <!-- 我的 -->
+    <string name="mine_settings">设置</string>
+    <string name="mine_clear_cache">清理缓存</string>
+    <string name="mine_about">关于</string>
+    
+    <!-- 通用 -->
+    <string name="ok">确定</string>
+    <string name="cancel">取消</string>
+    <string name="delete">删除</string>
+    <string name="rename">重命名</string>
+    <string name="pause">暂停</string>
+    <string name="resume">继续</string>
+</resources>
