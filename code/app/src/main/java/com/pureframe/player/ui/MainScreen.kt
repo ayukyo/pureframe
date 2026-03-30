@@ -19,7 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.navigation.NavController
+import androidx.navigation.NavHostController
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
@@ -66,7 +66,7 @@ val bottomNavItems = listOf(
  */
 @Composable
 fun MainScreen(
-    navController: NavController = rememberNavController()
+    navController: NavHostController = rememberNavController()
 ) {
     PureFrameTheme {
         Scaffold(
@@ -107,7 +107,7 @@ fun MainScreen(
  */
 @Composable
 fun PureFrameBottomBar(
-    navController: NavController,
+    navController: NavHostController,
     items: List<BottomNavItem>,
     currentRoute: String
 ) {

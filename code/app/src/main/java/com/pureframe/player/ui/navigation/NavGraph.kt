@@ -31,9 +31,6 @@ fun PureFrameNavGraph(
             HomeScreen(
                 onVideoClick = { videoId ->
                     navController.navigate(Screen.Player.createRoute(videoId))
-                },
-                onNavigateToDownload = {
-                    // 通过 MainScreen 的底部 Tab 导航，这里不需要处理
                 }
             )
         }
