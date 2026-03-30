@@ -4,8 +4,8 @@
   "status": "in_progress",
   "priority": 1,
   "createdAt": "2026-03-31T02:45:00Z",
-  "lastActivity": "2026-03-31T03:33:00Z",
-  "progress": 15,
+  "lastActivity": "2026-03-31T03:55:00Z",
+  "progress": 20,
   "description": "文艺极简本地视频播放器 + 磁链下载 + 边下边播",
   "tags": ["android", "video-player", "kotlin", "compose"],
   "githubRepo": "ayukyo/pureframe",
@@ -13,6 +13,7 @@
     {"name": "项目初始化", "status": "completed", "progress": 100},
     {"name": "需求分析", "status": "completed", "progress": 100},
     {"name": "技术设计", "status": "completed", "progress": 100},
+    {"name": "GitHub Actions 配置", "status": "completed", "progress": 100},
     {"name": "基础架构搭建", "status": "in_progress", "progress": 0},
     {"name": "播放器核心", "status": "pending", "progress": 0},
     {"name": "下载引擎", "status": "pending", "progress": 0},
@@ -20,15 +21,27 @@
     {"name": "边下边播", "status": "pending", "progress": 0},
     {"name": "测试优化", "status": "pending", "progress": 0}
   ],
-  "currentTask": "搭建基础架构 - Room 数据库、Hilt DI、Navigation",
+  "currentTask": "等待 GitHub Actions 构建完成，然后继续搭建基础架构",
   "currentStage": "基础架构搭建",
+  "buildStatus": {
+    "lastRunId": 23764642495,
+    "status": "in_progress",
+    "conclusion": null,
+    "fixAttempts": 4,
+    "fixedErrors": [
+      "缺少 gradlew 文件",
+      "gradlew 语法错误",
+      "缺少 android.useAndroidX",
+      "缺少图标资源"
+    ]
+  },
   "notes": [
     "纯黑沉浸主题，无广告，极简设计",
-    "已创建需求分析文档 docs/requirements.md",
-    "已创建技术设计文档 docs/tech-design.md",
-    "已创建 GitHub Actions workflow"
+    "已创建需求分析和技术设计文档",
+    "已配置 GitHub Actions 自动构建",
+    "持续修复构建错误直到成功"
   ],
-  "subtasks": [
+  "nextTasks": [
     {
       "id": "ST-001",
       "name": "创建 Room 数据库实体和 DAO",
@@ -46,12 +59,6 @@
       "name": "创建导航图和底部 Tab",
       "status": "pending",
       "priority": 2
-    },
-    {
-      "id": "ST-004",
-      "name": "实现数据仓库层",
-      "status": "pending",
-      "priority": 1
     }
   ]
 }
