@@ -1,8 +1,6 @@
 package com.pureframe.player.player
 
-import android.app.Notification
 import android.content.Intent
-import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
@@ -48,20 +46,5 @@ class PlaybackService : MediaSessionService() {
         mediaSession?.release()
         mediaSession = null
         super.onDestroy()
-    }
-    
-    override fun onUpdateNotification(
-        session: MediaSession,
-        startForegroundIntent: Intent,
-        startPosition: Player.PositionInfo?,
-        startPositionMs: Long
-    ): Notification {
-        // 返回播放通知
-        return super.onUpdateNotification(
-            session,
-            startForegroundIntent,
-            startPosition,
-            startPositionMs
-        )
     }
 }
