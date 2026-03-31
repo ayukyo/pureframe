@@ -229,30 +229,20 @@ class PlayerViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, playbackType = PlaybackType.STREAM) }
             
-            try {
-                // 获取下载任务
-                val downloadTask = getDownloadByIdUseCase(downloadId)
-                if (downloadTask == null) {
-                    _uiState.update { 
-                        it.copy(
-                            errorMessage = "下载任务不存在",
-                            isLoading = false
-                        )
-                    }
-                    return
-                }
-                
+            // 获取下载任务
+            val downloadTask = getDownloadByIdUseCase(downloadId)
+            
+            if (downloadTask != null) {
                 // 调用边下边播初始化
                 initStreamPlayback(downloadTask)
-                
-            } catch (e: Exception) {
+            } else {
                 _uiState.update { 
                     it.copy(
-                        errorMessage = e.message ?: "获取下载任务失败",
+                        errorMessage = "下载任务不存在",
                         isLoading = false
                     )
                 }
-                Timber.e(e, "PlayerViewModel: 获取下载任务失败 - downloadId=$downloadId")
+                Timber.e("PlayerViewModel: 下载任务不存在 - downloadId=$downloadId")
             }
         }
     }
