@@ -142,9 +142,10 @@ fun ResumePlaybackDialog(
 /**
  * 上次播放信息卡片
  */
+@Suppress("UNUSED_PARAMETER")  // 参数未来用于显示上次位置
 @Composable
 fun LastPlaybackInfo(
-    _lastPosition: Long,  // 未来使用：显示上次位置
+    lastPosition: Long,  // 上次播放位置
     remainingTime: Long,
     progressPercent: Int,
     modifier: Modifier = Modifier

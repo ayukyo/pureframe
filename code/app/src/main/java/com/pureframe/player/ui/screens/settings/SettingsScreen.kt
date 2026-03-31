@@ -20,9 +20,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
  * - 边下边播阈值设置
  * - 主题设置
  */
+@Suppress("UNUSED_PARAMETER")  // 参数未来使用
 @Composable
 fun SettingsScreen(
-    _viewModel: SettingsViewModel = hiltViewModel(),  // 未来使用：获取设置值
+    viewModel: SettingsViewModel = hiltViewModel(),  // 获取设置值
     modifier: Modifier = Modifier
 ) {
     // TODO: 从 ViewModel 获取设置值

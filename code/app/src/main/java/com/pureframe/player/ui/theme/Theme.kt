@@ -67,12 +67,13 @@ private val DarkColorScheme = darkColorScheme(
  * 
  * 所有页面都应该使用此主题，确保统一的视觉效果
  */
+@Suppress("UNUSED_PARAMETER")  // 参数保留用于兼容性，实际固定为特定值
 @Composable
 fun PureFrameTheme(
-    // 纯帧只支持深色主题（参数保留用于兼容性）
-    _darkTheme: Boolean = true,  // 固定为深色
-    // 动态颜色禁用（参数保留用于兼容性）
-    _dynamicColor: Boolean = false,  // 固定禁用
+    // 纯帧只支持深色主题
+    darkTheme: Boolean = true,  // 固定为深色
+    // 动态颜色禁用（保持自定义颜色）
+    dynamicColor: Boolean = false,  // 固定禁用
     content: @Composable () -> Unit
 ) {
     // 纯帧始终使用深色主题

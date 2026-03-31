@@ -64,8 +64,10 @@ fun PlayerScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val _view = LocalView.current  // 未来使用
-    val _scope = rememberCoroutineScope()  // 未来使用
+    @Suppress("UNUSED_VARIABLE")
+    val view = LocalView.current  // 未来使用
+    @Suppress("UNUSED_VARIABLE")
+    val scope = rememberCoroutineScope()  // 未来使用
     val activity = context as? Activity
     
     // 将 String 转换为 Long
@@ -81,7 +83,8 @@ fun PlayerScreen(
     val playbackState by viewModel.playbackState.collectAsStateWithLifecycle()
     val playerError by viewModel.playerError.collectAsStateWithLifecycle()
     val brightness by viewModel.brightness.collectAsStateWithLifecycle()
-    val _volume by viewModel.volume.collectAsStateWithLifecycle()  // 音量控制，未来使用
+    @Suppress("UNUSED_VARIABLE")
+    val volume by viewModel.volume.collectAsStateWithLifecycle()  // 音量控制
     val gestureIndicator by viewModel.showGestureIndicator.collectAsStateWithLifecycle()
     val isLocked by viewModel.isLocked.collectAsStateWithLifecycle()
     val playbackSpeed by viewModel.playbackSpeed.collectAsStateWithLifecycle()
@@ -451,10 +454,11 @@ fun GestureIndicatorOverlay(
 /**
  * 水平滑动进度手势区域
  */
+@Suppress("UNUSED_PARAMETER")  // 参数未来用于精确跳转显示
 @Composable
 fun SeekGestureOverlay(
-    _currentPosition: Long,  // 当前位置，未来用于精确跳转
-    _duration: Long,  // 总时长，未来使用
+    currentPosition: Long,  // 当前位置
+    duration: Long,  // 总时长
     onSeekRelative: (Long) -> Unit,
     onSeekStart: () -> Unit,
     modifier: Modifier = Modifier
@@ -527,11 +531,12 @@ fun SeekGestureOverlay(
 /**
  * 边下边播状态指示器
  */
+@Suppress("UNUSED_PARAMETER")  // 参数未来用于详细状态显示
 @Composable
 fun StreamPlaybackIndicator(
     progress: Float,
-    _maxSeekPosition: Long,  // 最大可跳转位置，未来使用
-    _duration: Long,  // 总时长，未来使用
+    maxSeekPosition: Long,  // 最大可跳转位置
+    duration: Long,  // 总时长
     modifier: Modifier = Modifier
 ) {
     Surface(

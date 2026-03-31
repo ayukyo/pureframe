@@ -42,6 +42,7 @@ import com.pureframe.player.player.PlayerState
  * - 画面比例控制
  * - 全屏控制
  */
+@Suppress("UNUSED_PARAMETER")  // 部分参数未来使用
 @Composable
 fun EnhancedPlayerControls(
     title: String,
@@ -52,31 +53,36 @@ fun EnhancedPlayerControls(
     playbackState: PlayerState,
     isLocked: Boolean,
     playbackSpeed: Float,
-    _aspectRatio: String,  // 未来使用
+    aspectRatio: String,  // 未来使用
     isFullscreen: Boolean,
     isStreamPlayback: Boolean,
     streamProgress: Float,
-    _maxSeekPosition: Long,  // 边下边播最大跳转位置，未来使用
+    maxSeekPosition: Long,  // 边下边播最大跳转位置
     onBack: () -> Unit,
     onPlayPause: () -> Unit,
     onSeek: (Long) -> Unit,
     onSeekRelative: (Long) -> Unit,
     onLockToggle: () -> Unit,
-    _onSpeedChange: (Float) -> Unit,  // 未来使用
-    _onAspectRatioChange: (String) -> Unit,  // 未来使用
+    onSpeedChange: (Float) -> Unit,  // 未来使用
+    onAspectRatioChange: (String) -> Unit,  // 未来使用
     onFullscreenToggle: () -> Unit,
     onShowSpeedDialog: () -> Unit,
     onShowAspectRatioDialog: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     // 进度变量（计算用于子组件）
-    val _progress = if (duration > 0) currentPosition.toFloat() / duration else 0f  // 未来使用
-    val _bufferedProgress = if (duration > 0) bufferedPosition.toFloat() / duration else 0f  // 未来使用
+    @Suppress("UNUSED_VARIABLE")
+    val progress = if (duration > 0) currentPosition.toFloat() / duration else 0f
+    @Suppress("UNUSED_VARIABLE")
+    val bufferedProgress = if (duration > 0) bufferedPosition.toFloat() / duration else 0f
     
     // 拖动状态（未来实现）
-    var _isDragging by remember { mutableStateOf(false) }  // 未来使用
-    var _dragProgress by remember { mutableFloatStateOf(0f) }  // 未来使用
-    var _dragPosition by remember { mutableLongStateOf(0L) }  // 未来使用
+    @Suppress("UNUSED_VARIABLE")
+    var isDragging by remember { mutableStateOf(false) }
+    @Suppress("UNUSED_VARIABLE")
+    var dragProgress by remember { mutableFloatStateOf(0f) }
+    @Suppress("UNUSED_VARIABLE")
+    var dragPosition by remember { mutableLongStateOf(0L) }
     
     Box(modifier = modifier) {
         if (!isLocked) {

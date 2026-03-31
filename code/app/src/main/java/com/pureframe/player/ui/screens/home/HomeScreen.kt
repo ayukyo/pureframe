@@ -21,10 +21,11 @@ import androidx.hilt.navigation.compose.hiltViewModel
  * - 支持文件夹分类
  * - 点击视频跳转播放器
  */
+@Suppress("UNUSED_PARAMETER")  // 参数未来使用
 @Composable
 fun HomeScreen(
-    _onVideoClick: (String) -> Unit,  // 未来使用：点击视频跳转播放器
-    _viewModel: HomeViewModel = hiltViewModel(),  // 未来使用：获取视频列表
+    onVideoClick: (String) -> Unit,  // 点击视频跳转播放器
+    viewModel: HomeViewModel = hiltViewModel(),  // 获取视频列表
     modifier: Modifier = Modifier
 ) {
     // TODO: 从 ViewModel 获取视频列表
