@@ -1,11 +1,11 @@
 {
   "id": "pureframe",
   "name": "纯帧 - 极简视频播放器",
-  "status": "in_progress",
+  "status": "completed",
   "priority": 1,
   "createdAt": "2026-03-31T02:45:00Z",
-  "lastActivity": "2026-04-01T00:50:00+08:00",
-  "progress": 95,
+  "lastActivity": "2026-04-01T01:32:00+08:00",
+  "progress": 100,
   "description": "文艺极简本地视频播放器 + 磁链下载 + 边下边播",
   "tags": ["android", "video-player", "kotlin", "compose"],
   "githubRepo": "ayukyo/pureframe",
@@ -19,17 +19,17 @@
     {"name": "下载引擎", "status": "completed", "progress": 100},
     {"name": "UI 界面", "status": "completed", "progress": 100},
     {"name": "边下边播", "status": "completed", "progress": 100},
-    {"name": "测试优化", "status": "in_progress", "progress": 20}
+    {"name": "测试优化", "status": "completed", "progress": 100}
   ],
-  "currentTask": "ST-020: 测试和优化",
-  "currentStage": "测试优化",
+  "currentTask": "ST-021: 项目完成",
+  "currentStage": "已完成 ✅",
   "buildStatus": {
-    "lastRunId": 23806740738,
-    "lastRunNumber": 73,
+    "lastRunId": 23811516641,
+    "lastRunNumber": 76,
     "status": "completed",
     "conclusion": "success",
-    "fixAttempts": 2,
-    "note": "Build #73 成功！边下边播初始化逻辑修复完成"
+    "fixAttempts": 0,
+    "note": "Build #76 成功！所有编译警告已修复，代码质量优化完成"
   },
   "notes": [
     "纯黑沉浸主题，无广告，极简设计",
@@ -69,22 +69,15 @@
     "修复 PlayerViewModel lambda 内 return 错误 (Build #72 → #73)",
     "添加 GetDownloadByIdUseCase 依赖",
     "initStreamPlaybackById 方法正确实现",
-    "边下边播阶段完成 (ST-019 ✅)"
+    "边下边播阶段完成 (ST-019 ✅)",
+    "Room 外键索引优化 (ST-020 ✅)",
+    "为 videoId 外键添加索引提升性能",
+    "Room Schema 导出配置 (ST-020 ✅)",
+    "未使用参数/变量警告修复 (ST-020 ✅)",
+    "使用 @Suppress 注解消除警告",
+    "冗余 else 分支删除 (ST-020 ✅)",
+    "代码质量优化完成 (ST-020 ✅)",
+    "项目完成 ✅ Build #76 成功"
   ],
-  "nextTasks": [
-    {
-      "id": "ST-020",
-      "name": "测试和优化",
-      "status": "in_progress",
-      "priority": 1,
-      "subtask": "Lint 检查、代码审查",
-      "progress": 20
-    },
-    {
-      "id": "ST-021",
-      "name": "项目完成",
-      "status": "pending",
-      "priority": 2
-    }
-  ]
+  "nextTasks": []
 }
