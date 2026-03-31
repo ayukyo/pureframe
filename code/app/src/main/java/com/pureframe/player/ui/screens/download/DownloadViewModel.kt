@@ -91,12 +91,16 @@ class DownloadViewModel @Inject constructor(
         )
     
     // 活跃下载数量（用于限制并行下载数）
-    val activeDownloadCount: StateFlow<Int> = getActiveDownloadCountUseCase()
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = 0
-        )
+    // 注意：这是 suspend 函数，需要在协程中调用
+    private val _activeDownloadCount = MutableStateFlow(0)
+    val activeDownloadCount: StateFlow<Int> = _activeDownloadCount.asStateFlow()
+    
+    init {
+        // 初始化时获取活跃下载数量
+        viewModelScope.launch {
+            _activeDownloadCount.value = getActiveDownloadCountUseCase()
+        }
+    }
     
     /**
      * 切换列表类型

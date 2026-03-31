@@ -81,7 +81,7 @@ class PlayerViewModel @Inject constructor(
                 val video = getVideoByIdUseCase(videoId)
                 if (video == null) {
                     _uiState.update { it.copy(errorMessage = "视频不存在", isLoading = false) }
-                    return
+                    return@launch
                 }
                 
                 // 获取上次播放位置
@@ -122,7 +122,7 @@ class PlayerViewModel @Inject constructor(
                         isLoading = false
                     )
                 }
-                return
+                return@launch
             }
             
             _uiState.update {

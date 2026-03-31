@@ -66,8 +66,8 @@ class HomeViewModel @Inject constructor(
             initialValue = emptyList()
         )
     
-    // 最近播放视频列表
-    val recentVideos: StateFlow<List<Video>> = getRecentVideosUseCase()
+    // 最近播放视频列表（获取最近 20 个）
+    val recentVideos: StateFlow<List<Video>> = getRecentVideosUseCase(20)
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
@@ -126,9 +126,9 @@ class HomeViewModel @Inject constructor(
     /**
      * 切换收藏状态
      */
-    fun toggleFavorite(videoId: Long) {
+    fun toggleFavorite(videoId: Long, currentFavorite: Boolean) {
         viewModelScope.launch {
-            toggleFavoriteUseCase(videoId)
+            toggleFavoriteUseCase(ToggleFavoriteUseCase.Params(videoId, !currentFavorite))
         }
     }
     
