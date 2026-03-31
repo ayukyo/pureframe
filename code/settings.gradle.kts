@@ -11,8 +11,6 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-        // FrostWire Maven - for jlibtorrent
-        maven { url = uri("https://dl.frostwire.com/maven") }
     }
 }
 
