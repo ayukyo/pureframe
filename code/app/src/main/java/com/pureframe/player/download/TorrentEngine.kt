@@ -257,14 +257,9 @@ class TorrentEngine @Inject constructor(
                 saveDir.mkdirs()
             }
             
-            // 磁力链接需要通过 AddTorrentParams 添加
-            // 使用 url 属性直接设置磁力链接
-            val params = AddTorrentParams()
-            params.setUrl(magnetLink)
-            params.setSavePath(savePath)
-            
-            // 添加到 session（通过 swig）
-            session.swig().async_add_torrent(params.swig())
+            // 使用 SessionManager 的 download(magnetUri, saveDir, flags) 方法
+            // 这是 libtorrent4j 提供的正确添加磁力链接的方式
+            session.download(magnetLink, saveDir, torrent_flags_t())
             
             // 解析并存储 taskId 到 infoHash 的映射（用于后续查找）
             val infoHashStr = parseInfoHashFromMagnet(magnetLink)
