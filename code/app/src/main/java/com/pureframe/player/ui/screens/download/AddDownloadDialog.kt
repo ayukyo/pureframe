@@ -135,11 +135,11 @@ fun AddDownloadDialog(
                         val link = magnetLink.text.trim()
                         if (link.isEmpty()) {
                             errorMessage = "请输入磁力链接"
-                            return
+                            return@Button
                         }
                         if (!isValidMagnetLink(link)) {
                             errorMessage = "磁力链接格式不正确"
-                            return
+                            return@Button
                         }
                         onConfirm(link, title.text.trim().takeIf { it.isNotEmpty() })
                     },

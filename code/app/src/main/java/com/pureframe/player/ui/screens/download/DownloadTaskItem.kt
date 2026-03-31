@@ -191,7 +191,7 @@ fun DownloadTaskItem(
             
             // 进度条
             LinearProgressIndicator(
-                progress = { task.progressPercent / 100f },
+                progress = task.progressPercent / 100f,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(4.dp)
