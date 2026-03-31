@@ -106,11 +106,11 @@ dependencies {
     implementation("com.jakewharton.timber:timber:5.0.1")
 
     // libtorrent4j - BitTorrent 下载引擎
-    implementation("org.libtorrent4j:libtorrent4j:2.2.1.27")
-    implementation("org.libtorrent4j:libtorrent4j-android-arm64:2.2.1.27")
-    implementation("org.libtorrent4j:libtorrent4j-android-arm:2.2.1.27")
-    implementation("org.libtorrent4j:libtorrent4j-android-x86:2.2.1.27")
-    implementation("org.libtorrent4j:libtorrent4j-android-x86_64:2.2.1.27")
+    implementation("org.libtorrent4j:libtorrent4j:2.1.0-39")
+    implementation("org.libtorrent4j:libtorrent4j-android-arm64:2.1.0-39")
+    implementation("org.libtorrent4j:libtorrent4j-android-arm:2.1.0-39")
+    implementation("org.libtorrent4j:libtorrent4j-android-x86:2.1.0-39")
+    implementation("org.libtorrent4j:libtorrent4j-android-x86_64:2.1.0-39")
 
     // Testing
     testImplementation("junit:junit:4.13.2")
