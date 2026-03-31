@@ -497,59 +497,10 @@ fun EnhancedProgressSlider(
     onDragEnd: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // 自定义进度条布局
-    Layout(
-        content = {
-            // 缓存进度背景
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(4.dp)
-                    .background(Color.White.copy(alpha = 0.2f))
-            )
-            
-            // 已缓存区域（灰色）
-            if (bufferedProgress > 0) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(bufferedProgress)
-                        .height(4.dp)
-                        .background(Color.White.copy(alpha = 0.4f))
-                )
-            }
-            
-            // 边下边播限制区域（半透明红色）
-            if (isStreamPlayback && streamProgress > 0 && streamProgress < 1f) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(1f - streamProgress)
-                        .height(4.dp)
-                        .background(Color.Red.copy(alpha = 0.1f))
-                        .align(Alignment.CenterEnd)
-                )
-            }
-            
-            // 播放进度（白色）
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(progress)
-                    .height(if (isDragging) 6.dp else 4.dp)
-                    .background(Color.White)
-            )
-            
-            // 拖动手柄
-            if (isDragging) {
-                Box(
-                    modifier = Modifier
-                        .size(16.dp)
-                        .clip(CircleShape)
-                        .background(Color.White)
-                        .align(Alignment.CenterStart)
-                        .offset(x = (progress * 100).dp)  // 简化定位
-                )
-            }
-        },
+    // 使用 Box 实现进度条
+    Box(
         modifier = modifier
+            .fillMaxWidth()
             .height(if (isDragging) 16.dp else 4.dp)
             .pointerInput(Unit) {
                 detectTapGestures(
@@ -562,27 +513,57 @@ fun EnhancedProgressSlider(
                     }
                 )
             }
-    ) { measurables, constraints ->
-        // 测量所有内容
-        val placeables = measurables.map { it.measure(constraints) }
+    ) {
+        // 缓存进度背景
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(4.dp)
+                .align(Alignment.Center)
+                .background(Color.White.copy(alpha = 0.2f))
+        )
         
-        layout(constraints.maxWidth, constraints.maxHeight) {
-            // 放置所有元素
-            placeables.forEachIndexed { index, placeable ->
-                when (index) {
-                    0 -> placeable.place(0, (constraints.maxHeight - 4.dp.roundToPx()) / 2)
-                    1 -> placeable.place(0, (constraints.maxHeight - 4.dp.roundToPx()) / 2)
-                    2 -> placeable.place(
-                        (constraints.maxWidth * (1f - streamProgress)).toInt(),
-                        (constraints.maxHeight - 4.dp.roundToPx()) / 2
-                    )
-                    3 -> placeable.place(0, (constraints.maxHeight - placeable.height) / 2)
-                    4 -> placeable.place(
-                        (progress * constraints.maxWidth - placeable.width / 2).toInt(),
-                        (constraints.maxHeight - placeable.height) / 2
-                    )
-                }
-            }
+        // 已缓存区域（灰色）
+        if (bufferedProgress > 0) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(bufferedProgress)
+                    .height(4.dp)
+                    .align(Alignment.CenterStart)
+                    .background(Color.White.copy(alpha = 0.4f))
+            )
+        }
+        
+        // 边下边播限制区域（半透明红色）
+        if (isStreamPlayback && streamProgress > 0 && streamProgress < 1f) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(1f - streamProgress)
+                    .height(4.dp)
+                    .align(Alignment.CenterEnd)
+                    .background(Color.Red.copy(alpha = 0.1f))
+            )
+        }
+        
+        // 播放进度（白色）
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(progress)
+                .height(if (isDragging) 6.dp else 4.dp)
+                .align(Alignment.CenterStart)
+                .background(Color.White)
+        )
+        
+        // 拖动手柄
+        if (isDragging) {
+            Box(
+                modifier = Modifier
+                    .size(16.dp)
+                    .align(Alignment.CenterStart)
+                    .offset(x = (progress * 100).dp)
+                    .clip(CircleShape)
+                    .background(Color.White)
+            )
         }
     }
 }

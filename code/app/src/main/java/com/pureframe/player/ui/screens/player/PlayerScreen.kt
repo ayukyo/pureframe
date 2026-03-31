@@ -164,10 +164,11 @@ fun PlayerScreen(
                     setBackgroundColor(android.graphics.Color.BLACK)
                     // 设置画面比例模式
                     resizeMode = when (aspectRatio) {
-                        "FILL" -> androidx.media3.ui.PlayerView.RESIZE_MODE_FILL
-                        "16:9" -> androidx.media3.ui.PlayerView.RESIZE_MODE_FIT
-                        "4:3" -> androidx.media3.ui.PlayerView.RESIZE_MODE_FIT
-                        else -> androidx.media3.ui.PlayerView.RESIZE_MODE_FIT
+                        "FILL" -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FILL
+                        "16:9" -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
+                        "4:3" -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
+                        "ORIGINAL" -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                        else -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
                     }
                 }
             },

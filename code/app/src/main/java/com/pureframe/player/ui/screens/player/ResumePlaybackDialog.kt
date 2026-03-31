@@ -155,11 +155,10 @@ fun LastPlaybackInfo(
     ) {
         // 进度条
         LinearProgressIndicator(
-            progress = { progressPercent / 100f },
+            progress = progressPercent / 100f,
             modifier = Modifier
                 .fillMaxWidth(0.6f)
-                .height(4.dp)
-                .clip(RoundedCornerShape(2.dp)),
+                .height(4.dp),
             color = Color.White,
             trackColor = Color.White.copy(alpha = 0.2f)
         )
