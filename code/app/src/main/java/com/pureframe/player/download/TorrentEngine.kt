@@ -270,7 +270,8 @@ class TorrentEngine @Inject constructor(
             }
             
             val infoHash = Sha1Hash.parseHex(infoHashStr)
-            params.setInfo_hash(infoHash.swig())
+            // add_torrent_params 的 info_hash 是一个属性，直接赋值
+            params.info_hash = infoHash.swig()
             
             // 添加到 session
             session.swig().async_add_torrent(params)
