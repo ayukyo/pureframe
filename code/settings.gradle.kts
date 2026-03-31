@@ -11,6 +11,8 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        // JitPack - for jlibtorrent
+        maven { url = uri("https://jitpack.io") }
     }
 }
 
