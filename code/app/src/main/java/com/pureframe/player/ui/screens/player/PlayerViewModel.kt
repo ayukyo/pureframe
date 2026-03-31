@@ -481,6 +481,7 @@ class PlayerViewModel @Inject constructor(
 /**
  * Player 页面 UI 状态
  */
+@UnstableApi
 data class PlayerUiState(
     val playbackType: PlayerViewModel.PlaybackType = PlayerViewModel.PlaybackType.LOCAL,
     val video: Video? = null,
