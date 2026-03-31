@@ -1,5 +1,7 @@
 package com.pureframe.player.ui.screens.player
 
+import android.view.View
+import android.window.OnBackInvokedDispatcher
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pureframe.player.domain.model.Video
@@ -29,6 +31,10 @@ import javax.inject.Inject
  * - 进度保存（续播功能）
  * - 手势响应（亮度/音量/进度）
  * - 边下边播状态监控
+ * - 锁屏控制
+ * - 倍速控制
+ * - 画面比例控制
+ * - 全屏控制
  */
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
@@ -71,6 +77,35 @@ class PlayerViewModel @Inject constructor(
     
     private val _showGestureIndicator = MutableStateFlow<GestureIndicator?>(null)
     val showGestureIndicator: StateFlow<GestureIndicator?> = _showGestureIndicator.asStateFlow()
+    
+    // 锁屏状态
+    private val _isLocked = MutableStateFlow(false)
+    val isLocked: StateFlow<Boolean> = _isLocked.asStateFlow()
+    
+    // 倍速状态
+    private val _playbackSpeed = MutableStateFlow(1f)
+    val playbackSpeed: StateFlow<Float> = _playbackSpeed.asStateFlow()
+    
+    // 画面比例状态
+    private val _aspectRatio = MutableStateFlow("AUTO")
+    val aspectRatio: StateFlow<String> = _aspectRatio.asStateFlow()
+    
+    // 全屏状态
+    private val _isFullscreen = MutableStateFlow(false)
+    val isFullscreen: StateFlow<Boolean> = _isFullscreen.asStateFlow()
+    
+    // 对话框显示状态
+    private val _showSpeedDialog = MutableStateFlow(false)
+    val showSpeedDialog: StateFlow<Boolean> = _showSpeedDialog.asStateFlow()
+    
+    private val _showAspectRatioDialog = MutableStateFlow(false)
+    val showAspectRatioDialog: StateFlow<Boolean> = _showAspectRatioDialog.asStateFlow()
+    
+    private val _showResumeDialog = MutableStateFlow(false)
+    val showResumeDialog: StateFlow<Boolean> = _showResumeDialog.asStateFlow()
+    
+    private val _lastPosition = MutableStateFlow(0L)
+    val lastPosition: StateFlow<Long> = _lastPosition.asStateFlow()
     
     // 是否已初始化
     private var isInitialized = false
@@ -310,6 +345,113 @@ class PlayerViewModel @Inject constructor(
     fun getPlayer() = playerManager.getPlayer()
     
     /**
+     * 锁屏切换
+     */
+    fun toggleLock() {
+        _isLocked.value = !_isLocked.value
+    }
+    
+    /**
+     * 设置锁屏状态
+     */
+    fun setLocked(locked: Boolean) {
+        _isLocked.value = locked
+    }
+    
+    /**
+     * 设置播放速度
+     */
+    fun setPlaybackSpeed(speed: Float) {
+        playerManager.setPlaybackSpeed(speed)
+        _playbackSpeed.value = speed
+        dismissSpeedDialog()
+    }
+    
+    /**
+     * 显示倍速选择对话框
+     */
+    fun showSpeedDialog() {
+        _showSpeedDialog.value = true
+    }
+    
+    /**
+     * 关闭倍速选择对话框
+     */
+    fun dismissSpeedDialog() {
+        _showSpeedDialog.value = false
+    }
+    
+    /**
+     * 设置画面比例
+     */
+    fun setAspectRatio(ratio: String) {
+        _aspectRatio.value = ratio
+        playerManager.setAspectRatio(ratio)
+        dismissAspectRatioDialog()
+    }
+    
+    /**
+     * 显示画面比例选择对话框
+     */
+    fun showAspectRatioDialog() {
+        _showAspectRatioDialog.value = true
+    }
+    
+    /**
+     * 关闭画面比例选择对话框
+     */
+    fun dismissAspectRatioDialog() {
+        _showAspectRatioDialog.value = false
+    }
+    
+    /**
+     * 全屏切换
+     */
+    fun toggleFullscreen() {
+        _isFullscreen.value = !_isFullscreen.value
+    }
+    
+    /**
+     * 设置全屏状态
+     */
+    fun setFullscreen(fullscreen: Boolean) {
+        _isFullscreen.value = fullscreen
+    }
+    
+    /**
+     * 显示续播对话框
+     */
+    fun showResumeDialog() {
+        _showResumeDialog.value = true
+    }
+    
+    /**
+     * 关闭续播对话框
+     */
+    fun dismissResumeDialog() {
+        _showResumeDialog.value = false
+    }
+    
+    /**
+     * 续播（从上次位置开始）
+     */
+    fun resumeFromLastPosition() {
+        val pos = _lastPosition.value
+        if (pos > 0) {
+            playerManager.seekTo(pos)
+        }
+        dismissResumeDialog()
+    }
+    
+    /**
+     * 从头开始播放
+     */
+    fun playFromStart() {
+        playerManager.seekTo(0)
+        dismissResumeDialog()
+    }
+    
+    /**
      * 计算边下边播最大可跳转位置
      */
     private fun calculateMaxSeekPosition(task: DownloadTask): Long {
@@ -345,7 +487,8 @@ data class PlayerUiState(
     val initialPosition: Long = 0L,
     val errorMessage: String? = null,
     val streamProgress: Float = 0f,      // 下载进度 (0-1)
-    val maxSeekPosition: Long = 0L       // 最大可跳转位置
+    val maxSeekPosition: Long = 0L,      // 最大可跳转位置
+    val title: String = "播放器"         // 视频标题
 )
 
 /**

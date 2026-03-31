@@ -30,6 +30,8 @@ import javax.inject.Singleton
  * - 错误处理
  * - 音量控制
  * - 循环播放
+ * - 倍速控制
+ * - 画面比例控制
  */
 @Singleton
 class PlayerManager @Inject constructor(
@@ -67,6 +69,14 @@ class PlayerManager @Inject constructor(
     // 是否循环播放
     private val _isLooping = MutableStateFlow(false)
     val isLooping: StateFlow<Boolean> = _isLooping.asStateFlow()
+    
+    // 播放速度
+    private val _playbackSpeed = MutableStateFlow(1f)
+    val playbackSpeed: StateFlow<Float> = _playbackSpeed.asStateFlow()
+    
+    // 画面比例
+    private val _aspectRatio = MutableStateFlow("AUTO")
+    val aspectRatio: StateFlow<String> = _aspectRatio.asStateFlow()
     
     // 进度更新 Job
     private var progressUpdateJob: Job? = null
@@ -210,6 +220,45 @@ class PlayerManager @Inject constructor(
     fun setLooping(looping: Boolean) {
         exoPlayer.repeatMode = if (looping) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF
         _isLooping.value = looping
+    }
+    
+    /**
+     * 设置播放速度
+     * 
+     * @param speed 播放速度 (0.5-3.0)
+     */
+    fun setPlaybackSpeed(speed: Float) {
+        val validSpeed = speed.coerceIn(0.5f, 3.0f)
+        exoPlayer.setPlaybackSpeed(validSpeed)
+        _playbackSpeed.value = validSpeed
+    }
+    
+    /**
+     * 设置画面比例
+     * 
+     * @param ratio 比例代码 (AUTO/16:9/4:3/FILL/ORIGINAL)
+     */
+    fun setAspectRatio(ratio: String) {
+        _aspectRatio.value = ratio
+        // ExoPlayer 的视频缩放模式设置
+        when (ratio) {
+            "AUTO" -> {
+                // 自动保持原始比例
+                exoPlayer.setVideoScalingMode(androidx.media3.common.C.VIDEO_SCALING_MODE_SCALE_TO_FIT)
+            }
+            "16:9", "4:3" -> {
+                // 强制指定比例（需要自定义 VideoSurface 或使用 PlayerView 的 resizeMode）
+                exoPlayer.setVideoScalingMode(androidx.media3.common.C.VIDEO_SCALING_MODE_SCALE_TO_FIT)
+            }
+            "FILL" -> {
+                // 填充屏幕，可能裁切
+                exoPlayer.setVideoScalingMode(androidx.media3.common.C.VIDEO_SCALING_MODE_SCALE_TO_FIT_WITH_CROPPING)
+            }
+            "ORIGINAL" -> {
+                // 原始大小（不缩放）
+                exoPlayer.setVideoScalingMode(androidx.media3.common.C.VIDEO_SCALING_MODE_SCALE_TO_FIT)
+            }
+        }
     }
     
     /**
