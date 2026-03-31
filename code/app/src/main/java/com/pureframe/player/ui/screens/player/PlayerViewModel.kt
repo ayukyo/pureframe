@@ -18,6 +18,7 @@ import com.pureframe.player.download.StreamPlaybackState
 import com.pureframe.player.download.StreamProgressInfo
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import timber.log.Timber
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
