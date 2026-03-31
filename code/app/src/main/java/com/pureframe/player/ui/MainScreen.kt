@@ -19,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.media3.common.util.UnstableApi
 import androidx.navigation.NavHostController
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -64,6 +65,7 @@ val bottomNavItems = listOf(
 /**
  * 主界面 - 包含底部导航栏和页面内容
  */
+@UnstableApi
 @Composable
 fun MainScreen(
     navController: NavHostController = rememberNavController()
