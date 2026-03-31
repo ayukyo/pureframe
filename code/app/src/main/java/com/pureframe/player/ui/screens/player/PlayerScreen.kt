@@ -5,6 +5,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
@@ -149,6 +150,20 @@ fun PlayerScreen(
                 modifier = Modifier.size(48.dp)
             )
         }
+        
+        // 水平滑动进度控制区域
+        SeekGestureOverlay(
+            currentPosition = currentPosition,
+            duration = duration,
+            onSeekRelative = { deltaMs ->
+                viewModel.seekRelative(deltaMs)
+            },
+            onSeekStart = { showControls = false },
+            modifier = Modifier
+                .align(Alignment.Center)
+                .fillMaxWidth(0.7f)
+                .fillMaxHeight(0.5f)
+        )
         
         // 手势指示器
         gestureIndicator?.let { indicator ->
@@ -628,4 +643,96 @@ fun formatTime(ms: Long): String {
 fun setWindowBrightness(view: View, brightness: Float) {
     // 在实际应用中需要 Activity 引用
     // 这里简化处理，实际实现需要使用 Window属性
+}
+
+/**
+ * 水平滑动进度手势区域
+ * 
+ * 水平滑动控制视频进度：
+ * - 向右滑动 → 快进
+ * - 向左滑动 → 快退
+ */
+@Composable
+fun SeekGestureOverlay(
+    currentPosition: Long,
+    duration: Long,
+    onSeekRelative: (Long) -> Unit,
+    onSeekStart: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var isDragging by remember { mutableStateOf(false) }
+    var accumulatedDelta by remember { mutableFloatStateOf(0f) }
+    var seekIndicatorText by remember { mutableStateOf("") }
+    
+    // 显示进度跳转指示器
+    var showSeekIndicator by remember { mutableStateOf(false) }
+    
+    Box(
+        modifier = modifier
+            .pointerInput(Unit) {
+                detectHorizontalDragGestures(
+                    onDragStart = {
+                        isDragging = true
+                        accumulatedDelta = 0f
+                        onSeekStart()
+                    },
+                    onDragEnd = {
+                        if (isDragging && accumulatedDelta != 0f) {
+                            // 根据滑动距离计算跳转时间
+                            // 每 10dp 滑动 ≈ 1 秒
+                            val seekDeltaMs = (accumulatedDelta * 1000).toLong()
+                            onSeekRelative(seekDeltaMs)
+                        }
+                        isDragging = false
+                        showSeekIndicator = false
+                        accumulatedDelta = 0f
+                    },
+                    onHorizontalDrag = { change, dragAmount ->
+                        change.consume()
+                        accumulatedDelta += dragAmount / 10f  // 10dp = 1秒
+                        
+                        // 显示跳转指示器
+                        val seekSeconds = accumulatedDelta.toInt()
+                        if (seekSeconds != 0) {
+                            seekIndicatorText = if (seekSeconds > 0) {
+                                "+${seekSeconds}s"
+                            } else {
+                                "${seekSeconds}s"
+                            }
+                            showSeekIndicator = true
+                        }
+                    }
+                )
+            }
+    ) {
+        // 跳转指示器
+        if (showSeekIndicator && seekIndicatorText.isNotEmpty()) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color.Black.copy(alpha = 0.7f))
+                    .padding(16.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = if (accumulatedDelta > 0) Icons.Filled.FastForward 
+                                      else Icons.Filled.FastRewind,
+                        contentDescription = "跳转",
+                        tint = Color.White,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Text(
+                        text = seekIndicatorText,
+                        color = Color.White,
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                }
+            }
+        }
+    }
 }

@@ -4,8 +4,8 @@
   "status": "in_progress",
   "priority": 1,
   "createdAt": "2026-03-31T02:45:00Z",
-  "lastActivity": "2026-03-31T09:50:00Z",
-  "progress": 60,
+  "lastActivity": "2026-03-31T10:50:00Z",
+  "progress": 65,
   "description": "文艺极简本地视频播放器 + 磁链下载 + 边下边播",
   "tags": ["android", "video-player", "kotlin", "compose"],
   "githubRepo": "ayukyo/pureframe",
@@ -15,28 +15,25 @@
     {"name": "技术设计", "status": "completed", "progress": 100},
     {"name": "GitHub Actions 配置", "status": "completed", "progress": 100},
     {"name": "基础架构搭建", "status": "completed", "progress": 100},
-    {"name": "播放器核心", "status": "pending", "progress": 0},
+    {"name": "播放器核心", "status": "in_progress", "progress": 20},
     {"name": "下载引擎", "status": "pending", "progress": 0},
     {"name": "UI 界面", "status": "pending", "progress": 0},
     {"name": "边下边播", "status": "pending", "progress": 0},
     {"name": "测试优化", "status": "pending", "progress": 0}
   ],
-  "currentTask": "播放器核心阶段开始",
+  "currentTask": "ST-011: 实现播放控制功能",
   "currentStage": "播放器核心",
   "buildStatus": {
-    "lastRunId": 23776522750,
+    "lastRunId": 23778185622,
     "status": "completed",
     "conclusion": "success",
     "fixAttempts": 2,
     "fixedErrors": [
-      "GetActiveDownloadCountUseCase suspend函数不能直接 stateIn",
-      "GetRecentVideosUseCase 需要传递参数",
-      "ToggleFavoriteUseCase 需要传递 Params 对象",
-      "lambda 中 return 语句需要使用 return@launch",
-      "PlayerUiState 缺少 streamProgress 和 maxSeekPosition 字段",
-      "UpdatePlayInfoUseCase 需要传递 Params 对象"
+      "添加 hiltViewModel 导入",
+      "添加 lifecycle-runtime-compose 依赖",
+      "添加 @UnstableApi 注解"
     ],
-    "note": "ViewModel 基础结构已完成，构建成功 ✅"
+    "note": "ST-010 完成，ExoPlayer 播放器核心已集成 ✅"
   },
   "notes": [
     "纯黑沉浸主题，无广告，极简设计",
@@ -49,75 +46,25 @@
     "已添加 DataStore 用户偏好设置 (ST-004 ✅)",
     "已创建 Domain 层数据模型 (ST-005 ✅)",
     "已创建 Repository 层 (ST-006 ✅)",
-    "已创建 UseCase 层 (ST-007 ✅) - 36个 UseCase，遵循 Clean Architecture",
-    "已完善 ViewModel 基础结构 (ST-008 ✅) - HomeViewModel、DownloadViewModel、PlayerViewModel",
-    "基础架构搭建阶段完成 (ST-009 ✅) - Build #23776522750 成功"
+    "已创建 UseCase 层 (ST-007 ✅) - 36个 UseCase",
+    "已完善 ViewModel 基础结构 (ST-008 ✅)",
+    "基础架构搭建阶段完成 (ST-009 ✅)",
+    "已集成 ExoPlayer 播放器核心 (ST-010 ✅)",
+    "PlayerManager 播放器管理器已创建",
+    "播放控制 UI 已实现",
+    "手势控制区域已定义"
   ],
   "nextTasks": [
     {
-      "id": "ST-001",
-      "name": "创建 Room 数据库实体和 DAO",
-      "status": "completed",
-      "priority": 1
-    },
-    {
-      "id": "ST-002",
-      "name": "配置 Hilt 依赖注入模块",
-      "status": "completed",
-      "priority": 1
-    },
-    {
-      "id": "ST-003",
-      "name": "创建导航图和底部 Tab",
-      "status": "completed",
-      "priority": 2
-    },
-    {
-      "id": "ST-004",
-      "name": "添加 DataStore 用户偏好设置",
-      "status": "completed",
-      "priority": 2
-    },
-    {
-      "id": "ST-005",
-      "name": "创建 Domain 层数据模型",
-      "status": "completed",
-      "priority": 2
-    },
-    {
-      "id": "ST-006",
-      "name": "创建 Repository 层",
-      "status": "completed",
-      "priority": 2
-    },
-    {
-      "id": "ST-007",
-      "name": "创建 UseCase 层",
-      "status": "completed",
-      "priority": 2
-    },
-    {
-      "id": "ST-008",
-      "name": "完善 ViewModel 基础结构",
-      "status": "completed",
-      "priority": 3
-    },
-    {
-      "id": "ST-009",
-      "name": "基础架构搭建阶段完成",
-      "status": "completed",
-      "priority": 3
-    },
-    {
       "id": "ST-010",
       "name": "集成 ExoPlayer 播放器",
-      "status": "pending",
+      "status": "completed",
       "priority": 1
     },
     {
       "id": "ST-011",
       "name": "实现播放控制功能",
-      "status": "pending",
+      "status": "in_progress",
       "priority": 1
     },
     {
@@ -125,6 +72,18 @@
       "name": "实现手势控制",
       "status": "pending",
       "priority": 2
+    },
+    {
+      "id": "ST-013",
+      "name": "完善播放器 UI",
+      "status": "pending",
+      "priority": 2
+    },
+    {
+      "id": "ST-014",
+      "name": "播放器核心阶段完成",
+      "status": "pending",
+      "priority": 3
     }
   ]
 }
