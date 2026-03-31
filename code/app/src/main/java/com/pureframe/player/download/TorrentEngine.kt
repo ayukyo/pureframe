@@ -257,27 +257,20 @@ class TorrentEngine @Inject constructor(
                 saveDir.mkdirs()
             }
             
-            // 磁力链接需要通过 swig API 添加
-            // 使用 add_torrent_params 配置参数
-            val params = add_torrent_params()
-            params.save_path = savePath
+            // 磁力链接需要通过 AddTorrentParams 添加
+            // 使用 url 属性直接设置磁力链接
+            val params = AddTorrentParams()
+            params.setUrl(magnetLink)
+            params.setSavePath(savePath)
             
-            // 解析磁力链接中的 info hash 并设置
+            // 添加到 session（通过 swig）
+            session.swig().async_add_torrent(params.swig())
+            
+            // 解析并存储 taskId 到 infoHash 的映射（用于后续查找）
             val infoHashStr = parseInfoHashFromMagnet(magnetLink)
-            if (infoHashStr == null) {
-                Timber.e("TorrentEngine: 无法解析磁力链接 info hash")
-                return false
+            if (infoHashStr != null) {
+                taskIdToInfoHash[taskId] = Sha1Hash.parseHex(infoHashStr)
             }
-            
-            val infoHash = Sha1Hash.parseHex(infoHashStr)
-            // add_torrent_params 的 info_hash 是一个属性，直接赋值
-            params.info_hash = infoHash.swig()
-            
-            // 添加到 session
-            session.swig().async_add_torrent(params)
-            
-            // 存储 taskId 到 infoHash 的映射
-            taskIdToInfoHash[taskId] = infoHash
             
             Timber.i("TorrentEngine: 磁力链接添加成功 - $taskId")
             return true
