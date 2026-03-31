@@ -1,5 +1,6 @@
 package com.pureframe.player.download
 
+import android.annotation.SuppressLint
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -274,7 +275,10 @@ class DownloadService : Service() {
     
     /**
      * 更新通知
+     * 
+     * 前台服务通知不需要 POST_NOTIFICATIONS 权限检查
      */
+    @SuppressLint("NotificationPermission")
     private fun updateNotification(progress: Int, speed: Long, statusText: String? = null) {
         val notification = if (statusText != null) {
             NotificationCompat.Builder(this, CHANNEL_ID)
@@ -291,7 +295,10 @@ class DownloadService : Service() {
     
     /**
      * 下载完成处理
+     * 
+     * 前台服务通知不需要 POST_NOTIFICATIONS 权限检查
      */
+    @SuppressLint("NotificationPermission")
     private fun onDownloadComplete(taskId: String) {
         serviceScope.launch {
             // 发送完成通知
