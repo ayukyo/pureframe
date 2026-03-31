@@ -257,8 +257,8 @@ class TorrentEngine @Inject constructor(
             }
             
             // 使用 download 方法添加磁力链接
-            // 参数: magnetLink, savePath, flags (0 表示默认)
-            session.download(magnetLink, saveDir, torrent_flags_t(0))
+            // 使用默认 flags（无参构造函数）
+            session.download(magnetLink, saveDir)
             
             // 等待 Torrent 添加后获取 infoHash
             // 由于 download 方法是异步的，我们需要在 AddTorrentAlert 中获取 infoHash
