@@ -162,7 +162,7 @@ class TorrentManager @Inject constructor(
                 createdAt = Date(),
                 updatedAt = Date(),
                 magnetLink = null,
-                torrentFilePath = torrentFile.absolutePath
+                torrentPath = torrentFile.absolutePath
             )
 
             // 保存到数据库
