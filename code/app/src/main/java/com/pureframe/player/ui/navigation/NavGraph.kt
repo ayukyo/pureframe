@@ -40,7 +40,7 @@ fun PureFrameNavGraph(
         // 下载页面
         composable(Screen.Download.route) {
             DownloadScreen(
-                onDownloadClick = { downloadId ->
+                onPlayClick = { downloadId ->
                     // 检查是否可边下边播，跳转到播放器
                     navController.navigate(Screen.StreamPlayer.createRoute(downloadId))
                 }
