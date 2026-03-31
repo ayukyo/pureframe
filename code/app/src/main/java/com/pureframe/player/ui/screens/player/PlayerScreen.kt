@@ -33,6 +33,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.PlayerView
 import com.pureframe.player.player.PlayerState
 import kotlinx.coroutines.launch
@@ -52,6 +53,7 @@ import kotlinx.coroutines.launch
  * - 续播提示
  */
 @OptIn(ExperimentalMaterial3Api::class)
+@UnstableApi
 @Composable
 fun PlayerScreen(
     videoId: String = "",
