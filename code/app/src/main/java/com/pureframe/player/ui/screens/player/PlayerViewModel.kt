@@ -8,10 +8,13 @@ import com.pureframe.player.domain.usecase.playback.GetLastPlaybackPositionUseCa
 import com.pureframe.player.domain.usecase.playback.SavePlaybackProgressUseCase
 import com.pureframe.player.domain.usecase.video.GetVideoByIdUseCase
 import com.pureframe.player.domain.usecase.video.UpdatePlayInfoUseCase
+import com.pureframe.player.player.PlayerManager
+import com.pureframe.player.player.PlayerState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -24,17 +27,16 @@ import javax.inject.Inject
  * - 管理播放状态
  * - 播放控制（播放/暂停/跳转）
  * - 进度保存（续播功能）
- * - 手势响应准备（亮度/音量/进度）
+ * - 手势响应（亮度/音量/进度）
  * - 边下边播状态监控
- * 
- * 注意：实际播放器核心（ExoPlayer）将在"播放器核心"阶段实现
  */
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
     private val getVideoByIdUseCase: GetVideoByIdUseCase,
     private val getLastPlaybackPositionUseCase: GetLastPlaybackPositionUseCase,
     private val savePlaybackProgressUseCase: SavePlaybackProgressUseCase,
-    private val updatePlayInfoUseCase: UpdatePlayInfoUseCase
+    private val updatePlayInfoUseCase: UpdatePlayInfoUseCase,
+    private val playerManager: PlayerManager
 ) : ViewModel() {
     
     // 播放类型
@@ -47,18 +49,14 @@ class PlayerViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(PlayerUiState())
     val uiState: StateFlow<PlayerUiState> = _uiState.asStateFlow()
     
-    // 播放器状态（将在播放器核心阶段实现）
-    private val _isPlaying = MutableStateFlow(false)
-    val isPlaying: StateFlow<Boolean> = _isPlaying.asStateFlow()
-    
-    private val _currentPosition = MutableStateFlow(0L)
-    val currentPosition: StateFlow<Long> = _currentPosition.asStateFlow()
-    
-    private val _duration = MutableStateFlow(0L)
-    val duration: StateFlow<Long> = _duration.asStateFlow()
-    
-    private val _bufferedPosition = MutableStateFlow(0L)
-    val bufferedPosition: StateFlow<Long> = _bufferedPosition.asStateFlow()
+    // 从 PlayerManager 获取播放状态
+    val isPlaying: StateFlow<Boolean> = playerManager.isPlaying
+    val currentPosition: StateFlow<Long> = playerManager.currentPosition
+    val duration: StateFlow<Long> = playerManager.duration
+    val bufferedPosition: StateFlow<Long> = playerManager.bufferedPosition
+    val playbackState: StateFlow<PlayerState> = playerManager.playbackState
+    val playerError: StateFlow<String?> = playerManager.errorMessage
+    val volume: StateFlow<Float> = playerManager.volume
     
     // 边下边播状态
     private val _streamProgress = MutableStateFlow(0f)
@@ -67,12 +65,24 @@ class PlayerViewModel @Inject constructor(
     private val _maxSeekPosition = MutableStateFlow(0L)
     val maxSeekPosition: StateFlow<Long> = _maxSeekPosition.asStateFlow()
     
+    // 手势状态
+    private val _brightness = MutableStateFlow(0.5f)
+    val brightness: StateFlow<Float> = _brightness.asStateFlow()
+    
+    private val _showGestureIndicator = MutableStateFlow<GestureIndicator?>(null)
+    val showGestureIndicator: StateFlow<GestureIndicator?> = _showGestureIndicator.asStateFlow()
+    
+    // 是否已初始化
+    private var isInitialized = false
+    
     /**
      * 初始化本地播放
      * 
      * @param videoId 视频 ID
      */
     fun initLocalPlayback(videoId: Long) {
+        if (isInitialized) return
+        
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, playbackType = PlaybackType.LOCAL) }
             
@@ -95,9 +105,23 @@ class PlayerViewModel @Inject constructor(
                     )
                 }
                 
-                // TODO: 初始化 ExoPlayer（播放器核心阶段实现）
-                // TODO: 设置媒体源
-                // TODO: 如果有上次播放位置，跳转到该位置
+                // 加载视频文件
+                playerManager.loadLocalFile(video.filePath)
+                
+                // 如果有上次播放位置，跳转到该位置（在播放器就绪后）
+                if (lastPosition != null && lastPosition > 0) {
+                    // 等待播放器就绪后跳转
+                    viewModelScope.launch {
+                        playerManager.playbackState.collect { state ->
+                            if (state == PlayerState.READY && !isInitialized) {
+                                playerManager.seekTo(lastPosition)
+                                isInitialized = true
+                            }
+                        }
+                    }
+                } else {
+                    isInitialized = true
+                }
                 
             } catch (e: Exception) {
                 _uiState.update { it.copy(errorMessage = e.message, isLoading = false) }
@@ -111,6 +135,8 @@ class PlayerViewModel @Inject constructor(
      * @param downloadTask 下载任务
      */
     fun initStreamPlayback(downloadTask: DownloadTask) {
+        if (isInitialized) return
+        
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, playbackType = PlaybackType.STREAM) }
             
@@ -134,20 +160,35 @@ class PlayerViewModel @Inject constructor(
                 )
             }
             
-            // TODO: 初始化边下边播控制器（播放器核心阶段实现）
-            // TODO: 设置 HTTP 代理服务器
-            // TODO: 开始监控下载进度
+            // TODO: 边下边播需要 HTTP 代理服务器，将在下载引擎阶段实现
+            // 目前先使用原始 URL 测试
+            if (downloadTask.url.isNotEmpty()) {
+                playerManager.loadStreamUrl(downloadTask.url)
+            }
+            
+            isInitialized = true
         }
     }
     
     /**
      * 播放/暂停切换
-     * 
-     * 注意：实际控制将在播放器核心阶段实现
      */
     fun togglePlayPause() {
-        _isPlaying.update { !it }
-        // TODO: 实际控制 ExoPlayer
+        playerManager.togglePlayPause()
+    }
+    
+    /**
+     * 播放
+     */
+    fun play() {
+        playerManager.play()
+    }
+    
+    /**
+     * 暂停
+     */
+    fun pause() {
+        playerManager.pause()
     }
     
     /**
@@ -166,8 +207,7 @@ class PlayerViewModel @Inject constructor(
             }
         }
         
-        _currentPosition.value = position
-        // TODO: 实际控制 ExoPlayer
+        playerManager.seekTo(position)
     }
     
     /**
@@ -176,9 +216,48 @@ class PlayerViewModel @Inject constructor(
      * @param deltaMs 增量（毫秒）
      */
     fun seekRelative(deltaMs: Long) {
-        val currentPos = _currentPosition.value
-        val newPos = (currentPos + deltaMs).coerceIn(0, _duration.value)
-        seekTo(newPos)
+        playerManager.seekRelative(deltaMs)
+    }
+    
+    /**
+     * 设置音量
+     * 
+     * @param volume 音量 (0-1)
+     */
+    fun setVolume(volume: Float) {
+        playerManager.setVolume(volume)
+        showGestureIndicator(GestureIndicator.Volume(volume))
+    }
+    
+    /**
+     * 设置亮度
+     * 
+     * @param brightness 亮度 (0-1)
+     */
+    fun setBrightness(brightness: Float) {
+        _brightness.value = brightness.coerceIn(0f, 1f)
+        showGestureIndicator(GestureIndicator.Brightness(brightness))
+    }
+    
+    /**
+     * 显示手势指示器
+     */
+    private fun showGestureIndicator(indicator: GestureIndicator) {
+        _showGestureIndicator.value = indicator
+        // 3秒后隐藏
+        viewModelScope.launch {
+            kotlinx.coroutines.delay(3000)
+            _showGestureIndicator.value = null
+        }
+    }
+    
+    /**
+     * 设置循环播放
+     * 
+     * @param looping 是否循环
+     */
+    fun setLooping(looping: Boolean) {
+        playerManager.setLooping(looping)
     }
     
     /**
@@ -188,14 +267,17 @@ class PlayerViewModel @Inject constructor(
         viewModelScope.launch {
             val video = _uiState.value.video
             if (video != null) {
+                val position = currentPosition.value
+                val totalDuration = duration.value
+                
                 savePlaybackProgressUseCase(
                     SavePlaybackProgressUseCase.Params(
                         videoId = video.id,
                         videoTitle = video.title,
                         videoPath = video.filePath,
-                        position = _currentPosition.value,
-                        duration = _duration.value,
-                        completed = _currentPosition.value >= _duration.value * 0.95f
+                        position = position,
+                        duration = totalDuration,
+                        completed = position >= totalDuration * 0.95f
                     )
                 )
             }
@@ -219,7 +301,13 @@ class PlayerViewModel @Inject constructor(
      */
     fun clearError() {
         _uiState.update { it.copy(errorMessage = null) }
+        playerManager.clearError()
     }
+    
+    /**
+     * 获取 ExoPlayer 实例（用于 UI 绑定）
+     */
+    fun getPlayer() = playerManager.getPlayer()
     
     /**
      * 计算边下边播最大可跳转位置
@@ -236,7 +324,8 @@ class PlayerViewModel @Inject constructor(
         saveProgress()
         // 更新播放信息
         updatePlayInfo()
-        // TODO: 释放 ExoPlayer（播放器核心阶段实现）
+        // 停止播放
+        playerManager.pause()
     }
     
     companion object {
@@ -255,7 +344,15 @@ data class PlayerUiState(
     val isLoading: Boolean = false,
     val initialPosition: Long = 0L,
     val errorMessage: String? = null,
-    // 边下边播状态
     val streamProgress: Float = 0f,      // 下载进度 (0-1)
     val maxSeekPosition: Long = 0L       // 最大可跳转位置
 )
+
+/**
+ * 手势指示器类型
+ */
+sealed class GestureIndicator {
+    data class Volume(val value: Float) : GestureIndicator()
+    data class Brightness(val value: Float) : GestureIndicator()
+    data class Seek(val deltaMs: Long) : GestureIndicator()
+}

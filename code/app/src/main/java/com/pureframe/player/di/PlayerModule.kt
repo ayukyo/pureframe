@@ -2,6 +2,8 @@ package com.pureframe.player.di
 
 import android.content.Context
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
+import com.pureframe.player.player.PlayerManager
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -18,10 +20,36 @@ object PlayerModule {
     
     @Provides
     @Singleton
-    fun provideExoPlayer(
+    fun provideTrackSelector(
         @ApplicationContext context: Context
+    ): DefaultTrackSelector {
+        return DefaultTrackSelector(context)
+    }
+    
+    @Provides
+    @Singleton
+    fun provideExoPlayer(
+        @ApplicationContext context: Context,
+        trackSelector: DefaultTrackSelector
     ): ExoPlayer {
         return ExoPlayer.Builder(context)
+            .setTrackSelector(trackSelector)
+            .setSeekBackIncrementMs(10_000)   // 快退 10 秒
+            .setSeekForwardIncrementMs(10_000) // 快进 10 秒
             .build()
+            .apply {
+                // 默认配置
+                playWhenReady = false
+                volume = 1f
+            }
+    }
+    
+    @Provides
+    @Singleton
+    fun providePlayerManager(
+        @ApplicationContext context: Context,
+        exoPlayer: ExoPlayer
+    ): PlayerManager {
+        return PlayerManager(context, exoPlayer)
     }
 }
