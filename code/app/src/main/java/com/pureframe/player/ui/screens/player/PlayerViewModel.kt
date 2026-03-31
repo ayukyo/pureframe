@@ -4,6 +4,7 @@ import android.view.View
 import android.window.OnBackInvokedDispatcher
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.media3.common.util.UnstableApi
 import com.pureframe.player.domain.model.Video
 import com.pureframe.player.domain.model.DownloadTask
 import com.pureframe.player.domain.usecase.playback.GetLastPlaybackPositionUseCase
@@ -36,6 +37,7 @@ import javax.inject.Inject
  * - 画面比例控制
  * - 全屏控制
  */
+@UnstableApi
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
     private val getVideoByIdUseCase: GetVideoByIdUseCase,
