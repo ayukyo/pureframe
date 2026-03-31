@@ -4,8 +4,8 @@
   "status": "in_progress",
   "priority": 1,
   "createdAt": "2026-03-31T02:45:00Z",
-  "lastActivity": "2026-03-31T20:50:00Z",
-  "progress": 82,
+  "lastActivity": "2026-03-31T21:10:00Z",
+  "progress": 85,
   "description": "文艺极简本地视频播放器 + 磁链下载 + 边下边播",
   "tags": ["android", "video-player", "kotlin", "compose"],
   "githubRepo": "ayukyo/pureframe",
@@ -16,7 +16,7 @@
     {"name": "GitHub Actions 配置", "status": "completed", "progress": 100},
     {"name": "基础架构搭建", "status": "completed", "progress": 100},
     {"name": "播放器核心", "status": "completed", "progress": 100},
-    {"name": "下载引擎", "status": "in_progress", "progress": 30},
+    {"name": "下载引擎", "status": "in_progress", "progress": 60},
     {"name": "UI 界面", "status": "pending", "progress": 0},
     {"name": "边下边播", "status": "pending", "progress": 0},
     {"name": "测试优化", "status": "pending", "progress": 0}
@@ -24,11 +24,11 @@
   "currentTask": "ST-015: 集成 libtorrent4j 下载引擎",
   "currentStage": "下载引擎",
   "buildStatus": {
-    "lastRunId": 23798224379,
+    "lastRunId": 23799326246,
     "status": "completed",
     "conclusion": "success",
-    "fixAttempts": 1,
-    "note": "ST-015 修复成功 ✅ Build #23798224379 成功！使用 SessionManager.download() 正确添加磁力链接"
+    "fixAttempts": 2,
+    "note": "ST-015 进度 60% ✅ Build #23799326246 成功！TorrentEngine + DownloadService 核心功能完成"
   },
   "notes": [
     "纯黑沉浸主题，无广告，极简设计",
@@ -49,9 +49,12 @@
     "手势控制完成 (ST-012 ✅)",
     "播放器 UI 主题完善 (ST-013 ✅)",
     "播放器核心阶段完成 (ST-014 ✅)",
-    "TorrentEngine 磁力链接添加修复 (ST-015 🔄)",
+    "TorrentEngine 磁力链接添加修复 (ST-015 ✅)",
     "使用 SessionManager.download(magnetUri, saveDir, flags) 正确添加磁力链接",
-    "修复编译错误：AddTorrentParams.setUrl() 方法不存在 → 使用正确 API"
+    "DownloadService 完善实现 (ST-015 ✅)",
+    "添加进度监听和通知更新",
+    "添加暂停/恢复/停止下载功能",
+    "修复 NotificationPermission Lint 错误"
   ],
   "nextTasks": [
     {
@@ -59,7 +62,8 @@
       "name": "集成 libtorrent4j 下载引擎",
       "status": "in_progress",
       "priority": 1,
-      "subtask": "完善 TorrentEngine 与 DownloadService 的集成"
+      "subtask": "完善 DownloadViewModel 和 UI 集成",
+      "progress": 60
     },
     {
       "id": "ST-016",
