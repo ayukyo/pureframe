@@ -1,6 +1,7 @@
 package com.pureframe.player.di
 
 import android.content.Context
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import com.pureframe.player.player.PlayerManager
@@ -20,6 +21,7 @@ object PlayerModule {
     
     @Provides
     @Singleton
+    @UnstableApi
     fun provideTrackSelector(
         @ApplicationContext context: Context
     ): DefaultTrackSelector {
@@ -28,6 +30,7 @@ object PlayerModule {
     
     @Provides
     @Singleton
+    @UnstableApi
     fun provideExoPlayer(
         @ApplicationContext context: Context,
         trackSelector: DefaultTrackSelector
@@ -46,6 +49,7 @@ object PlayerModule {
     
     @Provides
     @Singleton
+    @UnstableApi
     fun providePlayerManager(
         @ApplicationContext context: Context,
         exoPlayer: ExoPlayer
