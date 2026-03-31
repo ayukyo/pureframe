@@ -209,7 +209,7 @@ class PlayerViewModel @Inject constructor(
         viewModelScope.launch {
             val videoId = _uiState.value.video?.id
             if (videoId != null) {
-                updatePlayInfoUseCase(videoId)
+                updatePlayInfoUseCase(UpdatePlayInfoUseCase.Params(videoId))
             }
         }
     }
@@ -254,5 +254,8 @@ data class PlayerUiState(
     val downloadTask: DownloadTask? = null,
     val isLoading: Boolean = false,
     val initialPosition: Long = 0L,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    // 边下边播状态
+    val streamProgress: Float = 0f,      // 下载进度 (0-1)
+    val maxSeekPosition: Long = 0L       // 最大可跳转位置
 )
