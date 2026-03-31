@@ -22,7 +22,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
  */
 @Composable
 fun SettingsScreen(
-    viewModel: SettingsViewModel = hiltViewModel(),
+    _viewModel: SettingsViewModel = hiltViewModel(),  // 未来使用：获取设置值
     modifier: Modifier = Modifier
 ) {
     // TODO: 从 ViewModel 获取设置值

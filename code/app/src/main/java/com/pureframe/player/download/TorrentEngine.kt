@@ -493,9 +493,8 @@ class TorrentEngine @Inject constructor(
         val status = handle.status()
         val state = status.state()
         
-        // 检查是否暂停（通过 flags）
-        val flags = handle.getFlags()
-        // torrent_flags_t 中有 paused 标志
+        // 检查是否暂停（通过 flags）- 未来实现
+        val _flags = handle.getFlags()  // torrent_flags_t 中有 paused 标志
         
         return when (state) {
             TorrentStatus.State.DOWNLOADING -> TorrentState.DOWNLOADING

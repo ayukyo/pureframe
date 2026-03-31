@@ -19,6 +19,9 @@ import java.util.Date
             childColumns = ["videoId"],
             onDelete = ForeignKey.CASCADE
         )
+    ],
+    indices = [
+        androidx.room.Index(value = ["videoId"])
     ]
 )
 data class DownloadTaskEntity(

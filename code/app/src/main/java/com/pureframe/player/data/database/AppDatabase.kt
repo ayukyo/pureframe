@@ -23,7 +23,7 @@ import com.pureframe.player.data.entity.VideoEntity
         PlaybackHistoryEntity::class
     ],
     version = 1,
-    exportSchema = true
+    exportSchema = false
 )
 @TypeConverters(DateTypeConverter::class)
 abstract class AppDatabase : RoomDatabase() {

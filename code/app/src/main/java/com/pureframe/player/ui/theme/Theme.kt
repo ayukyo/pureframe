@@ -69,10 +69,10 @@ private val DarkColorScheme = darkColorScheme(
  */
 @Composable
 fun PureFrameTheme(
-    // 纯帧只支持深色主题
-    darkTheme: Boolean = true,
-    // 动态颜色禁用（保持自定义颜色）
-    dynamicColor: Boolean = false,
+    // 纯帧只支持深色主题（参数保留用于兼容性）
+    _darkTheme: Boolean = true,  // 固定为深色
+    // 动态颜色禁用（参数保留用于兼容性）
+    _dynamicColor: Boolean = false,  // 固定禁用
     content: @Composable () -> Unit
 ) {
     // 纯帧始终使用深色主题

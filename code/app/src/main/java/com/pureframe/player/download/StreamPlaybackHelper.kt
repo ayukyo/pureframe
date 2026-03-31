@@ -94,7 +94,7 @@ class StreamPlaybackHelper @Inject constructor(
     /**
      * 启动进度监听
      */
-    private fun startProgressMonitor(taskId: String, initialTask: DownloadTask) {
+    private fun startProgressMonitor(taskId: String, _initialTask: DownloadTask) {  // initialTask 未来用于初始状态设置
         progressMonitorJob?.cancel()
         
         progressMonitorJob = helperScope.launch {

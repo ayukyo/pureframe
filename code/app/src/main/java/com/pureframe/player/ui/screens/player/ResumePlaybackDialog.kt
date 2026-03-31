@@ -144,7 +144,7 @@ fun ResumePlaybackDialog(
  */
 @Composable
 fun LastPlaybackInfo(
-    lastPosition: Long,
+    _lastPosition: Long,  // 未来使用：显示上次位置
     remainingTime: Long,
     progressPercent: Int,
     modifier: Modifier = Modifier

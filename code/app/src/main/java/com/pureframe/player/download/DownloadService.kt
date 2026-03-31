@@ -299,7 +299,7 @@ class DownloadService : Service() {
      * 前台服务通知不需要 POST_NOTIFICATIONS 权限检查
      */
     @SuppressLint("NotificationPermission")
-    private fun onDownloadComplete(taskId: String) {
+    private fun onDownloadComplete(_taskId: String) {  // taskId 未来用于多任务管理
         serviceScope.launch {
             // 发送完成通知
             val completeNotification = NotificationCompat.Builder(this@DownloadService, CHANNEL_ID)

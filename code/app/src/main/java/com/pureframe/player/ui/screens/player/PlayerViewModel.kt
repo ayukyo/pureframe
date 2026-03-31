@@ -188,7 +188,7 @@ class PlayerViewModel @Inject constructor(
             val result = streamPlaybackHelper.startStreamPlayback(downloadTask)
             
             result.fold(
-                onSuccess = { streamUrl ->
+                onSuccess = { _streamUrl ->  // URL 由 StreamPlaybackHelper 内部处理
                     _uiState.update {
                         it.copy(
                             downloadTask = downloadTask,

@@ -23,8 +23,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
  */
 @Composable
 fun HomeScreen(
-    onVideoClick: (String) -> Unit,
-    viewModel: HomeViewModel = hiltViewModel(),
+    _onVideoClick: (String) -> Unit,  // 未来使用：点击视频跳转播放器
+    _viewModel: HomeViewModel = hiltViewModel(),  // 未来使用：获取视频列表
     modifier: Modifier = Modifier
 ) {
     // TODO: 从 ViewModel 获取视频列表

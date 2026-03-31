@@ -434,8 +434,8 @@ class StreamProxyServer @Inject constructor(
     private fun updateStreamStatus(
         taskId: String,
         status: StreamPlaybackStatus,
-        position: Long,
-        total: Long
+        _position: Long,  // 未来用于详细状态
+        _total: Long  // 未来用于详细状态
     ) {
         val currentMap = _streamStatus.value.toMutableMap()
         currentMap[taskId] = status

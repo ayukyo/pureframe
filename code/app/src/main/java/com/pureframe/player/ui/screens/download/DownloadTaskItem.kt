@@ -78,7 +78,7 @@ fun DownloadTaskItem(
         DownloadStatus.COMPLETED -> DownloadCompleted
         DownloadStatus.FAILED, DownloadStatus.ERROR -> DownloadError
         DownloadStatus.PENDING, DownloadStatus.WAITING -> DownloadWaiting
-        else -> DownloadWaiting
+        DownloadStatus.CANCELLED -> DownloadWaiting
     }
     
     // 状态文字
@@ -91,7 +91,6 @@ fun DownloadTaskItem(
         DownloadStatus.PENDING -> "等待中"
         DownloadStatus.WAITING -> "DHT查找"
         DownloadStatus.CANCELLED -> "已取消"
-        else -> "未知"
     }
     
     Box(
