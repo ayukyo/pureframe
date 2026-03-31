@@ -4,8 +4,8 @@
   "status": "in_progress",
   "priority": 1,
   "createdAt": "2026-03-31T02:45:00Z",
-  "lastActivity": "2026-03-31T07:32:00Z",
-  "progress": 48,
+  "lastActivity": "2026-03-31T08:40:00Z",
+  "progress": 52,
   "description": "文艺极简本地视频播放器 + 磁链下载 + 边下边播",
   "tags": ["android", "video-player", "kotlin", "compose"],
   "githubRepo": "ayukyo/pureframe",
@@ -14,21 +14,22 @@
     {"name": "需求分析", "status": "completed", "progress": 100},
     {"name": "技术设计", "status": "completed", "progress": 100},
     {"name": "GitHub Actions 配置", "status": "completed", "progress": 100},
-    {"name": "基础架构搭建", "status": "in_progress", "progress": 75},
+    {"name": "基础架构搭建", "status": "in_progress", "progress": 85},
     {"name": "播放器核心", "status": "pending", "progress": 0},
     {"name": "下载引擎", "status": "pending", "progress": 0},
     {"name": "UI 界面", "status": "pending", "progress": 0},
     {"name": "边下边播", "status": "pending", "progress": 0},
     {"name": "测试优化", "status": "pending", "progress": 0}
   ],
-  "currentTask": "创建 UseCase 层",
+  "currentTask": "完善 ViewModel 基础结构",
   "currentStage": "基础架构搭建",
   "buildStatus": {
-    "lastRunId": 23772969279,
-    "status": "completed",
-    "conclusion": "success",
+    "lastRunId": null,
+    "status": "pending",
+    "conclusion": null,
     "fixAttempts": 0,
-    "fixedErrors": []
+    "fixedErrors": [],
+    "note": "推送成功，等待 GitHub Actions 构建验证"
   },
   "notes": [
     "纯黑沉浸主题，无广告，极简设计",
@@ -40,7 +41,8 @@
     "已创建导航图和底部 Tab UI 结构",
     "已添加 DataStore 用户偏好设置 (ST-004 ✅)",
     "已创建 Domain 层数据模型 (ST-005 ✅)",
-    "已创建 Repository 层 (ST-006 ✅ Build #23772969279)"
+    "已创建 Repository 层 (ST-006 ✅)",
+    "已创建 UseCase 层 (ST-007 ✅) - 36个 UseCase，遵循 Clean Architecture"
   ],
   "nextTasks": [
     {
@@ -82,12 +84,18 @@
     {
       "id": "ST-007",
       "name": "创建 UseCase 层",
-      "status": "pending",
+      "status": "completed",
       "priority": 2
     },
     {
       "id": "ST-008",
       "name": "完善 ViewModel 基础结构",
+      "status": "pending",
+      "priority": 3
+    },
+    {
+      "id": "ST-009",
+      "name": "基础架构搭建阶段完成",
       "status": "pending",
       "priority": 3
     }
