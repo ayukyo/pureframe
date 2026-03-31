@@ -4,8 +4,8 @@
   "status": "in_progress",
   "priority": 1,
   "createdAt": "2026-03-31T02:45:00Z",
-  "lastActivity": "2026-03-31T08:40:00Z",
-  "progress": 52,
+  "lastActivity": "2026-03-31T09:50:00Z",
+  "progress": 60,
   "description": "文艺极简本地视频播放器 + 磁链下载 + 边下边播",
   "tags": ["android", "video-player", "kotlin", "compose"],
   "githubRepo": "ayukyo/pureframe",
@@ -14,22 +14,29 @@
     {"name": "需求分析", "status": "completed", "progress": 100},
     {"name": "技术设计", "status": "completed", "progress": 100},
     {"name": "GitHub Actions 配置", "status": "completed", "progress": 100},
-    {"name": "基础架构搭建", "status": "in_progress", "progress": 85},
+    {"name": "基础架构搭建", "status": "completed", "progress": 100},
     {"name": "播放器核心", "status": "pending", "progress": 0},
     {"name": "下载引擎", "status": "pending", "progress": 0},
     {"name": "UI 界面", "status": "pending", "progress": 0},
     {"name": "边下边播", "status": "pending", "progress": 0},
     {"name": "测试优化", "status": "pending", "progress": 0}
   ],
-  "currentTask": "完善 ViewModel 基础结构",
-  "currentStage": "基础架构搭建",
+  "currentTask": "播放器核心阶段开始",
+  "currentStage": "播放器核心",
   "buildStatus": {
-    "lastRunId": null,
-    "status": "pending",
-    "conclusion": null,
-    "fixAttempts": 0,
-    "fixedErrors": [],
-    "note": "推送成功，等待 GitHub Actions 构建验证"
+    "lastRunId": 23776522750,
+    "status": "completed",
+    "conclusion": "success",
+    "fixAttempts": 2,
+    "fixedErrors": [
+      "GetActiveDownloadCountUseCase suspend函数不能直接 stateIn",
+      "GetRecentVideosUseCase 需要传递参数",
+      "ToggleFavoriteUseCase 需要传递 Params 对象",
+      "lambda 中 return 语句需要使用 return@launch",
+      "PlayerUiState 缺少 streamProgress 和 maxSeekPosition 字段",
+      "UpdatePlayInfoUseCase 需要传递 Params 对象"
+    ],
+    "note": "ViewModel 基础结构已完成，构建成功 ✅"
   },
   "notes": [
     "纯黑沉浸主题，无广告，极简设计",
@@ -42,7 +49,9 @@
     "已添加 DataStore 用户偏好设置 (ST-004 ✅)",
     "已创建 Domain 层数据模型 (ST-005 ✅)",
     "已创建 Repository 层 (ST-006 ✅)",
-    "已创建 UseCase 层 (ST-007 ✅) - 36个 UseCase，遵循 Clean Architecture"
+    "已创建 UseCase 层 (ST-007 ✅) - 36个 UseCase，遵循 Clean Architecture",
+    "已完善 ViewModel 基础结构 (ST-008 ✅) - HomeViewModel、DownloadViewModel、PlayerViewModel",
+    "基础架构搭建阶段完成 (ST-009 ✅) - Build #23776522750 成功"
   ],
   "nextTasks": [
     {
@@ -90,14 +99,32 @@
     {
       "id": "ST-008",
       "name": "完善 ViewModel 基础结构",
-      "status": "pending",
+      "status": "completed",
       "priority": 3
     },
     {
       "id": "ST-009",
       "name": "基础架构搭建阶段完成",
-      "status": "pending",
+      "status": "completed",
       "priority": 3
+    },
+    {
+      "id": "ST-010",
+      "name": "集成 ExoPlayer 播放器",
+      "status": "pending",
+      "priority": 1
+    },
+    {
+      "id": "ST-011",
+      "name": "实现播放控制功能",
+      "status": "pending",
+      "priority": 1
+    },
+    {
+      "id": "ST-012",
+      "name": "实现手势控制",
+      "status": "pending",
+      "priority": 2
     }
   ]
 }
