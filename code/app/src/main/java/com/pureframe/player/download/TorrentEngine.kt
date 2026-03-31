@@ -129,7 +129,7 @@ class TorrentEngine @Inject constructor(
             val progressInfo = DownloadProgressInfo(
                 taskId = taskId,
                 progress = status.progress() * 100,
-                downloadSpeed = status.downloadRate(),
+                downloadSpeed = status.downloadRate().toLong(),
                 state = mapTorrentState(handle),
                 downloadedBytes = status.totalDone(),
                 totalBytes = totalBytes
@@ -268,7 +268,7 @@ class TorrentEngine @Inject constructor(
             // 格式: magnet:?xt=urn:btih:INFO_HASH
             val infoHashStr = parseInfoHashFromMagnet(magnetLink)
             if (infoHashStr != null) {
-                taskIdToInfoHash[taskId] = Sha1Hash.parse(infoHashStr)
+                taskIdToInfoHash[taskId] = Sha1Hash.parseHex(infoHashStr)
             }
             
             Timber.i("TorrentEngine: 磁力链接添加成功 - $taskId")
@@ -530,7 +530,7 @@ class TorrentEngine @Inject constructor(
         return DownloadProgressInfo(
             taskId = taskId,
             progress = status.progress() * 100,
-            downloadSpeed = status.downloadRate(),
+            downloadSpeed = status.downloadRate().toLong(),
             state = mapTorrentState(handle),
             downloadedBytes = status.totalDone(),
             totalBytes = totalBytes
