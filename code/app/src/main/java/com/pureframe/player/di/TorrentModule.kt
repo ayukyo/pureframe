@@ -3,7 +3,10 @@ package com.pureframe.player.di
 import android.content.Context
 import com.pureframe.player.download.TorrentEngine
 import com.pureframe.player.download.TorrentManager
+import com.pureframe.player.download.StreamProxyServer
+import com.pureframe.player.download.StreamPlaybackHelper
 import com.pureframe.player.data.repository.DownloadRepository
+import com.pureframe.player.player.PlayerManager
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -34,5 +37,25 @@ object TorrentModule {
         downloadRepository: DownloadRepository
     ): TorrentManager {
         return TorrentManager(context, torrentEngine, downloadRepository)
+    }
+    
+    @Provides
+    @Singleton
+    fun provideStreamProxyServer(
+        @ApplicationContext context: Context,
+        torrentEngine: TorrentEngine
+    ): StreamProxyServer {
+        return StreamProxyServer(context, torrentEngine)
+    }
+    
+    @Provides
+    @Singleton
+    fun provideStreamPlaybackHelper(
+        @ApplicationContext context: Context,
+        torrentManager: TorrentManager,
+        streamProxyServer: StreamProxyServer,
+        playerManager: PlayerManager
+    ): StreamPlaybackHelper {
+        return StreamPlaybackHelper(context, torrentManager, streamProxyServer, playerManager)
     }
 }

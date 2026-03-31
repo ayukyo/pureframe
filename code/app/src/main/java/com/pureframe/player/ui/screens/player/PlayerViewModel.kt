@@ -13,6 +13,9 @@ import com.pureframe.player.domain.usecase.video.GetVideoByIdUseCase
 import com.pureframe.player.domain.usecase.video.UpdatePlayInfoUseCase
 import com.pureframe.player.player.PlayerManager
 import com.pureframe.player.player.PlayerState
+import com.pureframe.player.download.StreamPlaybackHelper
+import com.pureframe.player.download.StreamPlaybackState
+import com.pureframe.player.download.StreamProgressInfo
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -44,7 +47,8 @@ class PlayerViewModel @Inject constructor(
     private val getLastPlaybackPositionUseCase: GetLastPlaybackPositionUseCase,
     private val savePlaybackProgressUseCase: SavePlaybackProgressUseCase,
     private val updatePlayInfoUseCase: UpdatePlayInfoUseCase,
-    private val playerManager: PlayerManager
+    private val playerManager: PlayerManager,
+    private val streamPlaybackHelper: StreamPlaybackHelper
 ) : ViewModel() {
     
     // 播放类型
@@ -177,33 +181,69 @@ class PlayerViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, playbackType = PlaybackType.STREAM) }
             
-            // 检查下载进度是否足够播放
-            if (downloadTask.progress < MIN_STREAM_PROGRESS) {
-                _uiState.update { 
-                    it.copy(
-                        errorMessage = "下载进度不足，请等待更多数据下载",
-                        isLoading = false
-                    )
+            // 使用 StreamPlaybackHelper 启动边下边播
+            val result = streamPlaybackHelper.startStreamPlayback(downloadTask)
+            
+            result.fold(
+                onSuccess = { streamUrl ->
+                    _uiState.update {
+                        it.copy(
+                            downloadTask = downloadTask,
+                            isLoading = false,
+                            streamProgress = downloadTask.progress / 100f,
+                            maxSeekPosition = calculateMaxSeekPosition(downloadTask),
+                            title = downloadTask.title
+                        )
+                    }
+                    
+                    // 监听边下边播状态
+                    monitorStreamPlayback()
+                    
+                    isInitialized = true
+                    Timber.i("PlayerViewModel: 边下边播启动成功 - ${downloadTask.title}")
+                },
+                onFailure = { error ->
+                    _uiState.update { 
+                        it.copy(
+                            errorMessage = error.message ?: "边下边播启动失败",
+                            isLoading = false
+                        )
+                    }
+                    Timber.e(error, "PlayerViewModel: 边下边播启动失败")
                 }
-                return@launch
+            )
+        }
+    }
+    
+    /**
+     * 监听边下边播状态
+     */
+    private fun monitorStreamPlayback() {
+        viewModelScope.launch {
+            streamPlaybackHelper.playbackState.collect { state ->
+                when (state) {
+                    is StreamPlaybackState.Playing -> {
+                        // 正常播放
+                    }
+                    is StreamPlaybackState.Paused -> {
+                        // 暂停
+                    }
+                    is StreamPlaybackState.DownloadCompleted -> {
+                        // 下载完成，可以切换到本地文件播放
+                        _uiState.update { it.copy(streamProgress = 1f) }
+                    }
+                    is StreamPlaybackState.Error -> {
+                        _uiState.update { it.copy(errorMessage = state.message) }
+                    }
+                    else -> {}
+                }
             }
-            
-            _uiState.update {
-                it.copy(
-                    downloadTask = downloadTask,
-                    isLoading = false,
-                    streamProgress = downloadTask.progress / 100f,
-                    maxSeekPosition = calculateMaxSeekPosition(downloadTask)
-                )
+        }
+        
+        viewModelScope.launch {
+            streamPlaybackHelper.maxSeekPositionMs.collect { maxSeekMs ->
+                _uiState.update { it.copy(maxSeekPosition = maxSeekMs) }
             }
-            
-            // TODO: 边下边播需要 HTTP 代理服务器，将在下载引擎阶段实现
-            // 目前先使用原始 URL 测试
-            if (downloadTask.url.isNotEmpty()) {
-                playerManager.loadStreamUrl(downloadTask.url)
-            }
-            
-            isInitialized = true
         }
     }
     

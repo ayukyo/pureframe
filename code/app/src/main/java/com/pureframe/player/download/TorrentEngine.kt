@@ -534,6 +534,93 @@ class TorrentEngine @Inject constructor(
     }
     
     /**
+     * 读取数据块（边下边播）
+     * 
+     * @param taskId 任务 ID
+     * @param fileIndex 文件索引
+     * @param offset 文件内偏移
+     * @param length 读取长度
+     * @return 读取的数据，如果失败返回 null
+     */
+    fun readDataBlock(taskId: String, fileIndex: Int, offset: Long, length: Int): ByteArray? {
+        val infoHash = taskIdToInfoHash[taskId]
+        if (infoHash == null) return null
+        
+        val handle = sessionManager?.find(infoHash)
+        if (handle == null || !handle.isValid()) return null
+        
+        val torrentInfo = handle.torrentFile()
+        if (torrentInfo == null) return null
+        
+        try {
+            // 获取保存路径
+            val fileStorage = torrentInfo.files()
+            val filePath = fileStorage.filePath(fileIndex)
+            val savePath = handle.savePath()
+            val fullPath = File(savePath, filePath)
+            
+            // 检查文件是否存在
+            if (!fullPath.exists()) {
+                Timber.w("TorrentEngine: 文件不存在 - ${fullPath.absolutePath}")
+                return null
+            }
+            
+            // 检查请求范围是否已下载
+            val pieceLength = torrentInfo.pieceLength()
+            val fileOffset = fileStorage.fileOffset(fileIndex)
+            val globalOffset = fileOffset + offset
+            
+            val startPiece = (globalOffset / pieceLength).toInt()
+            val endPiece = ((globalOffset + length) / pieceLength).toInt()
+            
+            // 检查所有需要的 piece 是否已下载
+            for (i in startPiece..endPiece) {
+                if (i < torrentInfo.numPieces() && !handle.havePiece(i)) {
+                    Timber.w("TorrentEngine: Piece $i 未下载")
+                    return null
+                }
+            }
+            
+            // 从文件读取数据
+            val raf = RandomAccessFile(fullPath, "r")
+            raf.seek(offset)
+            val buffer = ByteArray(length)
+            raf.read(buffer)
+            raf.close()
+            
+            return buffer
+            
+        } catch (e: Exception) {
+            Timber.e(e, "TorrentEngine: 读取数据失败 - taskId=$taskId, offset=$offset")
+            return null
+        }
+    }
+    
+    /**
+     * 获取文件路径（边下边播）
+     * 
+     * @param taskId 任务 ID
+     * @param fileIndex 文件索引
+     * @return 文件完整路径
+     */
+    fun getFilePath(taskId: String, fileIndex: Int): String? {
+        val infoHash = taskIdToInfoHash[taskId]
+        if (infoHash == null) return null
+        
+        val handle = sessionManager?.find(infoHash)
+        if (handle == null || !handle.isValid()) return null
+        
+        val torrentInfo = handle.torrentFile()
+        if (torrentInfo == null) return null
+        
+        val fileStorage = torrentInfo.files()
+        val filePath = fileStorage.filePath(fileIndex)
+        val savePath = handle.savePath()
+        
+        return File(savePath, filePath).absolutePath
+    }
+    
+    /**
      * 关闭引擎
      */
     fun shutdown() {
