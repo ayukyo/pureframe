@@ -4,8 +4,8 @@
   "status": "in_progress",
   "priority": 1,
   "createdAt": "2026-03-31T02:45:00Z",
-  "lastActivity": "2026-03-31T10:50:00Z",
-  "progress": 65,
+  "lastActivity": "2026-03-31T11:35:00Z",
+  "progress": 70,
   "description": "文艺极简本地视频播放器 + 磁链下载 + 边下边播",
   "tags": ["android", "video-player", "kotlin", "compose"],
   "githubRepo": "ayukyo/pureframe",
@@ -15,25 +15,20 @@
     {"name": "技术设计", "status": "completed", "progress": 100},
     {"name": "GitHub Actions 配置", "status": "completed", "progress": 100},
     {"name": "基础架构搭建", "status": "completed", "progress": 100},
-    {"name": "播放器核心", "status": "in_progress", "progress": 20},
+    {"name": "播放器核心", "status": "in_progress", "progress": 30},
     {"name": "下载引擎", "status": "pending", "progress": 0},
     {"name": "UI 界面", "status": "pending", "progress": 0},
     {"name": "边下边播", "status": "pending", "progress": 0},
     {"name": "测试优化", "status": "pending", "progress": 0}
   ],
-  "currentTask": "ST-011: 实现播放控制功能",
+  "currentTask": "ST-013: 完善播放器 UI",
   "currentStage": "播放器核心",
   "buildStatus": {
-    "lastRunId": 23778185622,
+    "lastRunId": 23779234082,
     "status": "completed",
     "conclusion": "success",
-    "fixAttempts": 2,
-    "fixedErrors": [
-      "添加 hiltViewModel 导入",
-      "添加 lifecycle-runtime-compose 依赖",
-      "添加 @UnstableApi 注解"
-    ],
-    "note": "ST-010 完成，ExoPlayer 播放器核心已集成 ✅"
+    "fixAttempts": 0,
+    "note": "ST-011+ST-012 完成，播放控制和手势控制已实现 ✅"
   },
   "notes": [
     "纯黑沉浸主题，无广告，极简设计",
@@ -50,9 +45,12 @@
     "已完善 ViewModel 基础结构 (ST-008 ✅)",
     "基础架构搭建阶段完成 (ST-009 ✅)",
     "已集成 ExoPlayer 播放器核心 (ST-010 ✅)",
+    "播放控制功能完成 (ST-011 ✅)",
+    "手势控制完成 (ST-012 ✅)",
     "PlayerManager 播放器管理器已创建",
     "播放控制 UI 已实现",
-    "手势控制区域已定义"
+    "手势控制区域已实现：亮度/音量/进度滑动",
+    "水平滑动进度跳转手势已实现"
   ],
   "nextTasks": [
     {
@@ -64,19 +62,19 @@
     {
       "id": "ST-011",
       "name": "实现播放控制功能",
-      "status": "in_progress",
+      "status": "completed",
       "priority": 1
     },
     {
       "id": "ST-012",
       "name": "实现手势控制",
-      "status": "pending",
+      "status": "completed",
       "priority": 2
     },
     {
       "id": "ST-013",
       "name": "完善播放器 UI",
-      "status": "pending",
+      "status": "in_progress",
       "priority": 2
     },
     {
