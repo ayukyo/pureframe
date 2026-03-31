@@ -1,8 +1,8 @@
 package com.pureframe.player.download
 
 import android.content.Context
-import com.frostwire.jlibtorrent.*
-import com.frostwire.jlibtorrent.alerts.*
+import org.libtorrent4j.*
+import org.libtorrent4j.alerts.*
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
@@ -15,7 +15,7 @@ import javax.inject.Singleton
 /**
  * BitTorrent 下载引擎
  * 
- * 使用 libtorrent4j 实现完整的 BitTorrent 下载功能
+ * 使用 org.libtorrent4j 实现完整的 BitTorrent 下载功能
  * 支持：
  * - 磁力链接下载
  * - Torrent 文件下载
@@ -53,13 +53,6 @@ class TorrentEngine @Inject constructor(
         try {
             sessionManager = SessionManager()
             
-            // 配置 Session 设置
-            val settings = sessionManager!!.settings()
-            settings.setDownloadRateLimit(0)  // 不限下载速度
-            settings.setUploadRateLimit(1024 * 100)  // 限制上传速度 100KB/s
-            settings.setActiveDownloads(4)  // 同时下载 4 个任务
-            settings.setActiveSeeding(2)  // 同时做种 2 个任务
-            
             // 启动 DHT
             sessionManager!!.startDht()
             
@@ -76,19 +69,11 @@ class TorrentEngine @Inject constructor(
     }
     
     /**
-     * 设置 Alert 监听器，监控下载状态
+     * 设置 Alert 监听器
      */
     private fun setupAlertListeners() {
         sessionManager?.addListener(object : AlertListener {
-            override fun types(): IntArray {
-                return intArrayOf(
-                    AlertType.STATE_UPDATE.swig(),
-                    AlertType.PIECE_FINISHED.swig(),
-                    AlertType.TORRENT_FINISHED.swig(),
-                    AlertType.TORRENT_ERROR.swig(),
-                    AlertType.ADD_TORRENT.swig()
-                )
-            }
+            override fun types(): IntArray? = null // 监听所有类型
             
             override fun alert(alert: Alert<*>) {
                 handleAlert(alert)
@@ -100,63 +85,68 @@ class TorrentEngine @Inject constructor(
      * 处理 libtorrent Alert
      */
     private fun handleAlert(alert: Alert<*>) {
-        when (alert.type()) {
-            AlertType.STATE_UPDATE -> {
-                val stateAlert = alert as StateUpdateAlert
-                updateTorrentProgress(stateAlert)
+        try {
+            when (alert) {
+                is StateChangedAlert -> {
+                    updateTorrentStatus(alert.handle())
+                }
+                is AddTorrentAlert -> {
+                    onTorrentAdded(alert)
+                }
+                is TorrentFinishedAlert -> {
+                    onTorrentFinished(alert)
+                }
+                is TorrentErrorAlert -> {
+                    onTorrentError(alert)
+                }
+                is BlockFinishedAlert -> {
+                    updateStreamableStatus(alert.handle())
+                }
             }
-            AlertType.PIECE_FINISHED -> {
-                val pieceAlert = alert as PieceFinishedAlert
-                onPieceFinished(pieceAlert)
-            }
-            AlertType.TORRENT_FINISHED -> {
-                val finishAlert = alert as TorrentFinishedAlert
-                onTorrentFinished(finishAlert)
-            }
-            AlertType.TORRENT_ERROR -> {
-                val errorAlert = alert as TorrentErrorAlert
-                onTorrentError(errorAlert)
-            }
-            AlertType.ADD_TORRENT -> {
-                val addAlert = alert as AddTorrentAlert
-                onTorrentAdded(addAlert)
-            }
+        } catch (e: Exception) {
+            Timber.e(e, "TorrentEngine: Alert 处理错误")
         }
     }
     
     /**
-     * 更新下载进度
+     * 更新 Torrent 状态
      */
-    private fun updateTorrentProgress(alert: StateUpdateAlert) {
+    private fun updateTorrentStatus(handle: TorrentHandle) {
+        try {
+            val status = handle.status()
+            val torrentInfo = handle.torrentFile()
+            
+            if (torrentInfo != null) {
+                val progressInfo = DownloadProgressInfo(
+                    taskId = getTorrentId(handle),
+                    progress = status.progress() * 100,
+                    downloadSpeed = status.downloadRate(),
+                    state = mapTorrentState(status),
+                    downloadedBytes = status.totalDone(),
+                    totalBytes = torrentInfo.totalSize()
+                )
+                
+                engineScope.launch {
+                    _downloadProgress.emit(progressInfo)
+                }
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "TorrentEngine: 更新状态错误")
+        }
+    }
+    
+    /**
+     * Torrent 添加成功
+     */
+    private fun onTorrentAdded(alert: AddTorrentAlert) {
         val handle = alert.handle()
-        val status = handle.status()
-        val torrentInfo = handle.torrentFile()
+        Timber.d("TorrentEngine: Torrent 添加成功 - ${getTorrentId(handle)}")
         
-        if (torrentInfo != null) {
-            val progressInfo = DownloadProgressInfo(
-                taskId = getTorrentId(handle),
-                progress = status.progress() * 100,
-                downloadSpeed = status.downloadRate(),
-                state = mapTorrentState(status.state()),
-                downloadedBytes = status.totalDone(),
-                totalBytes = torrentInfo.totalSize()
-            )
-            
-            engineScope.launch {
-                _downloadProgress.emit(progressInfo)
-            }
-            
-            // 更新边下边播状态
-            updateStreamableStatus(handle)
-        }
-    }
-    
-    /**
-     * 片下载完成
-     */
-    private fun onPieceFinished(alert: PieceFinishedAlert) {
-        val handle = alert.handle()
-        updateStreamableStatus(handle)
+        // 开始下载
+        handle.resume()
+        
+        // 更新状态
+        updateTorrentStatus(handle)
     }
     
     /**
@@ -166,7 +156,6 @@ class TorrentEngine @Inject constructor(
         val handle = alert.handle()
         Timber.i("TorrentEngine: Torrent 完成 - ${getTorrentId(handle)}")
         
-        // 发送完成状态
         val torrentInfo = handle.torrentFile()
         if (torrentInfo != null) {
             val progressInfo = DownloadProgressInfo(
@@ -189,7 +178,7 @@ class TorrentEngine @Inject constructor(
      */
     private fun onTorrentError(alert: TorrentErrorAlert) {
         val handle = alert.handle()
-        Timber.e("TorrentEngine: Torrent 错误 - ${getTorrentId(handle)}: ${alert.message()}")
+        Timber.e("TorrentEngine: Torrent 错误 - ${getTorrentId(handle)}")
         
         val progressInfo = DownloadProgressInfo(
             taskId = getTorrentId(handle),
@@ -206,23 +195,21 @@ class TorrentEngine @Inject constructor(
     }
     
     /**
-     * Torrent 添加成功
+     * 更新边下边播状态
      */
-    private fun onTorrentAdded(alert: AddTorrentAlert) {
-        val handle = alert.handle()
-        Timber.d("TorrentEngine: Torrent 添加成功 - ${getTorrentId(handle)}")
+    private fun updateStreamableStatus(handle: TorrentHandle) {
+        val taskId = getTorrentId(handle)
+        val info = getStreamableInfo(taskId)
         
-        // 开始下载
-        handle.resume()
+        if (info != null) {
+            val currentMap = _streamableStatus.value.toMutableMap()
+            currentMap[taskId] = info
+            _streamableStatus.value = currentMap
+        }
     }
     
     /**
      * 添加磁力链接下载任务
-     * 
-     * @param magnetLink 磁力链接 (magnet:?xt=urn:btih:...)
-     * @param savePath 保存路径
-     * @param taskId 任务 ID (用于追踪)
-     * @return 是否成功添加
      */
     fun addMagnetLink(magnetLink: String, savePath: String, taskId: String): Boolean {
         try {
@@ -237,18 +224,8 @@ class TorrentEngine @Inject constructor(
                 saveDir.mkdirs()
             }
             
-            // 解析磁力链接
-            val magnetUri = MagnetUri(magnetLink)
-            
-            // 创建添加参数
-            val params = AddTorrentParams.builder()
-                .magnet(magnetLink)
-                .savePath(savePath)
-                .name(taskId)  // 使用 taskId 作为名称便于追踪
-                .build()
-            
-            // 添加 Torrent
-            val handle = session.addTorrent(params)
+            // 使用 TorrentBuilder 添加磁力链接
+            val handle = session.addMagnet(magnetLink, savePath)
             
             // 存储 handle
             activeTorrents[taskId] = handle
@@ -264,11 +241,6 @@ class TorrentEngine @Inject constructor(
     
     /**
      * 添加 torrent 文件下载任务
-     * 
-     * @param torrentFile .torrent 文件
-     * @param savePath 保存路径
-     * @param taskId 任务 ID
-     * @return 是否成功添加
      */
     fun addTorrentFile(torrentFile: File, savePath: String, taskId: String): Boolean {
         try {
@@ -283,15 +255,8 @@ class TorrentEngine @Inject constructor(
                 saveDir.mkdirs()
             }
             
-            // 创建添加参数
-            val params = AddTorrentParams.builder()
-                .torrentFile(torrentFile)
-                .savePath(savePath)
-                .name(taskId)
-                .build()
-            
-            // 添加 Torrent
-            val handle = session.addTorrent(params)
+            // 添加 Torrent 文件
+            val handle = session.addTorrent(torrentFile, savePath)
             
             // 存储 handle
             activeTorrents[taskId] = handle
@@ -310,7 +275,7 @@ class TorrentEngine @Inject constructor(
      */
     fun pause(taskId: String) {
         val handle = activeTorrents[taskId]
-        if (handle != null) {
+        if (handle != null && handle.isValid()) {
             handle.pause()
             Timber.d("TorrentEngine: 暂停 - $taskId")
         } else {
@@ -323,7 +288,7 @@ class TorrentEngine @Inject constructor(
      */
     fun resume(taskId: String) {
         val handle = activeTorrents[taskId]
-        if (handle != null) {
+        if (handle != null && handle.isValid()) {
             handle.resume()
             Timber.d("TorrentEngine: 恢复 - $taskId")
         } else {
@@ -333,13 +298,10 @@ class TorrentEngine @Inject constructor(
     
     /**
      * 移除下载任务
-     * 
-     * @param taskId 任务 ID
-     * @param deleteFiles 是否删除已下载文件
      */
     fun remove(taskId: String, deleteFiles: Boolean = false) {
         val handle = activeTorrents[taskId]
-        if (handle != null) {
+        if (handle != null && handle.isValid()) {
             sessionManager?.removeTorrent(handle, deleteFiles)
             activeTorrents.remove(taskId)
             Timber.d("TorrentEngine: 移除 - $taskId, deleteFiles=$deleteFiles")
@@ -350,14 +312,10 @@ class TorrentEngine @Inject constructor(
     
     /**
      * 检查是否可边下边播
-     * 
-     * @param taskId 任务 ID
-     * @param threshold 阈值 (0.1 = 10%)
-     * @return 是否可边下边播
      */
-    fun isStreamable(taskId: String, threshold: Float = 0.1f): Boolean {
+    fun isStreamable(taskId: String, threshold: Float = DEFAULT_STREAMABLE_THRESHOLD): Boolean {
         val handle = activeTorrents[taskId]
-        if (handle == null) return false
+        if (handle == null || !handle.isValid()) return false
         
         val status = handle.status()
         return status.progress() >= threshold
@@ -368,7 +326,7 @@ class TorrentEngine @Inject constructor(
      */
     fun getStreamableInfo(taskId: String): StreamableInfo? {
         val handle = activeTorrents[taskId]
-        if (handle == null) return null
+        if (handle == null || !handle.isValid()) return null
         
         val torrentInfo = handle.torrentFile()
         if (torrentInfo == null) return null
@@ -384,27 +342,13 @@ class TorrentEngine @Inject constructor(
         
         return StreamableInfo(
             taskId = taskId,
-            isStreamable = cachedProgress > 0.1f,
+            isStreamable = cachedProgress > DEFAULT_STREAMABLE_THRESHOLD,
             largestFileIndex = largestFileIndex,
             largestFilePath = fileStorage.filePath(largestFileIndex),
             cachedProgress = cachedProgress,
             maxSeekPosition = maxSeekPosition,
             totalSize = fileSize
         )
-    }
-    
-    /**
-     * 更新边下边播状态
-     */
-    private fun updateStreamableStatus(handle: TorrentHandle) {
-        val taskId = getTorrentId(handle)
-        val info = getStreamableInfo(taskId)
-        
-        if (info != null) {
-            val currentMap = _streamableStatus.value.toMutableMap()
-            currentMap[taskId] = info
-            _streamableStatus.value = currentMap
-        }
     }
     
     /**
@@ -447,38 +391,38 @@ class TorrentEngine @Inject constructor(
         var downloadedPieces = 0
         val totalPieces = endPiece - startPiece
         
+        if (totalPieces <= 0) return 0f
+        
         for (i in startPiece..endPiece) {
-            if (handle.havePiece(i)) {
+            if (i < torrentInfo.numPieces() && handle.havePiece(i)) {
                 downloadedPieces++
             }
         }
         
-        return if (totalPieces > 0) {
-            downloadedPieces.toFloat() / totalPieces
-        } else {
-            0f
-        }
+        return downloadedPieces.toFloat() / totalPieces
     }
     
     /**
-     * 获取 Torrent ID（使用 info hash 或任务名）
+     * 获取 Torrent ID
      */
     private fun getTorrentId(handle: TorrentHandle): String {
-        return handle.name() ?: handle.infoHash().toString()
+        return handle.infoHash().toString()
     }
     
     /**
-     * 映射 libtorrent 状态到应用状态
+     * 映射 TorrentStatus 到 TorrentState
      */
-    private fun mapTorrentState(state: TorrentStatus.State): TorrentState {
+    private fun mapTorrentState(status: TorrentStatus): TorrentState {
+        val state = status.state()
+        
         return when (state) {
             TorrentStatus.State.DOWNLOADING -> TorrentState.DOWNLOADING
             TorrentStatus.State.FINISHED -> TorrentState.COMPLETED
             TorrentStatus.State.SEEDING -> TorrentState.SEEDING
             TorrentStatus.State.PAUSED -> TorrentState.PAUSED
-            TorrentStatus.State.CHECKING_FILES -> TorrentState.WAITING
-            TorrentStatus.State.DOWNLOADING_METADATA -> TorrentState.WAITING
-            TorrentStatus.State.ALLOCATING -> TorrentState.WAITING
+            TorrentStatus.State.CHECKING_FILES, 
+            TorrentStatus.State.DOWNLOADING_METADATA,
+            TorrentStatus.State.ALLOCATING,
             TorrentStatus.State.QUEUED_FOR_CHECKING -> TorrentState.WAITING
             else -> TorrentState.WAITING
         }
@@ -489,7 +433,7 @@ class TorrentEngine @Inject constructor(
      */
     fun getProgressInfo(taskId: String): DownloadProgressInfo? {
         val handle = activeTorrents[taskId]
-        if (handle == null) return null
+        if (handle == null || !handle.isValid()) return null
         
         val status = handle.status()
         val torrentInfo = handle.torrentFile()
@@ -509,7 +453,7 @@ class TorrentEngine @Inject constructor(
             taskId = taskId,
             progress = status.progress() * 100,
             downloadSpeed = status.downloadRate(),
-            state = mapTorrentState(status.state()),
+            state = mapTorrentState(status),
             downloadedBytes = status.totalDone(),
             totalBytes = torrentInfo.totalSize()
         )
@@ -522,7 +466,9 @@ class TorrentEngine @Inject constructor(
         try {
             // 暂停所有下载
             activeTorrents.values.forEach { handle ->
-                handle.pause()
+                if (handle.isValid()) {
+                    handle.pause()
+                }
             }
             
             // 关闭 Session

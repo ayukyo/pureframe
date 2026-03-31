@@ -154,5 +154,7 @@ fun DownloadStatus.toEntityStatus(): String {
         DownloadStatus.COMPLETED -> "completed"
         DownloadStatus.FAILED -> "error"
         DownloadStatus.CANCELLED -> "cancelled"
+        DownloadStatus.WAITING -> "waiting"
+        DownloadStatus.ERROR -> "error"
     }
 }
