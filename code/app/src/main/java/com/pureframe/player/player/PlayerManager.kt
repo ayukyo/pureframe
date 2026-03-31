@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
@@ -238,6 +239,7 @@ class PlayerManager @Inject constructor(
      * 
      * @param ratio 比例代码 (AUTO/16:9/4:3/FILL/ORIGINAL)
      */
+    @UnstableApi
     fun setAspectRatio(ratio: String) {
         _aspectRatio.value = ratio
         // ExoPlayer 的视频缩放模式设置
