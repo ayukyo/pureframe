@@ -12,9 +12,14 @@ import java.util.Date
  */
 interface DownloadRepository {
     /**
-     * 获取所有下载任务
+     * 获取所有下载任务（Flow 方式）
      */
     fun getAllTasks(): Flow<List<DownloadTask>>
+    
+    /**
+     * 获取所有下载任务（一次获取）
+     */
+    suspend fun getAllTasksOnce(): List<DownloadTask>
     
     /**
      * 根据状态获取任务
@@ -22,14 +27,24 @@ interface DownloadRepository {
     fun getTasksByStatus(status: DownloadStatus): Flow<List<DownloadTask>>
     
     /**
+     * 根据状态获取任务（一次获取）
+     */
+    suspend fun getTasksByStatusOnce(status: DownloadStatus): List<DownloadTask>
+    
+    /**
      * 获取活跃任务（进行中、暂停、等待）
      */
     fun getActiveTasks(): Flow<List<DownloadTask>>
     
     /**
-     * 根据 ID 获取任务
+     * 根据 ID 获取任务（Long ID）
      */
     suspend fun getTaskById(id: Long): DownloadTask?
+    
+    /**
+     * 根据 ID 获取任务（String ID - 用于 torrent）
+     */
+    suspend fun getTaskByStringId(id: String): DownloadTask?
     
     /**
      * 根据哈希获取任务
@@ -42,6 +57,11 @@ interface DownloadRepository {
     suspend fun addTask(task: DownloadTask): Long
     
     /**
+     * 插入下载任务（返回是否成功）
+     */
+    suspend fun insertTask(task: DownloadTask): Boolean
+    
+    /**
      * 更新下载任务
      */
     suspend fun updateTask(task: DownloadTask)
@@ -50,6 +70,11 @@ interface DownloadRepository {
      * 更新下载进度
      */
     suspend fun updateProgress(id: Long, status: DownloadStatus, bytes: Long, speed: Long)
+    
+    /**
+     * 更新任务状态
+     */
+    suspend fun updateTaskStatus(id: String, status: DownloadStatus)
     
     /**
      * 标记任务完成
@@ -72,14 +97,19 @@ interface DownloadRepository {
     suspend fun startTask(id: Long, time: Date)
     
     /**
-     * 删除任务
+     * 删除任务（Long ID）
      */
     suspend fun deleteTask(task: DownloadTask)
     
     /**
-     * 根据 ID 删除任务
+     * 删除任务（String ID）
      */
-    suspend fun deleteTaskById(id: Long)
+    suspend fun deleteTaskById(id: String)
+    
+    /**
+     * 根据 ID 删除任务（Long ID）
+     */
+    suspend fun deleteTaskByLongId(id: Long)
     
     /**
      * 删除已完成的任务

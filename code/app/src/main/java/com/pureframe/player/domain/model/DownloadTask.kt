@@ -21,7 +21,14 @@ data class DownloadTask(
     val errorCode: String? = null,
     val createdAt: Date = Date(),
     val updatedAt: Date = Date(),
-    val completedAt: Date? = null
+    val completedAt: Date? = null,
+    
+    // 磁力链接下载扩展字段
+    val magnetLink: String? = null,
+    val torrentPath: String? = null,
+    val torrentHash: String? = null,
+    val isStreamable: Boolean = false,
+    val streamableProgress: Float = 0.1f
 ) {
     /**
      * 进度百分比
@@ -60,6 +67,18 @@ data class DownloadTask(
         get() = status == DownloadStatus.FAILED
     
     /**
+     * 是否是磁力链接下载
+     */
+    val isTorrentDownload: Boolean
+        get() = magnetLink != null || torrentPath != null
+    
+    /**
+     * 是否可边下边播
+     */
+    val canStream: Boolean
+        get() = isStreamable && progress >= streamableProgress
+    
+    /**
      * 剩余时间估算（秒）
      */
     val estimatedTimeRemaining: Long
@@ -96,5 +115,7 @@ enum class DownloadStatus {
     PAUSED,       // 已暂停
     COMPLETED,    // 已完成
     FAILED,       // 失败
-    CANCELLED     // 已取消
+    CANCELLED,    // 已取消
+    WAITING,      // 等待资源（DHT 查找）
+    ERROR         // 错误
 }
