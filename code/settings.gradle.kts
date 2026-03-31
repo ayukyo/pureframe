@@ -11,8 +11,8 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-        // JitPack - for jlibtorrent
-        maven { url = uri("https://jitpack.io") }
+        // FrostWire Maven - for jlibtorrent
+        maven { url = uri("https://dl.frostwire.com/maven") }
     }
 }
 

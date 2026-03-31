@@ -105,10 +105,10 @@ dependencies {
     // Timber - 日志框架
     implementation("com.jakewharton.timber:timber:5.0.1")
 
-    // libtorrent4j - BitTorrent 下载引擎
-    implementation("com.frostwire:jlibtorrent:1.2.15.0")
-    implementation("com.frostwire:jlibtorrent-android-arm64:1.2.15.0")  // ARM64 (现代手机)
-    implementation("com.frostwire:jlibtorrent-android-arm:1.2.15.0")    // ARM32 (旧设备)
+    // libtorrent4j - BitTorrent 下载引擎 (FrostWire)
+    implementation("com.frostwire:jlibtorrent:2.0.12.7")
+    implementation("com.frostwire:jlibtorrent-android-arm64:2.0.12.15")  // ARM64 (现代手机)
+    implementation("com.frostwire:jlibtorrent-android-arm:2.0.12.15")     // ARM32 (旧设备)
 
     // Testing
     testImplementation("junit:junit:4.13.2")
