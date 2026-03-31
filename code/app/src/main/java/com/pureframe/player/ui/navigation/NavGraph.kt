@@ -2,6 +2,7 @@ package com.pureframe.player.ui.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.media3.common.util.UnstableApi
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -15,6 +16,7 @@ import com.pureframe.player.ui.screens.player.PlayerScreen
 /**
  * 主导航图
  */
+@UnstableApi
 @Composable
 fun PureFrameNavGraph(
     navController: NavHostController,
