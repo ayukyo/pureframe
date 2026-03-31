@@ -4,8 +4,8 @@
   "status": "in_progress",
   "priority": 1,
   "createdAt": "2026-03-31T02:45:00Z",
-  "lastActivity": "2026-03-31T13:40:00Z",
-  "progress": 75,
+  "lastActivity": "2026-03-31T14:35:00Z",
+  "progress": 80,
   "description": "文艺极简本地视频播放器 + 磁链下载 + 边下边播",
   "tags": ["android", "video-player", "kotlin", "compose"],
   "githubRepo": "ayukyo/pureframe",
@@ -15,20 +15,20 @@
     {"name": "技术设计", "status": "completed", "progress": 100},
     {"name": "GitHub Actions 配置", "status": "completed", "progress": 100},
     {"name": "基础架构搭建", "status": "completed", "progress": 100},
-    {"name": "播放器核心", "status": "in_progress", "progress": 40},
-    {"name": "下载引擎", "status": "pending", "progress": 0},
+    {"name": "播放器核心", "status": "completed", "progress": 100},
+    {"name": "下载引擎", "status": "in_progress", "progress": 0},
     {"name": "UI 界面", "status": "pending", "progress": 0},
     {"name": "边下边播", "status": "pending", "progress": 0},
     {"name": "测试优化", "status": "pending", "progress": 0}
   ],
-  "currentTask": "ST-014: 播放器核心阶段完成",
-  "currentStage": "播放器核心",
+  "currentTask": "ST-015: 集成 libtorrent4j 下载引擎",
+  "currentStage": "下载引擎",
   "buildStatus": {
-    "lastRunId": 23782298741,
+    "lastRunId": 23784679440,
     "status": "completed",
     "conclusion": "success",
-    "fixAttempts": 1,
-    "note": "ST-013 完成，播放器 UI 主题完善 ✅ Build 成功，Lint 有警告"
+    "fixAttempts": 4,
+    "note": "ST-014 完成 ✅ Build #23784679440 成功！Lint 通过"
   },
   "notes": [
     "纯黑沉浸主题，无广告，极简设计",
@@ -48,43 +48,39 @@
     "播放控制功能完成 (ST-011 ✅)",
     "手势控制完成 (ST-012 ✅)",
     "播放器 UI 主题完善 (ST-013 ✅)",
+    "播放器核心阶段完成 (ST-014 ✅)",
     "PlayerManager 播放器管理器已创建",
     "播放控制 UI 已实现",
     "手势控制区域已实现：亮度/音量/进度滑动",
     "水平滑动进度跳转手势已实现",
     "创建 Color.kt：纯黑沉浸主题颜色方案",
     "更新 Theme.kt：完整 Material3 颜色方案 + PlayerTheme",
-    "更新 Type.kt：完善 Typography 样式 + 特殊样式"
+    "更新 Type.kt：完善 Typography 样式 + 特殊样式",
+    "修复 Lint @UnstableApi 注解问题：MainScreen, MainActivity, PlayerViewModel, PlayerUiState"
   ],
   "nextTasks": [
     {
-      "id": "ST-010",
-      "name": "集成 ExoPlayer 播放器",
-      "status": "completed",
-      "priority": 1
-    },
-    {
-      "id": "ST-011",
-      "name": "实现播放控制功能",
-      "status": "completed",
-      "priority": 1
-    },
-    {
-      "id": "ST-012",
-      "name": "实现手势控制",
-      "status": "completed",
-      "priority": 2
-    },
-    {
-      "id": "ST-013",
-      "name": "完善播放器 UI",
-      "status": "completed",
-      "priority": 2
-    },
-    {
-      "id": "ST-014",
-      "name": "播放器核心阶段完成",
+      "id": "ST-015",
+      "name": "集成 libtorrent4j 下载引擎",
       "status": "in_progress",
+      "priority": 1
+    },
+    {
+      "id": "ST-016",
+      "name": "实现磁力链接解析",
+      "status": "pending",
+      "priority": 1
+    },
+    {
+      "id": "ST-017",
+      "name": "实现下载任务管理",
+      "status": "pending",
+      "priority": 2
+    },
+    {
+      "id": "ST-018",
+      "name": "下载引擎阶段完成",
+      "status": "pending",
       "priority": 3
     }
   ]
