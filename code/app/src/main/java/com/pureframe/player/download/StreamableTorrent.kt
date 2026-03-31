@@ -1,10 +1,10 @@
 package com.pureframe.player.download
 
 import android.net.Uri
-import com.frostwire.jlibtorrent.PieceIndex
-import com.frostwire.jlibtorrent.Priority
-import com.frostwire.jlibtorrent.TorrentHandle
-import com.frostwire.jlibtorrent.TorrentInfo
+import org.libtorrent4j.PieceIndex
+import org.libtorrent4j.Priority
+import org.libtorrent4j.TorrentHandle
+import org.libtorrent4j.TorrentInfo
 import timber.log.Timber
 import java.io.File
 

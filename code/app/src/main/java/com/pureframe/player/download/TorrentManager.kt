@@ -4,7 +4,7 @@ import android.content.Context
 import com.pureframe.player.data.repository.DownloadRepository
 import com.pureframe.player.domain.model.DownloadTask
 import com.pureframe.player.domain.model.DownloadStatus
-import com.frostwire.jlibtorrent.TorrentHandle
+import org.libtorrent4j.TorrentHandle
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*

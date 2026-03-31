@@ -1,9 +1,9 @@
 package com.pureframe.player.download
 
 import android.content.Context
-import com.frostwire.jlibtorrent.*
-import com.frostwire.jlibtorrent.alerts.Alert
-import com.frostwire.jlibtorrent.alerts.AlertType
+import org.libtorrent4j.*
+import org.libtorrent4j.alerts.Alert
+import org.libtorrent4j.alerts.AlertType
 import com.pureframe.player.domain.model.DownloadTask
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
