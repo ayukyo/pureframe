@@ -4,8 +4,8 @@
   "status": "in_progress",
   "priority": 1,
   "createdAt": "2026-03-31T02:45:00Z",
-  "lastActivity": "2026-03-31T22:52:00+08:00",
-  "progress": 90,
+  "lastActivity": "2026-03-31T23:57:00+08:00",
+  "progress": 92,
   "description": "文艺极简本地视频播放器 + 磁链下载 + 边下边播",
   "tags": ["android", "video-player", "kotlin", "compose"],
   "githubRepo": "ayukyo/pureframe",
@@ -16,19 +16,19 @@
     {"name": "GitHub Actions 配置", "status": "completed", "progress": 100},
     {"name": "基础架构搭建", "status": "completed", "progress": 100},
     {"name": "播放器核心", "status": "completed", "progress": 100},
-    {"name": "下载引擎", "status": "in_progress", "progress": 80},
-    {"name": "UI 界面", "status": "in_progress", "progress": 50},
-    {"name": "边下边播", "status": "pending", "progress": 0},
+    {"name": "下载引擎", "status": "completed", "progress": 100},
+    {"name": "UI 界面", "status": "completed", "progress": 100},
+    {"name": "边下边播", "status": "in_progress", "progress": 50},
     {"name": "测试优化", "status": "pending", "progress": 0}
   ],
-  "currentTask": "ST-015: 集成 libtorrent4j 下载引擎 - UI 完成",
-  "currentStage": "下载引擎 + UI 界面",
+  "currentTask": "ST-019: 边下边播功能实现",
+  "currentStage": "边下边播",
   "buildStatus": {
-    "lastRunId": 23803943944,
+    "lastRunId": 23806740738,
     "status": "completed",
     "conclusion": "success",
-    "fixAttempts": 4,
-    "note": "Build #23803943944 成功！下载页面 UI 完成"
+    "fixAttempts": 1,
+    "note": "Build #23806740738 成功！边下边播核心功能完成"
   },
   "notes": [
     "纯黑沉浸主题，无广告，极简设计",
@@ -60,33 +60,30 @@
     "创建 AddDownloadDialog 对话框输入磁力链接",
     "支持筛选标签（全部/活跃/已完成/失败）",
     "支持边下边播播放按钮",
-    "修复编译错误：return lambda 语法、Material3 API、参数名统一"
+    "下载引擎阶段完成 (ST-018 ✅)",
+    "StreamProxyServer HTTP 代理服务器 (ST-019 ✅)",
+    "StreamPlaybackHelper 边下边播助手 (ST-019 ✅)",
+    "TorrentEngine.readDataBlock 数据读取 (ST-019 ✅)",
+    "PlayerViewModel 边下边播集成 (ST-019 ✅)"
   ],
   "nextTasks": [
     {
-      "id": "ST-015",
-      "name": "集成 libtorrent4j 下载引擎",
+      "id": "ST-019",
+      "name": "边下边播功能完善",
       "status": "in_progress",
       "priority": 1,
-      "subtask": "测试磁力链接下载流程",
-      "progress": 80
+      "subtask": "测试边下边播流程",
+      "progress": 50
     },
     {
-      "id": "ST-016",
-      "name": "实现磁力链接解析",
+      "id": "ST-020",
+      "name": "测试和优化",
       "status": "pending",
-      "priority": 1
+      "priority": 2
     },
     {
-      "id": "ST-017",
-      "name": "实现下载任务管理",
-      "status": "completed",
-      "priority": 2,
-      "progress": 100
-    },
-    {
-      "id": "ST-018",
-      "name": "下载引擎阶段完成",
+      "id": "ST-021",
+      "name": "项目完成",
       "status": "pending",
       "priority": 3
     }

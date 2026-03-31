@@ -11,6 +11,7 @@ import com.pureframe.player.domain.usecase.playback.GetLastPlaybackPositionUseCa
 import com.pureframe.player.domain.usecase.playback.SavePlaybackProgressUseCase
 import com.pureframe.player.domain.usecase.video.GetVideoByIdUseCase
 import com.pureframe.player.domain.usecase.video.UpdatePlayInfoUseCase
+import com.pureframe.player.domain.usecase.download.GetDownloadByIdUseCase
 import com.pureframe.player.player.PlayerManager
 import com.pureframe.player.player.PlayerState
 import com.pureframe.player.download.StreamPlaybackHelper
@@ -48,6 +49,7 @@ class PlayerViewModel @Inject constructor(
     private val getLastPlaybackPositionUseCase: GetLastPlaybackPositionUseCase,
     private val savePlaybackProgressUseCase: SavePlaybackProgressUseCase,
     private val updatePlayInfoUseCase: UpdatePlayInfoUseCase,
+    private val getDownloadByIdUseCase: GetDownloadByIdUseCase,
     private val playerManager: PlayerManager,
     private val streamPlaybackHelper: StreamPlaybackHelper
 ) : ViewModel() {
@@ -213,6 +215,45 @@ class PlayerViewModel @Inject constructor(
                     Timber.e(error, "PlayerViewModel: 边下边播启动失败")
                 }
             )
+        }
+    }
+    
+    /**
+     * 通过下载任务 ID 初始化边下边播
+     * 
+     * @param downloadId 下载任务 ID
+     */
+    fun initStreamPlaybackById(downloadId: Long) {
+        if (isInitialized) return
+        
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, playbackType = PlaybackType.STREAM) }
+            
+            try {
+                // 获取下载任务
+                val downloadTask = getDownloadByIdUseCase(downloadId)
+                if (downloadTask == null) {
+                    _uiState.update { 
+                        it.copy(
+                            errorMessage = "下载任务不存在",
+                            isLoading = false
+                        )
+                    }
+                    return
+                }
+                
+                // 调用边下边播初始化
+                initStreamPlayback(downloadTask)
+                
+            } catch (e: Exception) {
+                _uiState.update { 
+                    it.copy(
+                        errorMessage = e.message ?: "获取下载任务失败",
+                        isLoading = false
+                    )
+                }
+                Timber.e(e, "PlayerViewModel: 获取下载任务失败 - downloadId=$downloadId")
+            }
         }
     }
     

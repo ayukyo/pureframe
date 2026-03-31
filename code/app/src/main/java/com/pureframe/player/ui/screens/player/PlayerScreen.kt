@@ -98,7 +98,8 @@ fun PlayerScreen(
     // 初始化播放器
     LaunchedEffect(videoIdLong, downloadIdLong, isStreamPlayback) {
         if (isStreamPlayback && downloadIdLong > 0) {
-            // 边下边播
+            // 边下边播：通过下载任务 ID 初始化
+            viewModel.initStreamPlaybackById(downloadIdLong)
         } else if (videoIdLong > 0) {
             viewModel.initLocalPlayback(videoIdLong)
         }
