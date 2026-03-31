@@ -4,6 +4,7 @@ import android.content.Context
 import org.libtorrent4j.*
 import org.libtorrent4j.alerts.*
 import org.libtorrent4j.swig.torrent_flags_t
+import org.libtorrent4j.swig.add_torrent_params
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
@@ -256,20 +257,26 @@ class TorrentEngine @Inject constructor(
                 saveDir.mkdirs()
             }
             
-            // 使用 download 方法添加磁力链接
-            // 使用默认 flags（无参构造函数）
-            session.download(magnetLink, saveDir)
+            // 磁力链接需要通过 swig API 添加
+            // 使用 add_torrent_params 配置参数
+            val params = add_torrent_params()
+            params.save_path = savePath
             
-            // 等待 Torrent 添加后获取 infoHash
-            // 由于 download 方法是异步的，我们需要在 AddTorrentAlert 中获取 infoHash
-            // 这里先存储一个临时映射，等待 Alert 回调
-            
-            // 解析 magnet 获取 info hash（如果可以）
-            // 格式: magnet:?xt=urn:btih:INFO_HASH
+            // 解析磁力链接中的 info hash 并设置
             val infoHashStr = parseInfoHashFromMagnet(magnetLink)
-            if (infoHashStr != null) {
-                taskIdToInfoHash[taskId] = Sha1Hash.parseHex(infoHashStr)
+            if (infoHashStr == null) {
+                Timber.e("TorrentEngine: 无法解析磁力链接 info hash")
+                return false
             }
+            
+            val infoHash = Sha1Hash.parseHex(infoHashStr)
+            params.setInfo_hash(infoHash.swig())
+            
+            // 添加到 session
+            session.swig().async_add_torrent(params)
+            
+            // 存储 taskId 到 infoHash 的映射
+            taskIdToInfoHash[taskId] = infoHash
             
             Timber.i("TorrentEngine: 磁力链接添加成功 - $taskId")
             return true
