@@ -5,17 +5,19 @@ import androidx.lifecycle.viewModelScope
 import com.pureframe.player.data.preferences.UserPreferences
 import com.pureframe.player.data.preferences.UserPreferencesRepository
 import com.pureframe.player.data.preferences.DownloadQuality
+import com.pureframe.player.data.preferences.DecoderType
 import com.pureframe.player.data.preferences.ThemeMode
 import com.pureframe.player.data.preferences.SortBy
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
  * 设置页面 ViewModel
- * 
+ *
  * 负责：
  * - 提供用户偏好设置状态
  * - 保存设置变更
@@ -25,7 +27,7 @@ import javax.inject.Inject
 class SettingsViewModel @Inject constructor(
     private val userPreferencesRepository: UserPreferencesRepository
 ) : ViewModel() {
-    
+
     /**
      * 用户偏好设置状态
      */
@@ -35,7 +37,7 @@ class SettingsViewModel @Inject constructor(
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = UserPreferences()
         )
-    
+
     /**
      * 更新自动播放设置
      */
@@ -125,25 +127,7 @@ class SettingsViewModel @Inject constructor(
             userPreferencesRepository.updateThemeMode(mode)
         }
     }
-    
-    /**
-     * 更新全屏模式
-     */
-    fun setFullScreenMode(enabled: Boolean) {
-        viewModelScope.launch {
-            userPreferencesRepository.updateFullScreenMode(enabled)
-        }
-    }
-    
-    /**
-     * 更新是否显示缩略图
-     */
-    fun setShowThumbnail(enabled: Boolean) {
-        viewModelScope.launch {
-            userPreferencesRepository.updateShowThumbnail(enabled)
-        }
-    }
-    
+
     /**
      * 更新排序方式
      */
@@ -179,7 +163,16 @@ class SettingsViewModel @Inject constructor(
             userPreferencesRepository.updateVolumeGesture(enabled)
         }
     }
-    
+
+    /**
+     * 更新解码器类型
+     */
+    fun setDecoderType(type: DecoderType) {
+        viewModelScope.launch {
+            userPreferencesRepository.updateDecoderType(type)
+        }
+    }
+
     /**
      * 清除所有偏好设置
      */

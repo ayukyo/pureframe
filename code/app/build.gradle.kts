@@ -93,6 +93,7 @@ dependencies {
 
     // Coil - 图片加载
     implementation("io.coil-kt:coil-compose:2.5.0")
+    implementation("io.coil-kt:coil-video:2.5.0")
 
     // Hilt - 依赖注入
     implementation("com.google.dagger:hilt-android:2.48.1")

@@ -28,7 +28,7 @@ data class DownloadTask(
     val torrentPath: String? = null,
     val torrentHash: String? = null,
     val isStreamable: Boolean = false,
-    val streamableProgress: Float = 0.1f
+    val streamableProgress: Float = 10f  // 默认需要下载 10% 才能播放
 ) {
     /**
      * 进度百分比
@@ -71,9 +71,11 @@ data class DownloadTask(
      */
     val isTorrentDownload: Boolean
         get() = magnetLink != null || torrentPath != null
-    
+
     /**
      * 是否可边下边播
+     * streamableProgress 是百分比（0-100），例如 10 表示 10%
+     * 默认需要下载 10% 才能播放
      */
     val canStream: Boolean
         get() = isStreamable && progress >= streamableProgress

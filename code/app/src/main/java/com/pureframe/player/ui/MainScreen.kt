@@ -24,6 +24,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.pureframe.player.ui.navigation.NavigationState
 import com.pureframe.player.ui.navigation.PureFrameNavGraph
 import com.pureframe.player.ui.navigation.Screen
 import com.pureframe.player.ui.theme.PureFrameTheme
@@ -68,7 +69,8 @@ val bottomNavItems = listOf(
 @UnstableApi
 @Composable
 fun MainScreen(
-    navController: NavHostController = rememberNavController()
+    navController: NavHostController = rememberNavController(),
+    navigationState: NavigationState
 ) {
     PureFrameTheme {
         Scaffold(
@@ -76,19 +78,29 @@ fun MainScreen(
                 // 只在主页面显示底部导航栏
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentRoute = navBackStackEntry?.destination?.route
-                
+
                 // 检查是否是主页面（不包含播放器页面）
                 val isMainScreen = currentRoute in listOf(
                     Screen.Home.route,
                     Screen.Download.route,
                     Screen.Settings.route
                 )
-                
+
                 if (isMainScreen) {
                     PureFrameBottomBar(
                         navController = navController,
                         items = bottomNavItems,
-                        currentRoute = currentRoute ?: Screen.Home.route
+                        currentRoute = currentRoute ?: Screen.Home.route,
+                        onNavigationClick = { screen ->
+                            if (currentRoute == screen.route) {
+                                // 已经在目标页面，触发滚动
+                                when (screen) {
+                                    Screen.Home -> navigationState.requestScrollToHomeTop()
+                                    Screen.Download -> navigationState.requestScrollToDownloadTop()
+                                    else -> {}
+                                }
+                            }
+                        }
                     )
                 }
             }
@@ -98,7 +110,10 @@ fun MainScreen(
                     .fillMaxSize()
                     .padding(paddingValues)
             ) {
-                PureFrameNavGraph(navController = navController)
+                PureFrameNavGraph(
+                    navController = navController,
+                    navigationState = navigationState
+                )
             }
         }
     }
@@ -111,26 +126,24 @@ fun MainScreen(
 fun PureFrameBottomBar(
     navController: NavHostController,
     items: List<BottomNavItem>,
-    currentRoute: String
+    currentRoute: String,
+    onNavigationClick: (Screen) -> Unit = {}
 ) {
     NavigationBar {
         items.forEach { item ->
             val selected = currentRoute == item.screen.route
-            
+
             NavigationBarItem(
                 selected = selected,
                 onClick = {
-                    // 导航到选中页面，避免重复导航
-                    if (currentRoute != item.screen.route) {
+                    if (currentRoute == item.screen.route) {
+                        // 已经在目标页面，只触发滚动
+                        onNavigationClick(item.screen)
+                    } else {
+                        // 切换到其他页面
                         navController.navigate(item.screen.route) {
-                            // 弹出到起始目的地，避免堆栈积累
-                            popUpTo(navController.graph.findStartDestination().id) {
-                                saveState = true
-                            }
                             // 避免多次点击时创建多个实例
                             launchSingleTop = true
-                            // 恢复状态
-                            restoreState = true
                         }
                     }
                 },

@@ -54,11 +54,13 @@ fun Video.toEntity(): VideoEntity {
  * DownloadTaskEntity -> DownloadTask
  */
 fun DownloadTaskEntity.toDomainModel(): DownloadTask {
+    val rawFileName = name.substringAfterLast('/').substringAfterLast('\\')
+    val fileName = if (rawFileName.isEmpty()) name else rawFileName
     return DownloadTask(
         id = id,
         url = url,
         title = name,
-        fileName = name.substringAfterLast('/').substringAfterLast('\\'),
+        fileName = fileName,
         savePath = downloadPath,
         totalSize = totalBytes,
         downloadedSize = downloadedBytes,
@@ -68,7 +70,9 @@ fun DownloadTaskEntity.toDomainModel(): DownloadTask {
         errorCode = errorMessage,
         createdAt = createdAt,
         updatedAt = completedAt ?: createdAt,
-        completedAt = completedAt
+        completedAt = completedAt,
+        magnetLink = if (url.startsWith("magnet:")) url else null,
+        torrentHash = torrentHash
     )
 }
 
@@ -87,7 +91,8 @@ fun DownloadTask.toEntity(): DownloadTaskEntity {
         downloadSpeed = speed,
         errorMessage = errorCode,
         createdAt = createdAt,
-        completedAt = completedAt
+        completedAt = completedAt,
+        torrentHash = torrentHash
     )
 }
 

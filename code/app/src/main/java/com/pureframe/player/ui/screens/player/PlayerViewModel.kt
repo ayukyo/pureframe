@@ -23,6 +23,7 @@ import timber.log.Timber
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -51,9 +52,10 @@ class PlayerViewModel @Inject constructor(
     private val updatePlayInfoUseCase: UpdatePlayInfoUseCase,
     private val getDownloadByIdUseCase: GetDownloadByIdUseCase,
     private val playerManager: PlayerManager,
-    private val streamPlaybackHelper: StreamPlaybackHelper
+    private val streamPlaybackHelper: StreamPlaybackHelper,
+    private val userPreferencesRepository: com.pureframe.player.data.preferences.UserPreferencesRepository
 ) : ViewModel() {
-    
+
     // 播放类型
     enum class PlaybackType {
         LOCAL,      // 本地文件播放
@@ -118,6 +120,9 @@ class PlayerViewModel @Inject constructor(
     
     // 是否已初始化
     private var isInitialized = false
+
+    // 当前播放的视频ID
+    private var currentVideoId: Long? = null
     
     /**
      * 初始化本地播放
@@ -125,8 +130,16 @@ class PlayerViewModel @Inject constructor(
      * @param videoId 视频 ID
      */
     fun initLocalPlayback(videoId: Long) {
-        if (isInitialized) return
-        
+        // 如果是同一个视频且已初始化，直接播放
+        if (isInitialized && currentVideoId == videoId) {
+            playerManager.play()
+            return
+        }
+
+        // 重置状态
+        isInitialized = false
+        currentVideoId = videoId
+
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, playbackType = PlaybackType.LOCAL) }
             
@@ -151,20 +164,24 @@ class PlayerViewModel @Inject constructor(
                 
                 // 加载视频文件
                 playerManager.loadLocalFile(video.filePath)
-                
-                // 如果有上次播放位置，跳转到该位置（在播放器就绪后）
-                if (lastPosition != null && lastPosition > 0) {
-                    // 等待播放器就绪后跳转
-                    viewModelScope.launch {
-                        playerManager.playbackState.collect { state ->
-                            if (state == PlayerState.READY && !isInitialized) {
+
+                // 应用用户偏好设置
+                val prefs = userPreferencesRepository.userPreferencesFlow.first()
+                playerManager.setPlaybackSpeed(prefs.defaultPlaySpeed)
+                _playbackSpeed.value = prefs.defaultPlaySpeed
+                playerManager.setLooping(prefs.loopPlay)
+
+                // 等待播放器就绪后跳转并播放
+                viewModelScope.launch {
+                    playerManager.playbackState.collect { state ->
+                        if (state == PlayerState.READY && !isInitialized) {
+                            if (lastPosition != null && lastPosition > 0) {
                                 playerManager.seekTo(lastPosition)
-                                isInitialized = true
                             }
+                            playerManager.play()
+                            isInitialized = true
                         }
                     }
-                } else {
-                    isInitialized = true
                 }
                 
             } catch (e: Exception) {
@@ -198,10 +215,15 @@ class PlayerViewModel @Inject constructor(
                             title = downloadTask.title
                         )
                     }
-                    
+
+                    // 应用默认播放速度
+                    val defaultSpeed = userPreferencesRepository.userPreferencesFlow.first().defaultPlaySpeed
+                    playerManager.setPlaybackSpeed(defaultSpeed)
+                    _playbackSpeed.value = defaultSpeed
+
                     // 监听边下边播状态
                     monitorStreamPlayback()
-                    
+
                     isInitialized = true
                     Timber.i("PlayerViewModel: 边下边播启动成功 - ${downloadTask.title}")
                 },
@@ -290,6 +312,10 @@ class PlayerViewModel @Inject constructor(
      * 播放
      */
     fun play() {
+        // 如果播放结束，重置到开头
+        if (playbackState.value == PlayerState.END) {
+            playerManager.seekTo(0)
+        }
         playerManager.play()
     }
     

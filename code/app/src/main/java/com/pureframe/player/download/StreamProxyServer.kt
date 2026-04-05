@@ -421,10 +421,10 @@ class StreamProxyServer @Inject constructor(
     ): ByteArray? {
         // 使用 TorrentEngine 的 readDataBlock 方法
         return torrentEngine.readDataBlock(
-            taskId = taskId,
-            fileIndex = streamableInfo.largestFileIndex,
-            offset = position,
-            length = length
+            taskId,
+            streamableInfo.largestFileIndex,
+            position,
+            length
         )
     }
     

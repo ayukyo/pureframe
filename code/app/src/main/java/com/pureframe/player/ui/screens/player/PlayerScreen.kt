@@ -86,7 +86,6 @@ fun PlayerScreen(
     @Suppress("UNUSED_VARIABLE")
     val volume by viewModel.volume.collectAsStateWithLifecycle()  // 音量控制
     val gestureIndicator by viewModel.showGestureIndicator.collectAsStateWithLifecycle()
-    val isLocked by viewModel.isLocked.collectAsStateWithLifecycle()
     val playbackSpeed by viewModel.playbackSpeed.collectAsStateWithLifecycle()
     val aspectRatio by viewModel.aspectRatio.collectAsStateWithLifecycle()
     val isFullscreen by viewModel.isFullscreen.collectAsStateWithLifecycle()
@@ -109,16 +108,11 @@ fun PlayerScreen(
     }
     
     // 自动隐藏控制栏
-    LaunchedEffect(isPlaying, showControls, isLocked) {
-        if (isPlaying && showControls && !isLocked) {
+    LaunchedEffect(isPlaying, showControls) {
+        if (isPlaying && showControls) {
             kotlinx.coroutines.delay(3000)
             showControls = false
         }
-    }
-    
-    // 设置窗口亮度
-    LaunchedEffect(brightness) {
-        activity?.let { setWindowBrightness(it.window, brightness) }
     }
     
     // 设置全屏状态
@@ -146,19 +140,15 @@ fun PlayerScreen(
         modifier = modifier
             .fillMaxSize()
             .background(Color.Black)
-            .pointerInput(isLocked) {
-                if (!isLocked) {
-                    detectTapGestures(
-                        onTap = {
-                            showControls = !showControls
-                        },
-                        onDoubleTap = {
-                            viewModel.togglePlayPause()
-                        }
-                    )
-                } else {
-                    // 锁屏状态下点击无响应
-                }
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onTap = {
+                        showControls = !showControls
+                    },
+                    onDoubleTap = {
+                        viewModel.togglePlayPause()
+                    }
+                )
             }
     ) {
         // 视频播放器
@@ -168,66 +158,49 @@ fun PlayerScreen(
                     player = viewModel.getPlayer()
                     useController = false  // 使用自定义控制器
                     setBackgroundColor(android.graphics.Color.BLACK)
-                    // 设置画面比例模式
-                    resizeMode = when (aspectRatio) {
-                        "FILL" -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FILL
-                        "16:9" -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
-                        "4:3" -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
-                        "ORIGINAL" -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-                        else -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
-                    }
+                }
+            },
+            update = { playerView ->
+                // 更新画面比例模式
+                playerView.resizeMode = when (aspectRatio) {
+                    "FILL" -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FILL
+                    else -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
                 }
             },
             modifier = Modifier.fillMaxSize()
         )
         
-        // 加载指示器
-        AnimatedVisibility(
-            visible = playbackState == PlayerState.BUFFERING,
-            enter = fadeIn(),
-            exit = fadeOut(),
-            modifier = Modifier.align(Alignment.Center)
-        ) {
-            CircularProgressIndicator(
-                color = Color.White,
-                strokeWidth = 3.dp,
-                modifier = Modifier.size(48.dp)
-            )
-        }
-        
-        // 水平滑动进度控制区域（仅在非锁屏状态）
-        if (!isLocked) {
-            SeekGestureOverlay(
-                currentPosition = currentPosition,
-                duration = duration,
-                onSeekRelative = { deltaMs ->
-                    viewModel.seekRelative(deltaMs)
-                },
-                onSeekStart = { showControls = false },
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .fillMaxWidth(0.7f)
-                    .fillMaxHeight(0.5f)
-            )
-            
-            // 左侧亮度控制区域
-            BrightnessGestureArea(
-                onBrightnessChange = { viewModel.setBrightness(it) },
-                modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .fillMaxHeight(0.6f)
-                    .width(100.dp)
-            )
-            
-            // 右侧音量控制区域
-            VolumeGestureArea(
-                onVolumeChange = { viewModel.setVolume(it) },
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .fillMaxHeight(0.6f)
-                    .width(100.dp)
-            )
-        }
+        // 水平滑动进度控制区域
+        SeekGestureOverlay(
+            currentPosition = currentPosition,
+            duration = duration,
+            onSeekRelative = { deltaMs ->
+                viewModel.seekRelative(deltaMs)
+            },
+            onSeekStart = { showControls = false },
+            modifier = Modifier
+                .align(Alignment.Center)
+                .fillMaxWidth(0.7f)
+                .fillMaxHeight(0.5f)
+        )
+
+        // 左侧亮度控制区域
+        BrightnessGestureArea(
+            onBrightnessChange = { viewModel.setBrightness(it) },
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .fillMaxHeight(0.6f)
+                .width(100.dp)
+        )
+
+        // 右侧音量控制区域
+        VolumeGestureArea(
+            onVolumeChange = { viewModel.setVolume(it) },
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .fillMaxHeight(0.6f)
+                .width(100.dp)
+        )
         
         // 手势指示器
         gestureIndicator?.let { indicator ->
@@ -237,9 +210,9 @@ fun PlayerScreen(
             )
         }
         
-        // 控制栏（点击显示/隐藏，非锁屏状态）
+        // 控制栏（点击显示/隐藏）
         AnimatedVisibility(
-            visible = showControls && !isLocked,
+            visible = showControls,
             enter = fadeIn(animationSpec = tween(200)),
             exit = fadeOut(animationSpec = tween(200))
         ) {
@@ -250,7 +223,6 @@ fun PlayerScreen(
                 duration = duration,
                 bufferedPosition = bufferedPosition,
                 playbackState = playbackState,
-                isLocked = isLocked,
                 playbackSpeed = playbackSpeed,
                 aspectRatio = aspectRatio,
                 isFullscreen = isFullscreen,
@@ -267,34 +239,12 @@ fun PlayerScreen(
                 onPlayPause = { viewModel.togglePlayPause() },
                 onSeek = { viewModel.seekTo(it) },
                 onSeekRelative = { viewModel.seekRelative(it) },
-                onLockToggle = { viewModel.toggleLock() },
                 onSpeedChange = { viewModel.setPlaybackSpeed(it) },
                 onAspectRatioChange = { viewModel.setAspectRatio(it) },
                 onFullscreenToggle = { viewModel.toggleFullscreen() },
                 onShowSpeedDialog = { viewModel.showSpeedDialog() },
                 onShowAspectRatioDialog = { viewModel.showAspectRatioDialog() },
                 modifier = Modifier.fillMaxSize()
-            )
-        }
-        
-        // 锁屏按钮（始终显示，位置根据锁屏状态变化）
-        LockButton(
-            isLocked = isLocked,
-            onLockToggle = { viewModel.toggleLock() },
-            modifier = Modifier
-                .align(
-                    if (isLocked) Alignment.Center 
-                    else Alignment.CenterStart
-                )
-                .padding(16.dp)
-        )
-        
-        // 锁屏状态提示
-        if (isLocked) {
-            LockedOverlayHint(
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .padding(bottom = 100.dp)
             )
         }
         
@@ -604,15 +554,6 @@ fun ErrorOverlay(
             }
         }
     }
-}
-
-/**
- * 设置窗口亮度
- */
-fun setWindowBrightness(window: Window, brightness: Float) {
-    val lp = window.attributes
-    lp.screenBrightness = brightness.coerceIn(0f, 1f)
-    window.attributes = lp
 }
 
 /**

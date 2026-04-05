@@ -6,6 +6,8 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
+import com.pureframe.player.data.preferences.DecoderType
+import com.pureframe.player.data.preferences.UserPreferencesRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -14,16 +16,18 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
  * 播放器管理器
- * 
+ *
  * 负责管理 ExoPlayer 播放状态，提供统一的播放控制接口。
- * 
+ *
  * 功能：
  * - 播放/暂停控制
  * - 进度监控
@@ -33,11 +37,13 @@ import javax.inject.Singleton
  * - 循环播放
  * - 倍速控制
  * - 画面比例控制
+ * - 解码器选择
  */
 @Singleton
 class PlayerManager @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val exoPlayer: ExoPlayer
+    private val exoPlayer: ExoPlayer,
+    private val userPreferencesRepository: UserPreferencesRepository
 ) {
     // 播放状态
     private val _isPlaying = MutableStateFlow(false)
@@ -78,10 +84,21 @@ class PlayerManager @Inject constructor(
     // 画面比例
     private val _aspectRatio = MutableStateFlow("AUTO")
     val aspectRatio: StateFlow<String> = _aspectRatio.asStateFlow()
-    
+
+    // 解码器类型
+    private val _decoderType = MutableStateFlow(DecoderType.HARDWARE)
+    val decoderType: StateFlow<DecoderType> = _decoderType.asStateFlow()
+
     // 进度更新 Job
     private var progressUpdateJob: Job? = null
-    
+
+    init {
+        // 初始化时读取解码器偏好（同步读取，避免异步复杂性）
+        _decoderType.value = runBlocking {
+            userPreferencesRepository.userPreferencesFlow.first().decoderType
+        }
+    }
+
     // 播放器监听器
     private val playerListener = object : Player.Listener {
         override fun onPlaybackStateChanged(state: Int) {
@@ -161,6 +178,10 @@ class PlayerManager @Inject constructor(
      * 播放
      */
     fun play() {
+        // 如果播放结束，先重置到开头
+        if (exoPlayer.playbackState == Player.STATE_ENDED) {
+            exoPlayer.seekTo(0)
+        }
         exoPlayer.play()
     }
     
@@ -262,7 +283,23 @@ class PlayerManager @Inject constructor(
             }
         }
     }
-    
+
+    /**
+     * 设置解码器类型
+     *
+     * 注意：解码器类型在 ExoPlayer 创建时确定，修改后需要重启应用才能生效
+     *
+     * @param type 解码器类型（硬件/软件/自动）
+     */
+    fun setDecoderType(type: DecoderType) {
+        _decoderType.value = type
+
+        // 持久化偏好（重启后生效）
+        kotlinx.coroutines.GlobalScope.launch(Dispatchers.IO) {
+            userPreferencesRepository.updateDecoderType(type)
+        }
+    }
+
     /**
      * 清除错误
      */

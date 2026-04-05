@@ -51,7 +51,6 @@ fun EnhancedPlayerControls(
     duration: Long,
     bufferedPosition: Long,
     playbackState: PlayerState,
-    isLocked: Boolean,
     playbackSpeed: Float,
     aspectRatio: String,  // 未来使用
     isFullscreen: Boolean,
@@ -62,7 +61,6 @@ fun EnhancedPlayerControls(
     onPlayPause: () -> Unit,
     onSeek: (Long) -> Unit,
     onSeekRelative: (Long) -> Unit,
-    onLockToggle: () -> Unit,
     onSpeedChange: (Float) -> Unit,  // 未来使用
     onAspectRatioChange: (String) -> Unit,  // 未来使用
     onFullscreenToggle: () -> Unit,
@@ -75,7 +73,7 @@ fun EnhancedPlayerControls(
     val progress = if (duration > 0) currentPosition.toFloat() / duration else 0f
     @Suppress("UNUSED_VARIABLE")
     val bufferedProgress = if (duration > 0) bufferedPosition.toFloat() / duration else 0f
-    
+
     // 拖动状态（未来实现）
     @Suppress("UNUSED_VARIABLE")
     var isDragging by remember { mutableStateOf(false) }
@@ -83,69 +81,46 @@ fun EnhancedPlayerControls(
     var dragProgress by remember { mutableFloatStateOf(0f) }
     @Suppress("UNUSED_VARIABLE")
     var dragPosition by remember { mutableLongStateOf(0L) }
-    
+
     Box(modifier = modifier) {
-        if (!isLocked) {
-            // 顶部栏（渐变背景）
-            TopControlBar(
-                title = title,
-                isFullscreen = isFullscreen,
-                playbackSpeed = playbackSpeed,
-                onBack = onBack,
-                onShowSpeedDialog = onShowSpeedDialog,
-                onShowAspectRatioDialog = onShowAspectRatioDialog,
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .fillMaxWidth()
-            )
-            
-            // 中间控制区
-            CenterControlArea(
-                isPlaying = isPlaying,
-                playbackState = playbackState,
-                onPlayPause = onPlayPause,
-                onSeekBackward = { onSeekRelative(-10_000) },
-                onSeekForward = { onSeekRelative(10_000) },
-                modifier = Modifier.align(Alignment.Center)
-            )
-            
-            // 底部进度条（渐变背景）
-            BottomControlBar(
-                currentPosition = currentPosition,
-                duration = duration,
-                bufferedPosition = bufferedPosition,
-                isStreamPlayback = isStreamPlayback,
-                streamProgress = streamProgress,
-                maxSeekPosition = maxSeekPosition,
-                isFullscreen = isFullscreen,
-                onSeek = onSeek,
-                onFullscreenToggle = onFullscreenToggle,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-            )
-        }
-        
-        // 锁屏按钮（始终显示）
-        LockButton(
-            isLocked = isLocked,
-            onLockToggle = onLockToggle,
+        // 顶部栏（渐变背景）
+        TopControlBar(
+            title = title,
+            isFullscreen = isFullscreen,
+            playbackSpeed = playbackSpeed,
+            onBack = onBack,
+            onShowSpeedDialog = onShowSpeedDialog,
+            onShowAspectRatioDialog = onShowAspectRatioDialog,
             modifier = Modifier
-                .align(
-                    if (isLocked) Alignment.Center 
-                    else BiasAlignment(0f, -0.8f)  // 顶部稍下
-                )
-                .padding(16.dp)
+                .align(Alignment.TopCenter)
+                .fillMaxWidth()
         )
-        
-        // 锁屏状态提示
-        if (isLocked) {
-            LockedOverlayHint(
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .padding(bottom = 100.dp)
-            )
-        }
+
+        // 中间控制区
+        CenterControlArea(
+            isPlaying = isPlaying,
+            playbackState = playbackState,
+            onPlayPause = onPlayPause,
+            onSeekBackward = { onSeekRelative(-10_000) },
+            onSeekForward = { onSeekRelative(10_000) },
+            modifier = Modifier.align(BiasAlignment(0f, 0.6f))
+        )
+
+        // 底部进度条（渐变背景）
+        BottomControlBar(
+            currentPosition = currentPosition,
+            duration = duration,
+            bufferedPosition = bufferedPosition,
+            isStreamPlayback = isStreamPlayback,
+            streamProgress = streamProgress,
+            maxSeekPosition = maxSeekPosition,
+            isFullscreen = isFullscreen,
+            onSeek = onSeek,
+            onFullscreenToggle = onFullscreenToggle,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+        )
     }
 }
 

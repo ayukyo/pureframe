@@ -20,6 +20,7 @@ import com.pureframe.player.ui.screens.player.PlayerScreen
 @Composable
 fun PureFrameNavGraph(
     navController: NavHostController,
+    navigationState: NavigationState,
     modifier: Modifier = Modifier,
     startDestination: String = Screen.Home.route
 ) {
@@ -33,17 +34,19 @@ fun PureFrameNavGraph(
             HomeScreen(
                 onVideoClick = { videoId ->
                     navController.navigate(Screen.Player.createRoute(videoId))
-                }
+                },
+                navigationState = navigationState
             )
         }
-        
+
         // 下载页面
         composable(Screen.Download.route) {
             DownloadScreen(
                 onPlayClick = { downloadId ->
                     // 检查是否可边下边播，跳转到播放器
                     navController.navigate(Screen.StreamPlayer.createRoute(downloadId))
-                }
+                },
+                navigationState = navigationState
             )
         }
         

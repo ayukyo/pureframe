@@ -1,5 +1,9 @@
 package com.pureframe.player.ui.screens.download
 
+import android.app.Activity
+import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,10 +17,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.ClearAll
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.FilterList
@@ -32,6 +39,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -40,11 +48,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.pureframe.player.domain.model.DownloadTask
 import com.pureframe.player.domain.model.DownloadStatus
+import com.pureframe.player.ui.navigation.NavigationState
 import com.pureframe.player.ui.theme.Background
+import timber.log.Timber
 import com.pureframe.player.ui.theme.SurfaceVariant
 
 /**
@@ -60,6 +71,7 @@ import com.pureframe.player.ui.theme.SurfaceVariant
 @Composable
 fun DownloadScreen(
     onPlayClick: (String) -> Unit,
+    navigationState: NavigationState,
     viewModel: DownloadViewModel = hiltViewModel(),
     modifier: Modifier = Modifier
 ) {
@@ -68,9 +80,50 @@ fun DownloadScreen(
     val activeDownloads by viewModel.activeDownloads.collectAsState()
     val completedDownloads by viewModel.completedDownloads.collectAsState()
     val failedDownloads by viewModel.failedDownloads.collectAsState()
-    
+    val pendingMetadata by viewModel.pendingMetadata.collectAsState()
+
     var showAddDialog by remember { mutableStateOf(false) }
-    
+
+    // 列表滚动状态
+    val listState = rememberLazyListState()
+
+    // 监听导航状态，请求滚动到顶部
+    LaunchedEffect(Unit) {
+        navigationState.scrollToDownloadTop.collect {
+            if (it) {
+                listState.animateScrollToItem(0)
+                navigationState.resetDownloadScrollFlag()
+            }
+        }
+    }
+
+    // Torrent 文件选择器
+    val torrentFilePicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            result.data?.data?.let { uri ->
+                // 获取文件路径
+                val filePath = uri.path
+                if (filePath != null) {
+                    viewModel.addTorrentFileDownload(filePath)
+                }
+            }
+        }
+    }
+
+    fun openTorrentFilePicker() {
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "*/*"
+            putExtra(Intent.EXTRA_MIME_TYPES, arrayOf(
+                "application/x-bittorrent",
+                "application/octet-stream"
+            ))
+        }
+        torrentFilePicker.launch(intent)
+    }
+
     // 当前显示的列表
     val currentDownloads: List<DownloadTask> = when (uiState.listType) {
         DownloadViewModel.ListType.ALL -> allDownloads
@@ -101,6 +154,14 @@ fun DownloadScreen(
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                    // Torrent 文件选择按钮
+                    IconButton(onClick = { openTorrentFilePicker() }) {
+                        Icon(
+                            imageVector = Icons.Filled.AttachFile,
+                            contentDescription = "选择 Torrent 文件",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                     // 清除已完成按钮
                     if (completedDownloads.isNotEmpty()) {
                         IconButton(onClick = { viewModel.clearCompletedDownloads() }) {
@@ -117,12 +178,13 @@ fun DownloadScreen(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { showAddDialog = true },
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
+                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
             ) {
                 Icon(
                     imageVector = Icons.Filled.Add,
-                    contentDescription = "添加下载"
+                    contentDescription = "添加下载",
+                    modifier = Modifier.size(24.dp)
                 )
             }
         }
@@ -148,11 +210,11 @@ fun DownloadScreen(
             if (currentDownloads.isEmpty()) {
                 // 空状态
                 EmptyDownloadsState(
-                    listType = uiState.listType,
-                    onAddClick = { showAddDialog = true }
+                    listType = uiState.listType
                 )
             } else {
                 LazyColumn(
+                    state = listState,
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(
                         start = 16.dp,
@@ -190,8 +252,22 @@ fun DownloadScreen(
         AddDownloadDialog(
             onDismiss = { showAddDialog = false },
             onConfirm = { magnetLink, title ->
+                Timber.d("DownloadScreen: onConfirm called - magnetLink=$magnetLink")
                 viewModel.addDownloadTask(magnetLink, title)
                 showAddDialog = false
+            }
+        )
+    }
+
+    // 文件选择对话框
+    pendingMetadata?.let { metadata ->
+        FileSelectionDialog(
+            metadata = metadata,
+            onConfirm = { selectedIndices ->
+                viewModel.confirmFileSelection(selectedIndices)
+            },
+            onDismiss = {
+                viewModel.cancelFileSelection()
             }
         )
     }
@@ -271,7 +347,6 @@ private fun FilterTab(
 @Composable
 private fun EmptyDownloadsState(
     listType: DownloadViewModel.ListType,
-    onAddClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val message = when (listType) {
@@ -282,7 +357,7 @@ private fun EmptyDownloadsState(
     }
     
     val subMessage = when (listType) {
-        DownloadViewModel.ListType.ALL -> "点击右下角按钮添加磁力链接"
+        DownloadViewModel.ListType.ALL -> "点击右下角按钮添加下载"
         DownloadViewModel.ListType.ACTIVE -> "添加新任务开始下载"
         DownloadViewModel.ListType.COMPLETED -> "下载完成的任务会显示在这里"
         DownloadViewModel.ListType.FAILED -> "出错的任务会显示在这里"
@@ -322,20 +397,6 @@ private fun EmptyDownloadsState(
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
             )
             
-            // 添加按钮（仅全部状态显示）
-            if (listType == DownloadViewModel.ListType.ALL) {
-                Spacer(modifier = Modifier.height(24.dp))
-                
-                TextButton(onClick = onAddClick) {
-                    Icon(
-                        imageVector = Icons.Filled.Add,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("添加磁力链接")
-                }
-            }
         }
     }
 }

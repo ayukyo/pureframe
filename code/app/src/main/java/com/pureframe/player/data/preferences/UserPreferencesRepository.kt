@@ -25,11 +25,14 @@ class UserPreferencesRepository @Inject constructor(
     val userPreferencesFlow: Flow<UserPreferences> = dataStore.data.map { preferences ->
         UserPreferences(
             // 播放器设置
-            autoPlay = preferences[PreferencesKeys.AUTO_PLAY] ?: true,
+            autoPlay = preferences[PreferencesKeys.AUTO_PLAY] ?: false,
             loopPlay = preferences[PreferencesKeys.LOOP_PLAY] ?: false,
             defaultPlaySpeed = preferences[PreferencesKeys.DEFAULT_PLAY_SPEED] ?: 1.0f,
             rememberPlaySpeed = preferences[PreferencesKeys.REMEMBER_PLAY_SPEED] ?: true,
             showSubtitle = preferences[PreferencesKeys.SHOW_SUBTITLE] ?: true,
+            decoderType = preferences[PreferencesKeys.DECODER_TYPE]?.let {
+                DecoderType.valueOf(it)
+            } ?: DecoderType.AUTO,
             
             // 下载设置
             maxConcurrentDownloads = preferences[PreferencesKeys.MAX_CONCURRENT_DOWNLOADS] ?: 3,
@@ -100,7 +103,16 @@ class UserPreferencesRepository @Inject constructor(
             preferences[PreferencesKeys.SHOW_SUBTITLE] = enabled
         }
     }
-    
+
+    /**
+     * 更新解码器类型
+     */
+    suspend fun updateDecoderType(type: DecoderType) {
+        dataStore.edit { preferences ->
+            preferences[PreferencesKeys.DECODER_TYPE] = type.name
+        }
+    }
+
     /**
      * 更新最大并行下载数
      */
@@ -211,6 +223,7 @@ class UserPreferencesRepository @Inject constructor(
             prefs[PreferencesKeys.DEFAULT_PLAY_SPEED] = preferences.defaultPlaySpeed
             prefs[PreferencesKeys.REMEMBER_PLAY_SPEED] = preferences.rememberPlaySpeed
             prefs[PreferencesKeys.SHOW_SUBTITLE] = preferences.showSubtitle
+            prefs[PreferencesKeys.DECODER_TYPE] = preferences.decoderType.name
             
             // 下载设置
             prefs[PreferencesKeys.MAX_CONCURRENT_DOWNLOADS] = preferences.maxConcurrentDownloads

@@ -33,15 +33,20 @@ class TorrentManager @Inject constructor(
     
     // 下载进度流（从 Engine 获取）
     val downloadProgress: SharedFlow<DownloadProgressInfo> = torrentEngine.downloadProgress
-    
+
     // 边下边播状态流
     val streamableStatus: StateFlow<Map<String, StreamableInfo>> = torrentEngine.streamableStatus
+
+    // Metadata 获取事件流（用于文件选择）
+    val metadataReceived: SharedFlow<TorrentMetadataInfo> = torrentEngine.metadataReceived
 
     init {
         // 监听引擎进度更新，同步到 Repository
         observeProgressUpdates()
+        // 监听 Torrent 添加事件，保存 infoHash 到数据库
+        observeTorrentAdded()
     }
-    
+
     /**
      * 监听下载进度更新
      */
@@ -52,6 +57,35 @@ class TorrentManager @Inject constructor(
             }
         }
     }
+
+    /**
+     * 监听 Torrent 添加事件，保存 infoHash 到数据库
+     */
+    private fun observeTorrentAdded() {
+        managerScope.launch {
+            torrentEngine.torrentAdded.collect { info ->
+                saveTorrentHash(info)
+            }
+        }
+    }
+
+    /**
+     * 保存 torrentHash 到数据库
+     */
+    private suspend fun saveTorrentHash(info: TorrentAddedInfo) {
+        try {
+            val taskIdLong = info.taskId.toLongOrNull() ?: return
+            val existingTask = downloadRepository.getTaskById(taskIdLong) ?: return
+
+            // 更新 torrentHash
+            val updatedTask = existingTask.copy(torrentHash = info.infoHash)
+            downloadRepository.updateTask(updatedTask)
+
+            Timber.d("TorrentManager: 保存 torrentHash 成功 - taskId=$taskIdLong, hash=${info.infoHash}")
+        } catch (e: Exception) {
+            Timber.e(e, "TorrentManager: 保存 torrentHash 失败 - taskId=${info.taskId}")
+        }
+    }
     
     /**
      * 更新任务进度到 Repository
@@ -59,25 +93,32 @@ class TorrentManager @Inject constructor(
     private suspend fun updateTaskProgress(progress: DownloadProgressInfo) {
         try {
             val status = mapTorrentStateToStatus(progress.state)
-            val taskIdLong = progress.taskId.toLongOrNull() ?: return
-            
+            val taskIdLong = progress.taskId.toLongOrNull()
+            if (taskIdLong == null) {
+                Timber.w("TorrentManager: taskId 解析失败 - ${progress.taskId}")
+                return
+            }
+
             // 获取现有任务
             val existingTask = downloadRepository.getTaskById(taskIdLong)
-            if (existingTask != null) {
-                // 更新任务字段
-                val updatedTask = existingTask.copy(
-                    progress = progress.progress,
-                    downloadedSize = progress.downloadedBytes,
-                    totalSize = progress.totalBytes,
-                    speed = progress.downloadSpeed,
-                    status = status,
-                    updatedAt = Date()
-                )
-                downloadRepository.updateTask(updatedTask)
-                
-                // 更新本地状态流
-                refreshDownloadStates()
+            if (existingTask == null) {
+                Timber.w("TorrentManager: 任务不存在，跳过进度更新 - taskId=$taskIdLong")
+                return
             }
+
+            // 更新任务字段
+            val updatedTask = existingTask.copy(
+                progress = progress.progress,
+                downloadedSize = progress.downloadedBytes,
+                totalSize = progress.totalBytes,
+                speed = progress.downloadSpeed,
+                status = status,
+                updatedAt = Date()
+            )
+            downloadRepository.updateTask(updatedTask)
+
+            // 更新本地状态流
+            refreshDownloadStates()
         } catch (e: Exception) {
             Timber.e(e, "TorrentManager: 更新进度失败 - ${progress.taskId}")
         }
@@ -94,7 +135,7 @@ class TorrentManager @Inject constructor(
         return try {
             // 解析磁力链接获取名称
             val torrentName = name ?: parseMagnetName(magnetLink) ?: "Torrent Download"
-            
+
             // 创建下载任务实体
             val downloadTask = DownloadTask(
                 url = magnetLink,
@@ -114,23 +155,23 @@ class TorrentManager @Inject constructor(
             // 保存到数据库
             val taskId = downloadRepository.addTask(downloadTask)
             val taskIdStr = taskId.toString()
-            
+            Timber.i("TorrentManager: 任务已保存到数据库 - taskId=$taskId")
+
             // 添加到下载引擎
             val added = torrentEngine.addMagnetLink(magnetLink, savePath, taskIdStr)
-            
+
             if (added) {
-                Timber.i("TorrentManager: 创建下载任务成功 - $taskId")
-                
+                Timber.i("TorrentManager: 添加到引擎成功 - $taskId")
                 // 更新状态为下载中
                 downloadRepository.updateTaskStatus(taskIdStr, DownloadStatus.DOWNLOADING)
-                refreshDownloadStates()
-                
                 Result.success(taskId)
             } else {
-                downloadRepository.deleteTaskByLongId(taskId)
-                Result.failure(Exception("添加到下载引擎失败"))
+                Timber.w("TorrentManager: 添加到引擎失败，但任务已保存 - taskId=$taskId")
+                // 不删除任务，只标记状态为等待
+                downloadRepository.updateTaskStatus(taskIdStr, DownloadStatus.WAITING)
+                Result.success(taskId) // 仍然返回成功，因为任务已保存
             }
-            
+
         } catch (e: Exception) {
             Timber.e(e, "TorrentManager: 创建下载任务失败")
             Result.failure(e)
@@ -255,7 +296,32 @@ class TorrentManager @Inject constructor(
     fun getStreamableInfo(taskId: Long): StreamableInfo? {
         return torrentEngine.getStreamableInfo(taskId.toString())
     }
-    
+
+    /**
+     * 获取 torrent 元数据信息（需要在 metadata 已加载后调用）
+     */
+    fun getMetadata(taskId: Long): TorrentMetadataInfo? {
+        return torrentEngine.getTorrentMetadata(taskId.toString())
+    }
+
+    /**
+     * 选择要下载的文件并开始下载
+     *
+     * @param taskId 任务 ID
+     * @param fileIndices 要下载的文件索引集合
+     */
+    suspend fun selectFilesAndStart(taskId: Long, fileIndices: Set<Int>) {
+        val taskIdStr = taskId.toString()
+        torrentEngine.setDownloadFiles(taskIdStr, fileIndices)
+        torrentEngine.startDownload(taskIdStr)
+
+        // 更新任务状态为下载中
+        downloadRepository.updateTaskStatus(taskIdStr, DownloadStatus.DOWNLOADING)
+        refreshDownloadStates()
+
+        Timber.d("TorrentManager: 已选择 ${fileIndices.size} 个文件并开始下载 - $taskId")
+    }
+
     /**
      * 获取所有下载任务
      */

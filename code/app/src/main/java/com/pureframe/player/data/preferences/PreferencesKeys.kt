@@ -17,6 +17,7 @@ object PreferencesKeys {
     val DEFAULT_PLAY_SPEED = floatPreferencesKey("default_play_speed")
     val REMEMBER_PLAY_SPEED = booleanPreferencesKey("remember_play_speed")
     val SHOW_SUBTITLE = booleanPreferencesKey("show_subtitle")
+    val DECODER_TYPE = stringPreferencesKey("decoder_type")
     
     // 下载设置
     val MAX_CONCURRENT_DOWNLOADS = intPreferencesKey("max_concurrent_downloads")

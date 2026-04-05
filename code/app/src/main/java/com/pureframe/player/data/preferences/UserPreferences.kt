@@ -10,24 +10,25 @@ package com.pureframe.player.data.preferences
  */
 data class UserPreferences(
     // 播放器设置
-    val autoPlay: Boolean = true,
+    val autoPlay: Boolean = false,
     val loopPlay: Boolean = false,
     val defaultPlaySpeed: Float = 1.0f,
     val rememberPlaySpeed: Boolean = true,
     val showSubtitle: Boolean = true,
-    
+    val decoderType: DecoderType = DecoderType.AUTO,
+
     // 下载设置
     val maxConcurrentDownloads: Int = 3,
     val downloadPath: String = "",
     val autoDownloadOnWifi: Boolean = true,
     val downloadQuality: DownloadQuality = DownloadQuality.HIGH,
-    
+
     // 界面设置
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val fullScreenMode: Boolean = false,
     val showThumbnail: Boolean = true,
     val sortBy: SortBy = SortBy.DATE_DESC,
-    
+
     // 其他设置
     val keepScreenOn: Boolean = true,
     val brightnessGesture: Boolean = true,
@@ -65,4 +66,13 @@ enum class SortBy {
     SIZE_DESC,     // 大小降序
     DURATION_ASC,  // 时长升序
     DURATION_DESC  // 时长降序
+}
+
+/**
+ * 解码器类型
+ */
+enum class DecoderType {
+    HARDWARE,  // 硬解（硬件加速）
+    SOFTWARE,  // 软解（软件解码）
+    AUTO      // 自动（优先硬解，失败后软解）
 }
