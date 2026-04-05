@@ -51,6 +51,9 @@ public class LibTorrentWrapper {
     // 任务 ID 到选中的文件索引集合
     private final Map<String, Set<Integer>> taskIdToSelectedFiles = new ConcurrentHashMap<>();
 
+    // 手动暂停的任务 ID 集合
+    private final Set<String> pausedTasks = ConcurrentHashMap.newKeySet();
+
     // Kotlin Flow
     private final MutableSharedFlow<DownloadProgressInfo> _downloadProgress;
     private final MutableSharedFlow<TorrentAddedInfo> _torrentAdded;
@@ -208,10 +211,14 @@ public class LibTorrentWrapper {
         if (sessionManager == null) return;
 
         try {
-            for (Sha1Hash infoHash : taskIdToInfoHash.values()) {
+            for (Map.Entry<String, Sha1Hash> entry : taskIdToInfoHash.entrySet()) {
+                String taskId = entry.getKey();
+                Sha1Hash infoHash = entry.getValue();
                 TorrentHandle handle = sessionManager.find(infoHash);
                 if (handle != null && handle.isValid()) {
                     updateTorrentStatus(handle);
+                } else {
+                    Timber.d("LibTorrentWrapper: pollStatus - taskId=" + taskId + " 未找到有效 handle");
                 }
             }
         } catch (Exception e) {
@@ -224,6 +231,11 @@ public class LibTorrentWrapper {
 
         String taskId = findTaskIdByInfoHash(handle.infoHash());
         if (taskId == null) return;
+
+        // 如果任务是手动暂停的，不更新状态
+        if (pausedTasks.contains(taskId)) {
+            return;
+        }
 
         try {
             TorrentStatus status = handle.status();
@@ -332,21 +344,27 @@ public class LibTorrentWrapper {
             String infoHashStr = parseInfoHashFromMagnet(magnetLink);
             Log.i("LibTorrentWrapper", "infoHash=" + infoHashStr);
 
+            // 存储 infoHash 映射（在调用 download 之前，以便 pollStatus 能找到）
+            if (infoHashStr != null) {
+                try {
+                    Sha1Hash infoHash = Sha1Hash.parseHex(infoHashStr);
+                    taskIdToInfoHash.put(taskId, infoHash);
+                    Log.i("LibTorrentWrapper", "infoHash 映射已存储 - taskId=" + taskId);
+
+                    // 验证是否能找到
+                    TorrentHandle handle = sessionManager.find(infoHash);
+                    Log.i("LibTorrentWrapper", "添加前查找 handle - " + (handle != null ? "找到" : "未找到"));
+                } catch (Exception e) {
+                    Log.w("LibTorrentWrapper", "解析 infoHash 失败", e);
+                }
+            }
+
             // 使用 libtorrent4j 2.1.0 正确的 API
             // SessionManager.download(String url, File saveLocation, torrent_flags_t flags)
             torrent_flags_t flags = new torrent_flags_t();
             Log.i("LibTorrentWrapper", "调用 sessionManager.download(magnetLink, saveDir, flags)");
             sessionManager.download(magnetLink, saveDir, flags);
             Log.i("LibTorrentWrapper", "download 方法调用成功");
-
-            // 存储 infoHash 映射
-            if (infoHashStr != null) {
-                try {
-                    taskIdToInfoHash.put(taskId, Sha1Hash.parseHex(infoHashStr));
-                } catch (Exception e) {
-                    Log.w("LibTorrentWrapper", "解析 infoHash 失败", e);
-                }
-            }
 
             // 发出 torrentAdded 事件
             if (infoHashStr != null) {
@@ -494,23 +512,52 @@ public class LibTorrentWrapper {
 
     public void pause(String taskId) {
         Sha1Hash infoHash = taskIdToInfoHash.get(taskId);
-        if (infoHash == null) return;
+        Log.i("LibTorrentWrapper", ">>> pause - taskId=" + taskId + ", infoHash=" + infoHash);
+        if (infoHash == null) {
+            Log.w("LibTorrentWrapper", "pause - infoHash 为 null");
+            return;
+        }
+
+        // 标记为手动暂停
+        pausedTasks.add(taskId);
 
         TorrentHandle handle = sessionManager.find(infoHash);
+        Log.i("LibTorrentWrapper", "pause - handle=" + handle + ", isValid=" + (handle != null ? handle.isValid() : "N/A"));
         if (handle != null && handle.isValid()) {
-            handle.pause();
-            Timber.d("LibTorrentWrapper: 暂停成功 - " + taskId);
+            try {
+                handle.pause();
+                Log.i("LibTorrentWrapper", "暂停成功 - " + taskId);
+            } catch (Exception e) {
+                Log.e("LibTorrentWrapper", "暂停异常", e);
+            }
+        } else {
+            Log.w("LibTorrentWrapper", "暂停失败 - handle 无效或为 null - " + taskId);
         }
     }
 
     public void resume(String taskId) {
         Sha1Hash infoHash = taskIdToInfoHash.get(taskId);
-        if (infoHash == null) return;
+        Log.i("LibTorrentWrapper", ">>> resume - taskId=" + taskId + ", infoHash=" + infoHash);
+
+        // 移除手动暂停标记
+        pausedTasks.remove(taskId);
+
+        if (infoHash == null) {
+            Log.w("LibTorrentWrapper", "resume - infoHash 为 null");
+            return;
+        }
 
         TorrentHandle handle = sessionManager.find(infoHash);
+        Log.i("LibTorrentWrapper", "resume - handle=" + handle);
         if (handle != null && handle.isValid()) {
-            handle.resume();
-            Timber.d("LibTorrentWrapper: 恢复成功 - " + taskId);
+            try {
+                handle.resume();
+                Log.i("LibTorrentWrapper", "恢复成功 - " + taskId);
+            } catch (Exception e) {
+                Log.e("LibTorrentWrapper", "恢复异常", e);
+            }
+        } else {
+            Log.w("LibTorrentWrapper", "恢复失败 - handle 无效或为 null - " + taskId);
         }
     }
 
@@ -521,6 +568,9 @@ public class LibTorrentWrapper {
     public void remove(String taskId, boolean deleteFiles) {
         Sha1Hash infoHash = taskIdToInfoHash.remove(taskId);
         if (infoHash == null) return;
+
+        // 清除暂停状态
+        pausedTasks.remove(taskId);
 
         TorrentHandle handle = sessionManager.find(infoHash);
         if (handle != null && handle.isValid()) {
@@ -748,12 +798,47 @@ public class LibTorrentWrapper {
     }
 
     private String parseInfoHashFromMagnet(String magnetLink) {
-        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("urn:btih:([a-fA-F0-9]{40})");
+        // 支持 40 字符 hex (base16) 和 32 字符 base32 编码的 infoHash
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("urn:btih:([a-zA-Z0-9]+)");
         java.util.regex.Matcher matcher = pattern.matcher(magnetLink);
         if (matcher.find()) {
-            return matcher.group(1).toLowerCase();
+            String hash = matcher.group(1).toLowerCase();
+            // 如果是 32 字符的 base32 编码，需要解码为 40 字符的 hex
+            if (hash.length() == 32) {
+                try {
+                    hash = base32ToHex(hash);
+                } catch (Exception e) {
+                    Log.w("LibTorrentWrapper", "base32 解码失败", e);
+                }
+            }
+            return hash;
         }
         return null;
+    }
+
+    private String base32ToHex(String base32) {
+        // Base32 解码
+        String base32Chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+        StringBuilder binary = new StringBuilder();
+        for (char c : base32.toCharArray()) {
+            int val = base32Chars.indexOf(c);
+            if (val < 0) val = base32Chars.indexOf(Character.toLowerCase(c));
+            String binaryStr = Integer.toBinaryString(val);
+            while (binaryStr.length() < 5) binaryStr = "0" + binaryStr;
+            binary.append(binaryStr);
+        }
+        // 移除填充的 0
+        while (binary.length() % 8 != 0) {
+            binary.deleteCharAt(binary.length() - 1);
+        }
+        // 转换为 hex
+        StringBuilder hex = new StringBuilder();
+        for (int i = 0; i < binary.length(); i += 8) {
+            String byteStr = binary.substring(i, i + 8);
+            int byteVal = Integer.parseInt(byteStr, 2);
+            hex.append(String.format("%02x", byteVal));
+        }
+        return hex.toString();
     }
 
     private boolean isVideoFile(String fileName) {
