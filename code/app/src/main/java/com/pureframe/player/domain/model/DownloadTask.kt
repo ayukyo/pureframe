@@ -119,5 +119,6 @@ enum class DownloadStatus {
     FAILED,       // 失败
     CANCELLED,    // 已取消
     WAITING,      // 等待资源（DHT 查找）
-    ERROR         // 错误
+    ERROR,        // 错误
+    PENDING_SELECTION  // 等待文件选择（磁力链接添加后，未确认文件前）
 }

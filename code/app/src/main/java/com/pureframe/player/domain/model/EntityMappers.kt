@@ -144,6 +144,7 @@ private fun parseDownloadStatus(status: String): DownloadStatus {
         "completed" -> DownloadStatus.COMPLETED
         "error", "failed" -> DownloadStatus.FAILED
         "cancelled" -> DownloadStatus.CANCELLED
+        "pending_selection" -> DownloadStatus.PENDING_SELECTION
         else -> DownloadStatus.PENDING
     }
 }
@@ -161,5 +162,6 @@ fun DownloadStatus.toEntityStatus(): String {
         DownloadStatus.CANCELLED -> "cancelled"
         DownloadStatus.WAITING -> "waiting"
         DownloadStatus.ERROR -> "error"
+        DownloadStatus.PENDING_SELECTION -> "pending_selection"
     }
 }

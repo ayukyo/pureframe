@@ -27,6 +27,8 @@ import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.ClearAll
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -246,7 +248,7 @@ fun DownloadScreen(
             }
         }
     }
-    
+
     // 添加下载对话框
     if (showAddDialog) {
         AddDownloadDialog(
@@ -255,6 +257,17 @@ fun DownloadScreen(
                 Timber.d("DownloadScreen: onConfirm called - magnetLink=$magnetLink")
                 viewModel.addDownloadTask(magnetLink, title)
                 showAddDialog = false
+            }
+        )
+    }
+
+    // 加载对话框（获取 metadata 时显示）
+    if (uiState.isAddingTask) {
+        LoadingDialog(
+            message = "正在获取文件列表...",
+            onDismiss = {
+                // 取消操作
+                viewModel.cancelFileSelection()
             }
         )
     }
@@ -276,6 +289,38 @@ fun DownloadScreen(
 /**
  * 筛选标签行
  */
+/**
+ * 加载对话框
+ * 用于显示获取 metadata 期间的加载状态
+ */
+@Composable
+private fun LoadingDialog(
+    message: String,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("取消")
+            }
+        },
+        text = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    strokeWidth = 2.dp
+                )
+                Text(text = message)
+            }
+        }
+    )
+}
+
 @Composable
 private fun FilterTabs(
     currentType: DownloadViewModel.ListType,

@@ -103,6 +103,9 @@ class DownloadViewModel @Inject constructor(
     private val _pendingMetadata = MutableStateFlow<TorrentMetadataInfo?>(null)
     val pendingMetadata: StateFlow<TorrentMetadataInfo?> = _pendingMetadata.asStateFlow()
 
+    // 当前正在准备的任务 ID（用于在 metadata 到达前取消）
+    private var _preparingTaskId: Long? = null
+
     init {
         // 初始化时获取活跃下载数量
         viewModelScope.launch {
@@ -127,7 +130,8 @@ class DownloadViewModel @Inject constructor(
 
     /**
      * 添加下载任务（磁力链接）
-     * 添加后会等待获取 metadata，然后弹出文件选择对话框
+     * 先添加到引擎获取 metadata，弹出文件选择对话框
+     * 用户确认后才正式开始下载
      *
      * @param magnetLink 磁力链接
      * @param title 任务标题（可选）
@@ -142,10 +146,11 @@ class DownloadViewModel @Inject constructor(
             try {
                 val extractedTitle = title ?: extractTitleFromMagnet(magnetLink)
                 val savePath = "/storage/emulated/0/PureFrame/downloads"
-                Timber.d("DownloadViewModel: 开始创建下载任务 - title=$extractedTitle")
+                Timber.d("DownloadViewModel: 开始准备下载任务 - title=$extractedTitle")
 
-                // 使用 torrentManager 创建任务，它会保存到数据库并添加到引擎
-                val result = torrentManager.createDownloadTask(
+                // 使用 torrentManager.prepareMagnetLink 仅添加到引擎获取 metadata
+                // 不创建正式任务，不显示在列表中
+                val result = torrentManager.prepareMagnetLink(
                     magnetLink = magnetLink,
                     savePath = savePath,
                     name = extractedTitle
@@ -153,21 +158,22 @@ class DownloadViewModel @Inject constructor(
 
                 result.fold(
                     onSuccess = { taskId ->
-                        Timber.d("DownloadViewModel: 下载任务创建成功 - taskId=$taskId，等待 metadata...")
+                        Timber.d("DownloadViewModel: 磁力链接已添加，等待 metadata - taskId=$taskId")
+                        _preparingTaskId = taskId
                         // 启动 metadata 超时检测（30秒）
                         startMetadataTimeout(taskId, magnetLink)
                     },
                     onFailure = { e ->
-                        Timber.e(e, "DownloadViewModel: 下载任务创建失败")
-                        _uiState.update { it.copy(errorMessage = e.message) }
+                        Timber.e(e, "DownloadViewModel: 准备下载任务失败")
+                        _uiState.update { it.copy(errorMessage = e.message, isAddingTask = false) }
                     }
                 )
             } catch (e: Exception) {
                 Timber.e(e, "DownloadViewModel: 添加下载任务失败")
-                _uiState.update { it.copy(errorMessage = e.message) }
-            } finally {
-                _uiState.update { it.copy(isAddingTask = false) }
+                _uiState.update { it.copy(errorMessage = e.message, isAddingTask = false) }
             }
+            // 注意：isAddingTask = false 不在这里设置
+            // 会在 cancelFileSelection 或 confirmFileSelection 时设置
         }
     }
 
@@ -182,7 +188,18 @@ class DownloadViewModel @Inject constructor(
             val pending = _pendingMetadata.value
             if (pending == null || pending.taskId.toLongOrNull() != taskId) {
                 Timber.e("DownloadViewModel: metadata 获取超时 - taskId=$taskId, magnetLink=$magnetLink")
-                _uiState.update { it.copy(errorMessage = "无法获取资源信息，请检查磁力链接是否有效") }
+                _uiState.update {
+                    it.copy(
+                        errorMessage = "无法获取资源信息，请检查磁力链接是否有效",
+                        isAddingTask = false
+                    )
+                }
+                // 清理临时任务
+                _pendingMetadata.value = null
+                if (_preparingTaskId == taskId) {
+                    _preparingTaskId = null
+                    torrentManager.cancelFileSelection(taskId)
+                }
             }
         }
     }
@@ -197,19 +214,25 @@ class DownloadViewModel @Inject constructor(
         Timber.d("DownloadViewModel: confirmFileSelection called, selectedIndices=$selectedIndices, metadata=$metadata")
         if (metadata == null) {
             Timber.d("DownloadViewModel: pendingMetadata is null, doing nothing")
+            _uiState.update { it.copy(isAddingTask = false) }
+            _preparingTaskId = null
             return
         }
         val taskId = metadata.taskId.toLongOrNull()
         if (taskId == null) {
             Timber.e("DownloadViewModel: invalid taskId=${metadata.taskId}")
+            _uiState.update { it.copy(isAddingTask = false) }
+            _preparingTaskId = null
             return
         }
 
         Timber.d("DownloadViewModel: 确认文件选择 - taskId=$taskId, 选择 ${selectedIndices.size} 个文件")
         _pendingMetadata.value = null
+        _preparingTaskId = null
 
         viewModelScope.launch {
-            torrentManager.selectFilesAndStart(taskId, selectedIndices)
+            torrentManager.confirmFileSelectionAndStart(taskId, selectedIndices)
+            _uiState.update { it.copy(isAddingTask = false) }
         }
     }
 
@@ -250,26 +273,38 @@ class DownloadViewModel @Inject constructor(
      */
     fun cancelFileSelection() {
         val metadata = _pendingMetadata.value
-        Timber.d("DownloadViewModel: cancelFileSelection called, pendingMetadata=$metadata")
-        if (metadata == null) {
-            Timber.d("DownloadViewModel: pendingMetadata is null, doing nothing")
-            return
-        }
+        Timber.d("DownloadViewModel: cancelFileSelection called, pendingMetadata=$metadata, preparingTaskId=$_preparingTaskId")
 
-        val taskId = metadata.taskId.toLongOrNull()
-        Timber.d("DownloadViewModel: 取消文件选择，删除任务 - taskId=${metadata.taskId}")
+        // 标记加载结束
+        _uiState.update { it.copy(isAddingTask = false) }
         _pendingMetadata.value = null
 
-        // 删除任务（不删除文件，因为还没开始下载）
-        if (taskId != null) {
-            viewModelScope.launch {
-                try {
-                    torrentManager.deleteDownload(taskId, deleteFiles = false)
-                    Timber.d("DownloadViewModel: 任务已删除 - taskId=$taskId")
-                } catch (e: Exception) {
-                    Timber.e(e, "DownloadViewModel: 删除任务失败 - taskId=$taskId")
+        if (metadata != null) {
+            // metadata 已到达，使用 metadata 中的 taskId 删除
+            val taskIdStr = metadata.taskId
+            val taskId = taskIdStr.toLongOrNull()
+            Timber.d("DownloadViewModel: 取消文件选择，删除任务 - taskIdStr=$taskIdStr, taskId=$taskId")
+
+            if (taskId != null) {
+                viewModelScope.launch {
+                    torrentManager.cancelFileSelection(taskId)
+                }
+            } else {
+                viewModelScope.launch {
+                    torrentManager.cancelFileSelectionByStringId(taskIdStr)
                 }
             }
+        } else if (_preparingTaskId != null) {
+            // metadata 还没到达，但任务已创建，使用 _preparingTaskId 删除
+            val taskId = _preparingTaskId!!
+            Timber.d("DownloadViewModel: 取消文件选择（metadata 未到达），删除任务 - taskId=$taskId")
+            _preparingTaskId = null
+            viewModelScope.launch {
+                torrentManager.cancelFileSelection(taskId)
+            }
+        } else {
+            // 没有可以取消的任务
+            Timber.w("DownloadViewModel: 没有可取消的任务")
         }
     }
 

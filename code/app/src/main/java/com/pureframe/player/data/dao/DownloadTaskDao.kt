@@ -10,8 +10,8 @@ import java.util.Date
  */
 @Dao
 interface DownloadTaskDao {
-    
-    @Query("SELECT * FROM download_tasks ORDER BY createdAt DESC")
+
+    @Query("SELECT * FROM download_tasks WHERE status != 'pending_selection' ORDER BY createdAt DESC")
     fun getAllTasks(): Flow<List<DownloadTaskEntity>>
     
     @Query("SELECT * FROM download_tasks WHERE status = :status ORDER BY createdAt DESC")

@@ -177,7 +177,134 @@ class TorrentManager @Inject constructor(
             Result.failure(e)
         }
     }
-    
+
+    /**
+     * 准备磁力链接下载（创建数据库条目但不显示，添加到引擎获取 metadata）
+     * 调用后会等待 metadata 获取完成，然后弹出文件选择对话框
+     * 用户确认后才正式显示在列表中并开始下载
+     *
+     * @param magnetLink 磁力链接
+     * @param savePath 保存路径
+     * @param name 任务名称（可选）
+     * @return 任务 ID，null 表示添加失败
+     */
+    suspend fun prepareMagnetLink(
+        magnetLink: String,
+        savePath: String,
+        name: String? = null
+    ): Result<Long> {
+        return try {
+            val torrentName = name ?: parseMagnetName(magnetLink) ?: "Torrent Download"
+
+            // 创建下载任务实体，状态为 PENDING_SELECTION
+            val downloadTask = DownloadTask(
+                url = magnetLink,
+                title = torrentName,
+                fileName = torrentName,
+                savePath = savePath,
+                totalSize = 0L,
+                downloadedSize = 0L,
+                progress = 0f,
+                speed = 0L,
+                status = DownloadStatus.PENDING_SELECTION,
+                createdAt = Date(),
+                updatedAt = Date(),
+                magnetLink = magnetLink
+            )
+
+            // 保存到数据库
+            val taskId = downloadRepository.addTask(downloadTask)
+            val taskIdStr = taskId.toString()
+            Timber.i("TorrentManager: 准备磁力链接 - taskId=$taskId")
+
+            // 添加到下载引擎（用于获取 metadata）
+            val added = torrentEngine.addMagnetLink(magnetLink, savePath, taskIdStr)
+
+            if (!added) {
+                Timber.e("TorrentManager: 添加到引擎失败 - taskId=$taskId")
+                downloadRepository.deleteTaskByLongId(taskId)
+                return Result.failure(Exception("添加到下载引擎失败"))
+            }
+
+            Timber.i("TorrentManager: 磁力链接已添加到引擎，等待 metadata - taskId=$taskId")
+            Result.success(taskId)
+        } catch (e: Exception) {
+            Timber.e(e, "TorrentManager: 准备磁力链接失败")
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * 确认文件选择并开始下载
+     * 在用户确认文件选择后调用
+     *
+     * @param taskId 任务 ID
+     * @param selectedFileIndices 选中的文件索引
+     */
+    suspend fun confirmFileSelectionAndStart(
+        taskId: Long,
+        selectedFileIndices: Set<Int>
+    ) {
+        val taskIdStr = taskId.toString()
+        try {
+            // 设置选中的文件并开始下载
+            torrentEngine.setDownloadFiles(taskIdStr, selectedFileIndices)
+            torrentEngine.startDownload(taskIdStr)
+
+            // 更新任务状态为 DOWNLOADING
+            downloadRepository.updateTaskStatus(taskIdStr, DownloadStatus.DOWNLOADING)
+            refreshDownloadStates()
+
+            Timber.i("TorrentManager: 文件选择确认，开始下载 - taskId=$taskId, 选择 ${selectedFileIndices.size} 个文件")
+        } catch (e: Exception) {
+            Timber.e(e, "TorrentManager: 确认文件选择失败 - taskId=$taskId")
+        }
+    }
+
+    /**
+     * 取消文件选择并删除任务
+     *
+     * @param taskId 任务 ID
+     */
+    suspend fun cancelFileSelection(taskId: Long) {
+        val taskIdStr = taskId.toString()
+        try {
+            // 从引擎移除
+            torrentEngine.remove(taskIdStr, false)
+            // 从数据库删除
+            downloadRepository.deleteTaskByLongId(taskId)
+            refreshDownloadStates()
+            Timber.i("TorrentManager: 取消文件选择并删除任务 - taskId=$taskId")
+        } catch (e: Exception) {
+            Timber.e(e, "TorrentManager: 取消文件选择失败 - taskId=$taskId")
+        }
+    }
+
+    /**
+     * 取消文件选择并删除任务（通过字符串 ID）
+     * 用于取消临时 ID 或字符串 ID 的任务
+     *
+     * @param taskIdStr 任务 ID（字符串格式）
+     */
+    suspend fun cancelFileSelectionByStringId(taskIdStr: String) {
+        try {
+            // 从引擎移除
+            torrentEngine.remove(taskIdStr, false)
+            // 尝试解析为数字 ID 并删除
+            val taskId = taskIdStr.toLongOrNull()
+            if (taskId != null) {
+                downloadRepository.deleteTaskByLongId(taskId)
+            } else {
+                // 如果不是数字 ID，尝试按字符串 ID 删除
+                downloadRepository.deleteTaskById(taskIdStr)
+            }
+            refreshDownloadStates()
+            Timber.i("TorrentManager: 取消文件选择并删除任务 - taskIdStr=$taskIdStr")
+        } catch (e: Exception) {
+            Timber.e(e, "TorrentManager: 取消文件选择失败 - taskIdStr=$taskIdStr")
+        }
+    }
+
     /**
      * 创建下载任务（Torrent 文件）
      */

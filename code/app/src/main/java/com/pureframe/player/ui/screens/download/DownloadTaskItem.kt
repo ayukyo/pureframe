@@ -70,7 +70,7 @@ fun DownloadTaskItem(
 ) {
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
-    
+
     // 状态颜色
     val statusColor = when (task.status) {
         DownloadStatus.DOWNLOADING -> DownloadActive
@@ -79,8 +79,9 @@ fun DownloadTaskItem(
         DownloadStatus.FAILED, DownloadStatus.ERROR -> DownloadError
         DownloadStatus.PENDING, DownloadStatus.WAITING -> DownloadWaiting
         DownloadStatus.CANCELLED -> DownloadWaiting
+        DownloadStatus.PENDING_SELECTION -> DownloadWaiting
     }
-    
+
     // 状态文字
     val statusText = when (task.status) {
         DownloadStatus.DOWNLOADING -> "下载中"
@@ -91,6 +92,7 @@ fun DownloadTaskItem(
         DownloadStatus.PENDING -> "等待中"
         DownloadStatus.WAITING -> "DHT查找"
         DownloadStatus.CANCELLED -> "已取消"
+        DownloadStatus.PENDING_SELECTION -> "选择文件"
     }
     
     Box(

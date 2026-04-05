@@ -38,6 +38,20 @@ class TorrentEngine @Inject constructor(
     }
 
     /**
+     * 添加磁力链接（仅获取 metadata，不创建数据库条目）
+     * 使用临时 ID 标识，在 confirmFileSelection 时会替换为真实 ID
+     *
+     * @param magnetLink 磁力链接
+     * @param savePath 保存路径
+     * @return 临时任务 ID（格式：temp_时间戳），null 表示添加失败
+     */
+    fun addMagnetLinkForMetadata(magnetLink: String, savePath: String): String? {
+        val tempId = "temp_${System.currentTimeMillis()}"
+        val added = wrapper.addMagnetLink(magnetLink, savePath, tempId)
+        return if (added) tempId else null
+    }
+
+    /**
      * 添加 Torrent 文件下载任务
      */
     fun addTorrentFile(torrentFile: File, savePath: String, taskId: String): Boolean {
