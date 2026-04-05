@@ -114,6 +114,10 @@ public class LibTorrentWrapper {
 
             sessionManager = new SessionManager();
             Log.i("LibTorrentWrapper", "SessionManager 创建成功");
+
+            // 配置 Session 优化下载速度
+            configureSession();
+
             sessionManager.start();
             Log.i("LibTorrentWrapper", "Session 已启动");
             sessionManager.startDht();
@@ -129,6 +133,42 @@ public class LibTorrentWrapper {
         } catch (Exception e) {
             Log.e("LibTorrentWrapper", "Session 初始化失败", e);
             Timber.e(e, "LibTorrentWrapper: Session 初始化失败");
+        }
+    }
+
+    private void configureSession() {
+        try {
+            // 设置下载速度限制 (0 = 无限制)
+            Method setDownloadSpeedLimit = findMethod(SessionManager.class, "setDownloadSpeedLimit", long.class);
+            if (setDownloadSpeedLimit != null) {
+                setDownloadSpeedLimit.invoke(sessionManager, 0L);
+                Timber.i("LibTorrentWrapper: 下载速度限制已设置为无限制");
+            }
+
+            // 设置上传速度限制 (0 = 无限制)
+            Method setUploadSpeedLimit = findMethod(SessionManager.class, "setUploadSpeedLimit", long.class);
+            if (setUploadSpeedLimit != null) {
+                setUploadSpeedLimit.invoke(sessionManager, 0L);
+                Timber.i("LibTorrentWrapper: 上传速度限制已设置为无限制");
+            }
+
+            // 设置连接数限制
+            Method setConnectionsLimit = findMethod(SessionManager.class, "setConnectionsLimit", int.class);
+            if (setConnectionsLimit != null) {
+                setConnectionsLimit.invoke(sessionManager, 100);
+                Timber.i("LibTorrentWrapper: 连接数限制已设置为 100");
+            }
+
+            // 设置最大 peers 数
+            Method setMaxPeers = findMethod(SessionManager.class, "setMaxPeers", int.class);
+            if (setMaxPeers != null) {
+                setMaxPeers.invoke(sessionManager, 100);
+                Timber.i("LibTorrentWrapper: 最大 peers 数已设置为 100");
+            }
+
+            Timber.i("LibTorrentWrapper: Session 配置完成");
+        } catch (Exception e) {
+            Timber.e(e, "LibTorrentWrapper: Session 配置失败");
         }
     }
 

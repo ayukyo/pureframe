@@ -272,17 +272,19 @@ fun DownloadScreen(
         )
     }
 
-    // 文件选择对话框
+    // 文件选择对话框（metadata 到达后显示）
     pendingMetadata?.let { metadata ->
-        FileSelectionDialog(
-            metadata = metadata,
-            onConfirm = { selectedIndices ->
-                viewModel.confirmFileSelection(selectedIndices)
-            },
-            onDismiss = {
-                viewModel.cancelFileSelection()
-            }
-        )
+        if (uiState.isAddingTask) {
+            FileSelectionDialog(
+                metadata = metadata,
+                onConfirm = { selectedIndices ->
+                    viewModel.confirmFileSelection(selectedIndices)
+                },
+                onDismiss = {
+                    viewModel.cancelFileSelection()
+                }
+            )
+        }
     }
 }
 
