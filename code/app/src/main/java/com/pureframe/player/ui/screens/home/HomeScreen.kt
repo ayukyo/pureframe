@@ -112,6 +112,14 @@ fun HomeScreen(
         }
     }
 
+    // 首次进入时自动扫描（清理已删除的视频）
+    LaunchedEffect(Unit) {
+        if (hasStoragePermission) {
+            kotlinx.coroutines.delay(500) // 等待页面渲染完成
+            viewModel.scanVideos()
+        }
+    }
+
     // 当前显示的列表
     val currentVideos: List<Video> = when {
         showSearch && searchQuery.isNotEmpty() -> searchResults

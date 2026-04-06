@@ -2,12 +2,18 @@ package com.pureframe.player.download
 
 import android.content.ContentResolver
 import android.content.Context
+import android.database.ContentObserver
 import android.database.Cursor
 import android.net.Uri
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.provider.MediaStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.io.File
@@ -18,12 +24,43 @@ import javax.inject.Singleton
  * 本地视频扫描器
  *
  * 使用 MediaStore API 扫描设备上的本地视频文件
+ * 支持实时监听媒体库变化
  */
 @Singleton
 class LocalVideoScanner @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
     private val contentResolver: ContentResolver = context.contentResolver
+
+    // 媒体库变化观察器
+    private var mediaStoreObserver: ContentObserver? = null
+
+    /**
+     * 监听媒体库变化
+     * 当有视频添加/删除时自动触发
+     */
+    fun observeMediaStoreChanges(): Flow<Boolean> = callbackFlow {
+        val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
+            override fun onChange(selfChange: Boolean) {
+                super.onChange(selfChange)
+                Timber.d("LocalVideoScanner: MediaStore 发生变化")
+                trySend(true)
+            }
+        }
+
+        contentResolver.registerContentObserver(
+            MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+            true,
+            observer
+        )
+
+        mediaStoreObserver = observer
+
+        awaitClose {
+            contentResolver.unregisterContentObserver(observer)
+            mediaStoreObserver = null
+        }
+    }
 
     /**
      * 扫描本地视频

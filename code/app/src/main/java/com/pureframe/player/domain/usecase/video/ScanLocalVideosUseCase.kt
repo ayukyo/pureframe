@@ -34,14 +34,33 @@ class ScanLocalVideosUseCase @Inject constructor(
             // 扫描本地视频
             val localVideos = localVideoScanner.scanLocalVideos(forceRefresh)
 
+            // 获取数据库中已有的视频
+            val existingVideos = videoRepository.getAllVideos().first()
+            val existingPaths = existingVideos.map { it.filePath }.toSet()
+
+            // 获取当前扫描到的视频路径
+            val currentPaths = localVideos.map { it.path }.toSet()
+
+            // 找出已删除的视频（数据库中有但文件已不存在）
+            val deletedVideos = existingVideos.filter { it.filePath !in currentPaths }
+
+            // 删除已不存在的视频
+            if (deletedVideos.isNotEmpty()) {
+                Timber.d("ScanLocalVideosUseCase: 发现 ${deletedVideos.size} 个已删除视频")
+                deletedVideos.forEach { video ->
+                    try {
+                        videoRepository.deleteVideoById(video.id)
+                        Timber.d("ScanLocalVideosUseCase: 删除已不存在视频: ${video.filePath}")
+                    } catch (e: Exception) {
+                        Timber.e(e, "ScanLocalVideosUseCase: 删除视频失败: ${video.filePath}")
+                    }
+                }
+            }
+
             if (localVideos.isEmpty()) {
                 Timber.d("ScanLocalVideosUseCase: 未扫描到本地视频")
                 return Result.success(0)
             }
-
-            // 获取数据库中已有的视频
-            val existingVideos = videoRepository.getAllVideos().first()
-            val existingPaths = existingVideos.map { it.filePath }.toSet()
 
             // 找出新视频
             val newVideos = localVideos.filter { it.path !in existingPaths }
@@ -69,7 +88,7 @@ class ScanLocalVideosUseCase @Inject constructor(
             // 批量添加
             videoRepository.addVideos(videosToAdd)
 
-            Timber.i("ScanLocalVideosUseCase: 扫描完成，新增 ${videosToAdd.size} 个视频")
+            Timber.i("ScanLocalVideosUseCase: 扫描完成，新增 ${videosToAdd.size} 个视频，删除 ${deletedVideos.size} 个已不存在视频")
             Result.success(videosToAdd.size)
 
         } catch (e: Exception) {
