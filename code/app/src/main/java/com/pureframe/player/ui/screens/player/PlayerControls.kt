@@ -61,11 +61,12 @@ fun EnhancedPlayerControls(
     onPlayPause: () -> Unit,
     onSeek: (Long) -> Unit,
     onSeekRelative: (Long) -> Unit,
-    onSpeedChange: (Float) -> Unit,  // 未来使用
+    onSpeedChange: (Float) -> Unit,
     onAspectRatioChange: (String) -> Unit,  // 未来使用
     onFullscreenToggle: () -> Unit,
     onShowSpeedDialog: () -> Unit,
     onShowAspectRatioDialog: () -> Unit,
+    onUserInteraction: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     // 进度变量（计算用于子组件）
@@ -91,6 +92,7 @@ fun EnhancedPlayerControls(
             onBack = onBack,
             onShowSpeedDialog = onShowSpeedDialog,
             onShowAspectRatioDialog = onShowAspectRatioDialog,
+            onUserInteraction = onUserInteraction,
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .fillMaxWidth()
@@ -103,6 +105,7 @@ fun EnhancedPlayerControls(
             onPlayPause = onPlayPause,
             onSeekBackward = { onSeekRelative(-10_000) },
             onSeekForward = { onSeekRelative(10_000) },
+            onUserInteraction = onUserInteraction,
             modifier = Modifier.align(BiasAlignment(0f, 0.6f))
         )
 
@@ -115,8 +118,11 @@ fun EnhancedPlayerControls(
             streamProgress = streamProgress,
             maxSeekPosition = maxSeekPosition,
             isFullscreen = isFullscreen,
+            playbackSpeed = playbackSpeed,
             onSeek = onSeek,
             onFullscreenToggle = onFullscreenToggle,
+            onSpeedChange = onSpeedChange,
+            onUserInteraction = onUserInteraction,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
@@ -135,6 +141,7 @@ fun TopControlBar(
     onBack: () -> Unit,
     onShowSpeedDialog: () -> Unit,
     onShowAspectRatioDialog: () -> Unit,
+    onUserInteraction: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Box(
@@ -156,7 +163,10 @@ fun TopControlBar(
         ) {
             // 返回按钮
             IconButton(
-                onClick = onBack,
+                onClick = {
+                    onUserInteraction()
+                    onBack()
+                },
                 modifier = Modifier.size(40.dp)
             ) {
                 Icon(
@@ -178,16 +188,7 @@ fun TopControlBar(
                     .weight(1f)
                     .padding(horizontal = 12.dp)
             )
-            
-            // 倍速显示
-            if (playbackSpeed != 1f) {
-                SpeedIndicator(
-                    speed = playbackSpeed,
-                    onClick = onShowSpeedDialog,
-                    modifier = Modifier.padding(end = 8.dp)
-                )
-            }
-            
+
             // 更多选项
             IconButton(
                 onClick = onShowAspectRatioDialog,
@@ -238,6 +239,7 @@ fun CenterControlArea(
     onPlayPause: () -> Unit,
     onSeekBackward: () -> Unit,
     onSeekForward: () -> Unit,
+    onUserInteraction: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     // 加载状态显示
@@ -264,21 +266,30 @@ fun CenterControlArea(
         SeekButton(
             icon = Icons.Filled.Replay10,
             contentDescription = "快退 10 秒",
-            onClick = onSeekBackward
+            onClick = {
+                onUserInteraction()
+                onSeekBackward()
+            }
         )
-        
+
         // 播放/暂停（大按钮）
         PlayPauseButton(
             isPlaying = isPlaying,
-            onClick = onPlayPause,
+            onClick = {
+                onUserInteraction()
+                onPlayPause()
+            },
             size = 64.dp
         )
-        
+
         // 快进 10 秒
         SeekButton(
             icon = Icons.Filled.Forward10,
             contentDescription = "快进 10 秒",
-            onClick = onSeekForward
+            onClick = {
+                onUserInteraction()
+                onSeekForward()
+            }
         )
     }
 }
@@ -351,8 +362,11 @@ fun BottomControlBar(
     streamProgress: Float,
     maxSeekPosition: Long,
     isFullscreen: Boolean,
+    playbackSpeed: Float = 1f,
     onSeek: (Long) -> Unit,
     onFullscreenToggle: () -> Unit,
+    onSpeedChange: (Float) -> Unit = {},
+    onUserInteraction: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     // 拖动状态
@@ -414,9 +428,9 @@ fun BottomControlBar(
                     text = formatTime(displayPosition),
                     color = Color.White,
                     fontSize = 12.sp,
-                    modifier = Modifier.width(50.dp)
+                    modifier = Modifier.widthIn(min = 52.dp)
                 )
-                
+
                 // 边下边播进度指示
                 if (isStreamPlayback && streamProgress > 0) {
                     StreamProgressBadge(
@@ -424,24 +438,37 @@ fun BottomControlBar(
                         modifier = Modifier.padding(horizontal = 8.dp)
                     )
                 }
-                
+
                 Spacer(modifier = Modifier.weight(1f))
-                
+
+                // 倍速按钮
+                SpeedSelectorButton(
+                    currentSpeed = playbackSpeed,
+                    onSpeedSelected = {
+                        onUserInteraction()
+                        onSpeedChange(it)
+                    },
+                    modifier = Modifier.padding(horizontal = 8.dp)
+                )
+
                 // 总时长
                 Text(
                     text = formatTime(duration),
                     color = Color.White,
                     fontSize = 12.sp,
-                    modifier = Modifier.width(50.dp)
+                    modifier = Modifier.widthIn(min = 52.dp)
                 )
-                
+
                 // 全屏按钮
                 IconButton(
-                    onClick = onFullscreenToggle,
+                    onClick = {
+                        onUserInteraction()
+                        onFullscreenToggle()
+                    },
                     modifier = Modifier.size(36.dp)
                 ) {
                     Icon(
-                        imageVector = if (isFullscreen) Icons.Filled.FullscreenExit 
+                        imageVector = if (isFullscreen) Icons.Filled.FullscreenExit
                                       else Icons.Filled.Fullscreen,
                         contentDescription = "全屏",
                         tint = Color.White,
@@ -678,16 +705,45 @@ fun LockedOverlayHint(
 }
 
 /**
+ * 倍速选择器按钮（点击切换下一种倍速）
+ */
+@Composable
+fun SpeedSelectorButton(
+    currentSpeed: Float,
+    onSpeedSelected: (Float) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val speedLevels = listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f)
+
+    TextButton(
+        onClick = {
+            val currentIndex = speedLevels.indexOf(currentSpeed)
+            val nextIndex = (currentIndex + 1) % speedLevels.size
+            onSpeedSelected(speedLevels[nextIndex])
+        },
+        colors = ButtonDefaults.textButtonColors(contentColor = Color.White),
+        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+        modifier = modifier
+    ) {
+        Text(
+            text = "${currentSpeed}x",
+            fontSize = 12.sp,
+            color = Color.White
+        )
+    }
+}
+
+/**
  * 格式化时间（毫秒 → HH:MM:SS 或 MM:SS）
  */
 fun formatTime(ms: Long): String {
     if (ms < 0) return "00:00"
-    
+
     val totalSeconds = ms / 1000
     val seconds = totalSeconds % 60
     val minutes = (totalSeconds / 60) % 60
     val hours = totalSeconds / 3600
-    
+
     return if (hours > 0) {
         String.format("%02d:%02d:%02d", hours, minutes, seconds)
     } else {

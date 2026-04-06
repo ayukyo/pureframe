@@ -237,8 +237,8 @@ fun DownloadScreen(
                                     onPlayClick(playPath)
                                 }
                             },
-                            onPauseClick = { viewModel.pauseDownload(task.id) },
-                            onResumeClick = { viewModel.startDownload(task.id) },
+                            onPauseClick = { viewModel.pauseDownload(task) },
+                            onResumeClick = { viewModel.startDownload(task) },
                             onDeleteClick = { deleteFiles -> 
                                 viewModel.deleteDownload(task, deleteFiles)
                             }
@@ -253,9 +253,9 @@ fun DownloadScreen(
     if (showAddDialog) {
         AddDownloadDialog(
             onDismiss = { showAddDialog = false },
-            onConfirm = { magnetLink, title ->
-                Timber.d("DownloadScreen: onConfirm called - magnetLink=$magnetLink")
-                viewModel.addDownloadTask(magnetLink, title)
+            onConfirm = { url, title, linkType ->
+                Timber.d("DownloadScreen: onConfirm called - url=$url, linkType=$linkType")
+                viewModel.addDownloadTask(url, title, linkType)
                 showAddDialog = false
             }
         )

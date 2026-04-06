@@ -4,6 +4,7 @@ import android.content.Context
 import com.pureframe.player.data.repository.DownloadRepository
 import com.pureframe.player.domain.model.DownloadTask
 import com.pureframe.player.domain.model.DownloadStatus
+import com.pureframe.player.domain.model.DownloadType
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
@@ -45,6 +46,42 @@ class TorrentManager @Inject constructor(
         observeProgressUpdates()
         // 监听 Torrent 添加事件，保存 infoHash 到数据库
         observeTorrentAdded()
+        // 恢复未完成的下载任务
+        restorePendingDownloads()
+    }
+
+    /**
+     * 恢复 APP 重启前的未完成下载任务
+     */
+    private fun restorePendingDownloads() {
+        managerScope.launch {
+            try {
+                val pendingTasks = downloadRepository.getTasksByStatusOnce(DownloadStatus.DOWNLOADING)
+                    .filter { it.downloadType == DownloadType.BT && it.magnetLink != null }
+
+                val pausedTasks = downloadRepository.getTasksByStatusOnce(DownloadStatus.PAUSED)
+                    .filter { it.downloadType == DownloadType.BT && it.magnetLink != null }
+
+                val allTasks = pendingTasks + pausedTasks
+                Timber.d("TorrentManager: 找到 ${allTasks.size} 个未完成的 BT 任务需要恢复")
+
+                for (task in allTasks) {
+                    try {
+                        // 重新添加到引擎恢复下载
+                        val added = torrentEngine.addMagnetLink(task.magnetLink!!, task.savePath, task.id.toString())
+                        if (added) {
+                            Timber.d("TorrentManager: 任务已恢复 - taskId=${task.id}")
+                        } else {
+                            Timber.w("TorrentManager: 任务恢复失败 - taskId=${task.id}")
+                        }
+                    } catch (e: Exception) {
+                        Timber.e(e, "TorrentManager: 恢复任务异常 - taskId=${task.id}")
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "TorrentManager: 恢复下载任务失败")
+            }
+        }
     }
 
     /**

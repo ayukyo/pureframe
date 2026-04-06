@@ -22,8 +22,11 @@ data class DownloadTask(
     val createdAt: Date = Date(),
     val updatedAt: Date = Date(),
     val completedAt: Date? = null,
-    
-    // 磁力链接下载扩展字段
+
+    // 下载类型
+    val downloadType: DownloadType = DownloadType.HTTP,
+
+    // BT下载扩展字段
     val magnetLink: String? = null,
     val torrentPath: String? = null,
     val torrentHash: String? = null,
@@ -65,7 +68,13 @@ data class DownloadTask(
      */
     val isFailed: Boolean
         get() = status == DownloadStatus.FAILED
-    
+
+    /**
+     * 是否是 BT 下载
+     */
+    val isBtDownload: Boolean
+        get() = downloadType == DownloadType.BT
+
     /**
      * 是否是磁力链接下载
      */
@@ -106,6 +115,14 @@ data class DownloadTask(
             else -> "${bytes / (1024 * 1024 * 1024)} GB"
         }
     }
+}
+
+/**
+ * 下载类型
+ */
+enum class DownloadType {
+    HTTP,    // HTTP/直链下载
+    BT       // BitTorrent 下载
 }
 
 /**

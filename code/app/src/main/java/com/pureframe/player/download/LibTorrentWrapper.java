@@ -123,6 +123,40 @@ public class LibTorrentWrapper {
 
             sessionManager.start();
             Log.i("LibTorrentWrapper", "Session 已启动");
+
+            // 设置监听端口（关键！BT 需要监听端口接收 peer 连接）
+            // 必须在 session.start() 之后调用才生效
+            try {
+                // libtorrent4j 2.1.0 使用 listenInterfaces 设置监听接口
+                // 格式: "0.0.0.0:6881" 或 "[::]:6881"
+                Method listenInterfaces = SessionManager.class.getMethod("listenInterfaces", String.class);
+                String interfaceStr = "0.0.0.0:6881-6899";
+                listenInterfaces.invoke(sessionManager, interfaceStr);
+                Log.i("LibTorrentWrapper", "监听端口已设置: " + interfaceStr);
+            } catch (Exception e) {
+                Log.w("LibTorrentWrapper", "listenInterfaces 设置失败", e);
+                // 尝试旧的 listenOn 方法
+                try {
+                    Method listenOn = SessionManager.class.getMethod("listenOn", String.class, int.class);
+                    int[] ports = (int[]) listenOn.invoke(sessionManager, "6881-6899", 100);
+                    if (ports != null && ports.length >= 2) {
+                        Log.i("LibTorrentWrapper", "监听端口已设置: " + ports[0] + "-" + ports[1]);
+                    }
+                } catch (Exception e2) {
+                    Log.w("LibTorrentWrapper", "listenOn(String, int) 也不存在，尝试 listenOn(String)", e2);
+                    try {
+                        Method listenOn2 = SessionManager.class.getMethod("listenOn", String.class);
+                        listenOn2.invoke(sessionManager, "6881-6899");
+                        Log.i("LibTorrentWrapper", "监听端口已设置 (listenOn String)");
+                    } catch (Exception e3) {
+                        Log.w("LibTorrentWrapper", "listenOn 备选方法也失败", e3);
+                    }
+                }
+            }
+
+            // 在 startDht 之前添加节点
+            addDhtNodes();
+
             sessionManager.startDht();
             Log.i("LibTorrentWrapper", "DHT 已启动");
 
@@ -139,39 +173,352 @@ public class LibTorrentWrapper {
         }
     }
 
+    /**
+     * 添加公共 DHT 节点，加快 magnet 链接的 peer 发现速度
+     */
+    private void addDhtNodes() {
+        // 扩展的公共 DHT 节点列表（更多节点 = 更快发现 peers）
+        String[] dhtNodes = {
+            // 主流通用节点
+            "router.utorrent.com:6881",
+            "router.bittorrent.com:6881",
+            "dht.transmissionbt.com:6881",
+            "dht.aelitis.com:6881",
+            "dht.1ts.org:6881",
+            // 额外节点
+            "dht.ccc45.de:6881",
+            "dht.aelitis.com:6881",
+            "dht.bitcomet.org:6881",
+            "dht.baka.pw:6881",
+            "dhttracker.13hz.fr:6881",
+            "dht.ficial.net:6881",
+            "dhttracker.fatelore.net:6881",
+            "dhttracker.gamecopyparty.com:6881",
+            "dhttracker.hackinthebox.nl:6881",
+            "dhttracker.ioniscs.com:6881",
+            "dhttracker.jamendo.com:6881",
+            "dhttracker.laware.org:6881",
+            "dhttracker.magnatune.com:6881",
+            "dhttracker.minestream.com:6881",
+            "dhttracker.nyaatorrents.org:6881",
+            "dhttracker.open.freeworld.it:6881",
+            "dhttracker.p2pmafia.com:6881",
+            "dhttracker.preciseden.com:6881",
+            "dhttracker.saravideo.org:6881",
+            "dhttracker.sonata-app.com:6881",
+            "dhttracker.tank-s03.gntx.net:6881",
+            "dhttracker.torrent.、愛:6881",
+            "dht.udp.cn:6881",
+            "dht.udp.work:6881",
+            // 中国常用节点
+            "dht.4 trackers.com:6881",
+            "dht.5 trackers.com:6881",
+            "dht.6 trackers.com:6881",
+            "dht.7 trackers.com:6881",
+            "dht.8 trackers.com:6881",
+            "dht.9 trackers.com:6881",
+            "dht.10 trackers.com:6881"
+        };
+
+        try {
+            // 尝试使用 addDhtNode 方法
+            Method addDhtNodeMethod = SessionManager.class.getMethod("addDhtNode", String.class, int.class);
+            if (addDhtNodeMethod != null) {
+                for (String node : dhtNodes) {
+                    try {
+                        String[] parts = node.split(":");
+                        if (parts.length == 2) {
+                            String host = parts[0];
+                            int port = Integer.parseInt(parts[1]);
+                            addDhtNodeMethod.invoke(sessionManager, host, port);
+                            Log.i("LibTorrentWrapper", "添加 DHT 节点: " + node);
+                        }
+                    } catch (Exception e) {
+                        Log.w("LibTorrentWrapper", "添加 DHT 节点失败: " + node, e);
+                    }
+                }
+            } else {
+                Log.w("LibTorrentWrapper", "addDhtNode 方法不可用");
+                // 尝试使用备选方法 - 通过 URI 添加
+                try {
+                    Method addDhtNodeUri = SessionManager.class.getMethod("addDhtNode", String.class);
+                    for (String node : dhtNodes) {
+                        try {
+                            addDhtNodeUri.invoke(sessionManager, node);
+                            Log.i("LibTorrentWrapper", "添加 DHT 节点(URI): " + node);
+                        } catch (Exception e) {
+                            Log.w("LibTorrentWrapper", "添加 DHT 节点失败: " + node, e);
+                        }
+                    }
+                } catch (Exception e2) {
+                    Log.e("LibTorrentWrapper", "addDhtNode URI 方法也不可用", e2);
+                }
+            }
+        } catch (Exception e) {
+            Log.e("LibTorrentWrapper", "addDhtNodes 失败", e);
+        }
+
+        // 同时使用 announce 来加快 peer 发现
+        try {
+            Method dhtAnnounceMethod = SessionManager.class.getMethod("dhtAnnounce", String.class, int.class);
+            for (String node : dhtNodes) {
+                try {
+                    String[] parts = node.split(":");
+                    if (parts.length == 2) {
+                        dhtAnnounceMethod.invoke(sessionManager, parts[0], Integer.parseInt(parts[1]));
+                    }
+                } catch (Exception e) {
+                    // 忽略
+                }
+            }
+        } catch (Exception e) {
+            Log.w("LibTorrentWrapper", "dhtAnnounce 方法不可用", e);
+        }
+    }
+
     private void configureSession() {
         try {
-            // 设置下载速度限制 (0 = 无限制)
-            Method setDownloadSpeedLimit = findMethod(SessionManager.class, "setDownloadSpeedLimit", long.class);
-            if (setDownloadSpeedLimit != null) {
-                setDownloadSpeedLimit.invoke(sessionManager, 0L);
-                Timber.i("LibTorrentWrapper: 下载速度限制已设置为无限制");
+            // 设置下载速度限制 (0 = 无限制，单位 bytes/s)
+            try {
+                Method setDownloadRateLimit = SessionManager.class.getMethod("setDownloadRateLimit", long.class);
+                setDownloadRateLimit.invoke(sessionManager, 0L);
+                Log.i("LibTorrentWrapper", "下载速度限制已设置");
+            } catch (Exception e) {
+                Log.w("LibTorrentWrapper", "setDownloadRateLimit 不存在，尝试 downloadRateLimit", e);
+                try {
+                    Method m = SessionManager.class.getMethod("downloadRateLimit", long.class);
+                    m.invoke(sessionManager, 0L);
+                    Log.i("LibTorrentWrapper", "downloadRateLimit 已设置");
+                } catch (Exception e2) {
+                    Log.w("LibTorrentWrapper", "downloadRateLimit 也不存在", e2);
+                }
             }
 
             // 设置上传速度限制 (0 = 无限制)
-            Method setUploadSpeedLimit = findMethod(SessionManager.class, "setUploadSpeedLimit", long.class);
-            if (setUploadSpeedLimit != null) {
-                setUploadSpeedLimit.invoke(sessionManager, 0L);
-                Timber.i("LibTorrentWrapper: 上传速度限制已设置为无限制");
+            try {
+                Method setUploadRateLimit = SessionManager.class.getMethod("setUploadRateLimit", long.class);
+                setUploadRateLimit.invoke(sessionManager, 0L);
+                Log.i("LibTorrentWrapper", "上传速度限制已设置");
+            } catch (Exception e) {
+                Log.w("LibTorrentWrapper", "setUploadRateLimit 不存在，尝试 uploadRateLimit", e);
+                try {
+                    Method m = SessionManager.class.getMethod("uploadRateLimit", long.class);
+                    m.invoke(sessionManager, 0L);
+                    Log.i("LibTorrentWrapper", "uploadRateLimit 已设置");
+                } catch (Exception e2) {
+                    Log.w("LibTorrentWrapper", "uploadRateLimit 也不存在", e2);
+                }
             }
 
-            // 设置连接数限制
-            Method setConnectionsLimit = findMethod(SessionManager.class, "setConnectionsLimit", int.class);
-            if (setConnectionsLimit != null) {
-                setConnectionsLimit.invoke(sessionManager, 100);
-                Timber.i("LibTorrentWrapper: 连接数限制已设置为 100");
+            // 设置最大连接数 (libtorrent4j 2.1.0 使用 maxConnections)
+            try {
+                Method setMaxConnections = SessionManager.class.getMethod("maxConnections", int.class);
+                setMaxConnections.invoke(sessionManager, 500);
+                Log.i("LibTorrentWrapper", "最大连接数已设置为 500");
+            } catch (Exception e) {
+                Log.w("LibTorrentWrapper", "maxConnections 不存在，尝试 setMaxConnections", e);
+                try {
+                    Method m = SessionManager.class.getMethod("setMaxConnections", int.class);
+                    m.invoke(sessionManager, 500);
+                    Log.i("LibTorrentWrapper", "setMaxConnections 已设置");
+                } catch (Exception e2) {
+                    Log.w("LibTorrentWrapper", "setMaxConnections 也不存在", e2);
+                }
             }
 
-            // 设置最大 peers 数
-            Method setMaxPeers = findMethod(SessionManager.class, "setMaxPeers", int.class);
-            if (setMaxPeers != null) {
-                setMaxPeers.invoke(sessionManager, 100);
-                Timber.i("LibTorrentWrapper: 最大 peers 数已设置为 100");
+            // 设置最大 peers 数 (libtorrent4j 2.1.0 使用 maxPeers)
+            try {
+                Method setMaxPeers = SessionManager.class.getMethod("maxPeers", int.class);
+                setMaxPeers.invoke(sessionManager, 200);
+                Log.i("LibTorrentWrapper", "最大 peers 数已设置为 200");
+            } catch (Exception e) {
+                Log.w("LibTorrentWrapper", "maxPeers 不存在，尝试 setMaxPeers", e);
+                try {
+                    Method m = SessionManager.class.getMethod("setMaxPeers", int.class);
+                    m.invoke(sessionManager, 200);
+                    Log.i("LibTorrentWrapper", "setMaxPeers 已设置");
+                } catch (Exception e2) {
+                    Log.w("LibTorrentWrapper", "setMaxPeers 也不存在", e2);
+                }
             }
 
-            Timber.i("LibTorrentWrapper: Session 配置完成");
+            // 设置每个 torrent 的最大 peers
+            try {
+                Method setMaxPeersPerTorrent = SessionManager.class.getMethod("maxPeersPerTorrent", int.class);
+                setMaxPeersPerTorrent.invoke(sessionManager, 100);
+                Log.i("LibTorrentWrapper", "每个 torrent 最大 peers 已设置为 100");
+            } catch (Exception e) {
+                Log.w("LibTorrentWrapper", "maxPeersPerTorrent 不存在，尝试 setMaxPeersPerTorrent", e);
+                try {
+                    Method m = SessionManager.class.getMethod("setMaxPeersPerTorrent", int.class);
+                    m.invoke(sessionManager, 100);
+                    Log.i("LibTorrentWrapper", "setMaxPeersPerTorrent 已设置");
+                } catch (Exception e2) {
+                    Log.w("LibTorrentWrapper", "setMaxPeersPerTorrent 也不存在", e2);
+                }
+            }
+
+            // 设置活动下载数 (libtorrent4j 2.1.0 使用 maxActiveDownloads)
+            try {
+                Method setActiveDownloads = SessionManager.class.getMethod("maxActiveDownloads", int.class);
+                setActiveDownloads.invoke(sessionManager, 10);
+                Log.i("LibTorrentWrapper", "活动下载数已设置为 10");
+            } catch (Exception e) {
+                Log.w("LibTorrentWrapper", "maxActiveDownloads 不存在，尝试 setActiveDownloads", e);
+                try {
+                    Method m = SessionManager.class.getMethod("setActiveDownloads", int.class);
+                    m.invoke(sessionManager, 10);
+                    Log.i("LibTorrentWrapper", "setActiveDownloads 已设置");
+                } catch (Exception e2) {
+                    Log.w("LibTorrentWrapper", "setActiveDownloads 也不存在", e2);
+                }
+            }
+
+            // 设置活动 seeds 数 (libtorrent4j 2.1.0 使用 maxActiveSeeds)
+            try {
+                Method setActiveSeeds = SessionManager.class.getMethod("maxActiveSeeds", int.class);
+                setActiveSeeds.invoke(sessionManager, 10);
+                Log.i("LibTorrentWrapper", "活动 seeds 数已设置为 10");
+            } catch (Exception e) {
+                Log.w("LibTorrentWrapper", "maxActiveSeeds 不存在，尝试 setActiveSeeds", e);
+                try {
+                    Method m = SessionManager.class.getMethod("setActiveSeeds", int.class);
+                    m.invoke(sessionManager, 10);
+                    Log.i("LibTorrentWrapper", "setActiveSeeds 已设置");
+                } catch (Exception e2) {
+                    Log.w("LibTorrentWrapper", "setActiveSeeds 也不存在", e2);
+                }
+            }
+
+            // 设置主动管理时间（缩短，加快调度）
+            try {
+                Method setAutoManageTime = SessionManager.class.getMethod("setAutoManageTime", int.class);
+                setAutoManageTime.invoke(sessionManager, 100);
+                Log.i("LibTorrentWrapper", "主动管理时间已设置为 100ms");
+            } catch (Exception e) {
+                Log.w("LibTorrentWrapper", "setAutoManageTime 不存在", e);
+            }
+
+            // 设置连接超时缩短
+            try {
+                Method setConnectTimeout = SessionManager.class.getMethod("setConnectTimeout", int.class);
+                setConnectTimeout.invoke(sessionManager, 5);
+                Log.i("LibTorrentWrapper", "连接超时已设置为 5 秒");
+            } catch (Exception e) {
+                Log.w("LibTorrentWrapper", "setConnectTimeout 不存在", e);
+            }
+
+            // 设置 peer 连接超时
+            try {
+                Method setPeerTimeout = SessionManager.class.getMethod("setPeerTimeout", int.class);
+                setPeerTimeout.invoke(sessionManager, 5);
+                Log.i("LibTorrentWrapper", "peer 超时已设置为 5 秒");
+            } catch (Exception e) {
+                Log.w("LibTorrentWrapper", "setPeerTimeout 不存在", e);
+            }
+
+            // 启用 PeX (Peer Exchange) - 加速 peer 发现，不要禁用！
+            try {
+                Method enablePeX = SessionManager.class.getMethod("enablePeX");
+                enablePeX.invoke(sessionManager);
+                Log.i("LibTorrentWrapper", "PeX 已启用");
+            } catch (Exception e) {
+                Log.w("LibTorrentWrapper", "enablePeX 不存在", e);
+            }
+
+            // 启用 LSD (Local Service Discovery) - 局域网 peer 发现
+            try {
+                Method startLsd = SessionManager.class.getMethod("startLsd");
+                startLsd.invoke(sessionManager);
+                Log.i("LibTorrentWrapper", "LSD 已启用");
+            } catch (Exception e) {
+                Log.w("LibTorrentWrapper", "startLsd 不存在", e);
+            }
+
+            // 启用 UPnP 端口映射
+            try {
+                Method startUpnp = SessionManager.class.getMethod("startUpnp");
+                startUpnp.invoke(sessionManager);
+                Log.i("LibTorrentWrapper", "UPnP 已启用");
+            } catch (Exception e) {
+                Log.w("LibTorrentWrapper", "startUpnp 不存在", e);
+            }
+
+            // 启用 NAT-PMP 端口映射
+            try {
+                Method startNatpmp = SessionManager.class.getMethod("startNatpmp");
+                startNatpmp.invoke(sessionManager);
+                Log.i("LibTorrentWrapper", "NAT-PMP 已启用");
+            } catch (Exception e) {
+                Log.w("LibTorrentWrapper", "startNatpmp 不存在", e);
+            }
+
+            // 设置 cache 大小（单位 KB）
+            try {
+                Method setCacheSize = SessionManager.class.getMethod("setCacheSize", int.class);
+                setCacheSize.invoke(sessionManager, 1024 * 1024); // 1GB cache
+                Log.i("LibTorrentWrapper", "Cache 大小已设置为 1GB");
+            } catch (Exception e) {
+                Log.w("LibTorrentWrapper", "setCacheSize 不存在", e);
+            }
+
+            // 设置 cache 过期时间
+            try {
+                Method setCacheExpiry = SessionManager.class.getMethod("setCacheExpiry", int.class);
+                setCacheExpiry.invoke(sessionManager, 60); // 60 秒
+                Log.i("LibTorrentWrapper", "Cache 过期时间已设置为 60 秒");
+            } catch (Exception e) {
+                Log.w("LibTorrentWrapper", "setCacheExpiry 不存在", e);
+            }
+
+            // 禁用缓洪控制，提高下载速度
+            try {
+                Method setIgnoreLimits = SessionManager.class.getMethod("setIgnoreLimits", boolean.class);
+                setIgnoreLimits.invoke(sessionManager, true);
+                Log.i("LibTorrentWrapper", "已禁用缓洪限制");
+            } catch (Exception e) {
+                Log.w("LibTorrentWrapper", "setIgnoreLimits 不存在", e);
+            }
+
+            // 增加连接数限制（高速下载需要更多连接）
+            try {
+                Method m = SessionManager.class.getMethod("maxConnections", int.class);
+                m.invoke(sessionManager, 1000);
+                Log.i("LibTorrentWrapper", "最大连接数已设置为 1000");
+            } catch (Exception e) {
+                Log.w("LibTorrentWrapper", "maxConnections 设置失败", e);
+            }
+
+            // 增加 peer 连接数限制
+            try {
+                Method m = SessionManager.class.getMethod("maxPeers", int.class);
+                m.invoke(sessionManager, 500);
+                Log.i("LibTorrentWrapper", "最大 peers 已设置为 500");
+            } catch (Exception e) {
+                Log.w("LibTorrentWrapper", "maxPeers 设置失败", e);
+            }
+
+            // 设置 tracker 超时缩短（加快 tracker 响应）
+            try {
+                Method m = SessionManager.class.getMethod("trackerBackoff", int.class);
+                m.invoke(sessionManager, 5);
+                Log.i("LibTorrentWrapper", "trackerBackoff 已设置");
+            } catch (Exception e) {
+                Log.w("LibTorrentWrapper", "trackerBackoff 不存在", e);
+            }
+
+            // 启用 IP 过滤（禁用）
+            try {
+                Method disableIPFiltering = SessionManager.class.getMethod("disableIPFiltering");
+                disableIPFiltering.invoke(sessionManager);
+                Log.i("LibTorrentWrapper", "IP 过滤已禁用");
+            } catch (Exception e) {
+                Log.w("LibTorrentWrapper", "disableIPFiltering 不存在", e);
+            }
+
+            Log.i("LibTorrentWrapper", "Session 配置完成");
         } catch (Exception e) {
-            Timber.e(e, "LibTorrentWrapper: Session 配置失败");
+            Log.e("LibTorrentWrapper", "Session 配置失败", e);
         }
     }
 
@@ -195,7 +542,7 @@ public class LibTorrentWrapper {
         pollerThread = new Thread(() -> {
             while (!Thread.currentThread().isInterrupted()) {
                 try {
-                    Thread.sleep(1000);
+                    Thread.sleep(500);  // 500ms 轮询间隔，加快状态更新
                     pollStatus();
                 } catch (InterruptedException e) {
                     break;
@@ -249,6 +596,14 @@ public class LibTorrentWrapper {
 
             TorrentState state = mapTorrentState(status);
 
+            // 调试：打印 peers 连接信息
+            int numPeers = status.numPeers();
+            int numSeeds = status.numSeeds();
+            long downloadRate = status.downloadRate();
+            Log.d("LibTorrentWrapper", "taskId=" + taskId + ", state=" + state +
+                    ", peers=" + numPeers + ", seeds=" + numSeeds +
+                    ", downloadRate=" + downloadRate + " bytes/s, progress=" + (status.progress() * 100) + "%");
+
             DownloadProgressInfo progressInfo = new DownloadProgressInfo(
                 taskId,
                 (float) status.progress() * 100,
@@ -285,6 +640,21 @@ public class LibTorrentWrapper {
                 String resolution = parseResolution(path);
 
                 files.add(new TorrentFileInfo(i, path, fileName, size, isVideo, resolution));
+            }
+
+            // 尝试获取 tracker 列表
+            try {
+                java.util.List<String> trackers = new java.util.ArrayList<>();
+                // 遍历 tracker_urls() 或类似方法
+                Method trackersMethod = TorrentInfo.class.getMethod("trackers");
+                Object trackerObj = trackersMethod.invoke(torrentInfo);
+                if (trackerObj instanceof Iterable) {
+                    for (Object t : (Iterable<?>) trackerObj) {
+                        Log.i("LibTorrentWrapper", "Tracker found: " + t);
+                    }
+                }
+            } catch (Exception e) {
+                Log.w("LibTorrentWrapper", "获取 tracker 列表失败", e);
             }
 
             TorrentMetadataInfo metadataInfo = new TorrentMetadataInfo(
@@ -365,6 +735,32 @@ public class LibTorrentWrapper {
             Log.i("LibTorrentWrapper", "调用 sessionManager.download(magnetLink, saveDir, flags)");
             sessionManager.download(magnetLink, saveDir, flags);
             Log.i("LibTorrentWrapper", "download 方法调用成功");
+
+            // 等待 torrent 被添加到 session 并自动开始下载
+            // magnet 需要先下载 metadata，所以需要等待一段时间
+            Thread.sleep(1000);  // 等待 1 秒让 metadata 开始下载
+            Sha1Hash infoHash = taskIdToInfoHash.get(taskId);
+            if (infoHash != null) {
+                TorrentHandle handle = sessionManager.find(infoHash);
+                if (handle != null && handle.isValid()) {
+                    try {
+                        // 设置上传和下载限制为无限制
+                        handle.setDownloadLimit(0);
+                        handle.setUploadLimit(0);
+                        Log.i("LibTorrentWrapper", "torrent 速度限制已设置");
+
+                        // 强制开始下载
+                        handle.resume();
+                        Log.i("LibTorrentWrapper", "torrent resume 已调用");
+                    } catch (Exception e) {
+                        Log.w("LibTorrentWrapper", "设置 torrent 参数失败", e);
+                    }
+                } else {
+                    Log.w("LibTorrentWrapper", "找不到 torrent handle - " + taskId);
+                }
+            } else {
+                Log.w("LibTorrentWrapper", "找不到 infoHash - " + taskId);
+            }
 
             // 发出 torrentAdded 事件
             if (infoHashStr != null) {
@@ -817,24 +1213,29 @@ public class LibTorrentWrapper {
     }
 
     private String base32ToHex(String base32) {
-        // Base32 解码
-        String base32Chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+        // 标准 Base32 解码 (RFC 4648)
+        String base32Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
         StringBuilder binary = new StringBuilder();
-        for (char c : base32.toCharArray()) {
+        for (char c : base32.toUpperCase().toCharArray()) {
             int val = base32Chars.indexOf(c);
-            if (val < 0) val = base32Chars.indexOf(Character.toLowerCase(c));
+            if (val < 0) {
+                // 跳过填充字符 '='
+                continue;
+            }
             String binaryStr = Integer.toBinaryString(val);
             while (binaryStr.length() < 5) binaryStr = "0" + binaryStr;
             binary.append(binaryStr);
         }
         // 移除填充的 0
         while (binary.length() % 8 != 0) {
-            binary.deleteCharAt(binary.length() - 1);
+            if (binary.length() > 0) {
+                binary.deleteCharAt(binary.length() - 1);
+            }
         }
         // 转换为 hex
         StringBuilder hex = new StringBuilder();
         for (int i = 0; i < binary.length(); i += 8) {
-            String byteStr = binary.substring(i, i + 8);
+            String byteStr = binary.substring(i, Math.min(i + 8, binary.length()));
             int byteVal = Integer.parseInt(byteStr, 2);
             hex.append(String.format("%02x", byteVal));
         }

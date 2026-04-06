@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pureframe.player.domain.model.DownloadTask
 import com.pureframe.player.domain.model.DownloadStatus
+import com.pureframe.player.domain.model.DownloadType
 import timber.log.Timber
 import com.pureframe.player.domain.usecase.download.GetAllDownloadsUseCase
 import com.pureframe.player.domain.usecase.download.GetActiveDownloadsUseCase
@@ -16,6 +17,7 @@ import com.pureframe.player.domain.usecase.download.ClearCompletedDownloadsUseCa
 import com.pureframe.player.domain.usecase.download.GetActiveDownloadCountUseCase
 import com.pureframe.player.download.TorrentManager
 import com.pureframe.player.download.TorrentMetadataInfo
+import com.pureframe.player.download.HttpDownloadManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -48,7 +50,8 @@ class DownloadViewModel @Inject constructor(
     private val deleteDownloadUseCase: DeleteDownloadUseCase,
     private val clearCompletedDownloadsUseCase: ClearCompletedDownloadsUseCase,
     private val getActiveDownloadCountUseCase: GetActiveDownloadCountUseCase,
-    private val torrentManager: TorrentManager
+    private val torrentManager: TorrentManager,
+    private val httpDownloadManager: HttpDownloadManager
 ) : ViewModel() {
 
     // 列表类型
@@ -129,29 +132,40 @@ class DownloadViewModel @Inject constructor(
     }
 
     /**
-     * 添加下载任务（磁力链接）
-     * 先添加到引擎获取 metadata，弹出文件选择对话框
-     * 用户确认后才正式开始下载
+     * 添加下载任务（磁力链接或直链）
+     * 磁力链接：先添加到引擎获取 metadata，弹出文件选择对话框
+     *         用户确认后才正式开始下载
+     * 直链：直接开始下载
      *
-     * @param magnetLink 磁力链接
+     * @param url 磁力链接或直链
      * @param title 任务标题（可选）
+     * @param linkType 链接类型
      */
     fun addDownloadTask(
-        magnetLink: String,
-        title: String? = null
+        url: String,
+        title: String? = null,
+        linkType: LinkType = LinkType.MAGNET
     ) {
-        Timber.d("DownloadViewModel.addDownloadTask 被调用 - magnetLink=$magnetLink")
+        Timber.d("DownloadViewModel.addDownloadTask 被调用 - url=$url, linkType=$linkType")
+
+        // 如果是 HTTP 直链，直接开始下载
+        if (linkType == LinkType.HTTP) {
+            addHttpDownloadTask(url, title)
+            return
+        }
+
+        // 磁力链接处理
         viewModelScope.launch {
             _uiState.update { it.copy(isAddingTask = true, errorMessage = null) }
             try {
-                val extractedTitle = title ?: extractTitleFromMagnet(magnetLink)
+                val extractedTitle = title ?: extractTitleFromMagnet(url)
                 val savePath = "/storage/emulated/0/PureFrame/downloads"
                 Timber.d("DownloadViewModel: 开始准备下载任务 - title=$extractedTitle")
 
                 // 使用 torrentManager.prepareMagnetLink 仅添加到引擎获取 metadata
                 // 不创建正式任务，不显示在列表中
                 val result = torrentManager.prepareMagnetLink(
-                    magnetLink = magnetLink,
+                    magnetLink = url,
                     savePath = savePath,
                     name = extractedTitle
                 )
@@ -161,7 +175,7 @@ class DownloadViewModel @Inject constructor(
                         Timber.d("DownloadViewModel: 磁力链接已添加，等待 metadata - taskId=$taskId")
                         _preparingTaskId = taskId
                         // 启动 metadata 超时检测（30秒）
-                        startMetadataTimeout(taskId, magnetLink)
+                        startMetadataTimeout(taskId, url)
                     },
                     onFailure = { e ->
                         Timber.e(e, "DownloadViewModel: 准备下载任务失败")
@@ -174,6 +188,43 @@ class DownloadViewModel @Inject constructor(
             }
             // 注意：isAddingTask = false 不在这里设置
             // 会在 cancelFileSelection 或 confirmFileSelection 时设置
+        }
+    }
+
+    /**
+     * 添加 HTTP 直链下载任务
+     *
+     * @param url 下载地址
+     * @param title 任务标题（可选）
+     */
+    private fun addHttpDownloadTask(
+        url: String,
+        title: String? = null
+    ) {
+        Timber.d("DownloadViewModel.addHttpDownloadTask 被调用 - url=$url")
+        viewModelScope.launch {
+            _uiState.update { it.copy(isAddingTask = true, errorMessage = null) }
+            try {
+                val savePath = "/storage/emulated/0/PureFrame/downloads"
+                val result = httpDownloadManager.createDownloadTask(
+                    url = url,
+                    savePath = savePath,
+                    name = title
+                )
+
+                result.fold(
+                    onSuccess = { taskId ->
+                        Timber.d("DownloadViewModel: HTTP 下载任务创建成功 - taskId=$taskId")
+                    },
+                    onFailure = { e ->
+                        Timber.e(e, "DownloadViewModel: HTTP 下载任务创建失败")
+                        _uiState.update { it.copy(errorMessage = e.message, isAddingTask = false) }
+                    }
+                )
+            } catch (e: Exception) {
+                Timber.e(e, "DownloadViewModel: 添加 HTTP 下载任务失败")
+                _uiState.update { it.copy(errorMessage = e.message, isAddingTask = false) }
+            }
         }
     }
 
@@ -310,19 +361,29 @@ class DownloadViewModel @Inject constructor(
 
     /**
      * 开始下载（恢复下载）
+     *
+     * @param task 下载任务
      */
-    fun startDownload(taskId: Long) {
+    fun startDownload(task: DownloadTask) {
         viewModelScope.launch {
-            torrentManager.resumeDownload(taskId)
+            when (task.downloadType) {
+                DownloadType.BT -> torrentManager.resumeDownload(task.id)
+                DownloadType.HTTP -> httpDownloadManager.resumeDownload(task.id)
+            }
         }
     }
 
     /**
      * 暂停下载
+     *
+     * @param task 下载任务
      */
-    fun pauseDownload(taskId: Long) {
+    fun pauseDownload(task: DownloadTask) {
         viewModelScope.launch {
-            torrentManager.pauseDownload(taskId)
+            when (task.downloadType) {
+                DownloadType.BT -> torrentManager.pauseDownload(task.id)
+                DownloadType.HTTP -> httpDownloadManager.pauseDownload(task.id)
+            }
         }
     }
 

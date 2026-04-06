@@ -56,6 +56,8 @@ fun Video.toEntity(): VideoEntity {
 fun DownloadTaskEntity.toDomainModel(): DownloadTask {
     val rawFileName = name.substringAfterLast('/').substringAfterLast('\\')
     val fileName = if (rawFileName.isEmpty()) name else rawFileName
+    // 从 URL 推断下载类型
+    val downloadType = if (url.startsWith("magnet:")) DownloadType.BT else DownloadType.HTTP
     return DownloadTask(
         id = id,
         url = url,
@@ -71,6 +73,7 @@ fun DownloadTaskEntity.toDomainModel(): DownloadTask {
         createdAt = createdAt,
         updatedAt = completedAt ?: createdAt,
         completedAt = completedAt,
+        downloadType = downloadType,
         magnetLink = if (url.startsWith("magnet:")) url else null,
         torrentHash = torrentHash
     )

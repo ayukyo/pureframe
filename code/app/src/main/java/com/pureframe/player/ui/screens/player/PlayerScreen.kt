@@ -96,6 +96,8 @@ fun PlayerScreen(
     
     // 控制栏显示状态
     var showControls by remember { mutableStateOf(true) }
+    // 控制栏显示触发器（用于重置自动隐藏计时器）
+    var controlsTrigger by remember { mutableStateOf(0L) }
     
     // 初始化播放器
     LaunchedEffect(videoIdLong, downloadIdLong, isStreamPlayback) {
@@ -107,10 +109,10 @@ fun PlayerScreen(
         }
     }
     
-    // 自动隐藏控制栏
-    LaunchedEffect(isPlaying, showControls) {
+    // 自动隐藏控制栏（controlsTrigger 变化时重置计时器）
+    LaunchedEffect(isPlaying, showControls, controlsTrigger) {
         if (isPlaying && showControls) {
-            kotlinx.coroutines.delay(3000)
+            kotlinx.coroutines.delay(4000)
             showControls = false
         }
     }
@@ -144,6 +146,10 @@ fun PlayerScreen(
                 detectTapGestures(
                     onTap = {
                         showControls = !showControls
+                        if (showControls) {
+                            // 重置自动隐藏计时器
+                            controlsTrigger++
+                        }
                     },
                     onDoubleTap = {
                         viewModel.togglePlayPause()
@@ -244,6 +250,9 @@ fun PlayerScreen(
                 onFullscreenToggle = { viewModel.toggleFullscreen() },
                 onShowSpeedDialog = { viewModel.showSpeedDialog() },
                 onShowAspectRatioDialog = { viewModel.showAspectRatioDialog() },
+                onUserInteraction = {
+                    controlsTrigger++
+                },
                 modifier = Modifier.fillMaxSize()
             )
         }

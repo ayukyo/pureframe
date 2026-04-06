@@ -24,29 +24,53 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 
 /**
+ * 链接类型
+ */
+enum class LinkType {
+    MAGNET,    // 磁力链接
+    HTTP,      // HTTP/直链
+    UNKNOWN    // 未知类型
+}
+
+/**
  * 添加下载对话框
- * 
- * 用于输入磁力链接创建下载任务
+ *
+ * 用于输入磁力链接或直链创建下载任务
+ * 自动检测链接类型
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddDownloadDialog(
     onDismiss: () -> Unit,
-    onConfirm: (magnetLink: String, title: String?) -> Unit,
-    initialMagnetLink: String = "",
+    onConfirm: (url: String, title: String?, linkType: LinkType) -> Unit,
+    initialUrl: String = "",
     modifier: Modifier = Modifier
 ) {
-    var magnetLink by remember { mutableStateOf(TextFieldValue(initialMagnetLink)) }
-    var title by remember { mutableStateOf(TextFieldValue("")) }
+    var urlInput by remember(initialUrl) { mutableStateOf(TextFieldValue(initialUrl)) }
+    var title by remember(initialUrl) { mutableStateOf(TextFieldValue("")) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
-    
+
+    // 检测链接类型
+    fun detectLinkType(link: String): LinkType {
+        return when {
+            link.startsWith("magnet:?xt=urn:btih:") -> LinkType.MAGNET
+            link.startsWith("http://") || link.startsWith("https://") -> LinkType.HTTP
+            else -> LinkType.UNKNOWN
+        }
+    }
+
     // 验证磁力链接格式
     fun isValidMagnetLink(link: String): Boolean {
         return link.startsWith("magnet:?xt=urn:btih:") && link.length > 20
     }
-    
+
+    // 验证 HTTP 链接格式
+    fun isValidHttpUrl(link: String): Boolean {
+        return (link.startsWith("http://") || link.startsWith("https://")) && link.length > 10
+    }
+
     // 从磁力链接提取标题
-    fun extractTitle(link: String): String? {
+    fun extractTitleFromMagnet(link: String): String? {
         // magnet:?xt=urn:btih:xxx&dn=标题
         val dnIndex = link.indexOf("&dn=")
         if (dnIndex >= 0) {
@@ -60,7 +84,27 @@ fun AddDownloadDialog(
         }
         return null
     }
-    
+
+    // 从 URL 提取文件名作为标题
+    fun extractTitleFromUrl(url: String): String? {
+        return try {
+            val path = java.net.URL(url).path
+            val fileName = path.substringAfterLast("/").substringBefore("?")
+            if (fileName.isNotEmpty() && (fileName.contains(".") || fileName.contains("%"))) {
+                java.net.URLDecoder.decode(fileName, "UTF-8")
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    val currentLinkType = detectLinkType(urlInput.text)
+    val inputLabel = if (currentLinkType == LinkType.MAGNET) "磁力链接" else "下载链接"
+    val inputPlaceholder = if (currentLinkType == LinkType.MAGNET) "magnet:?xt=urn:btih:..." else "https://example.com/file.mp4"
+    val dialogTitle = if (currentLinkType == LinkType.MAGNET) "添加磁力链接" else "添加下载链接"
+
     AlertDialog(
         onDismissRequest = onDismiss,
         modifier = modifier
@@ -76,57 +120,67 @@ fun AddDownloadDialog(
         ) {
             // 标题
             Text(
-                text = "添加磁力链接",
+                text = dialogTitle,
                 style = MaterialTheme.typography.headlineSmall,
                 color = MaterialTheme.colorScheme.onSurface
             )
-            
+
             Spacer(modifier = Modifier.height(16.dp))
-            
-            // 磁力链接输入
+
+            // 链接输入
             OutlinedTextField(
-                value = magnetLink,
-                onValueChange = { 
-                    magnetLink = it
+                value = urlInput,
+                onValueChange = {
+                    urlInput = it
                     errorMessage = null
                     // 自动提取标题
-                    val extracted = extractTitle(it.text)
+                    val linkType = detectLinkType(it.text)
+                    val extracted = when (linkType) {
+                        LinkType.MAGNET -> extractTitleFromMagnet(it.text)
+                        LinkType.HTTP -> extractTitleFromUrl(it.text)
+                        else -> null
+                    }
                     if (extracted != null && title.text.isEmpty()) {
                         title = TextFieldValue(extracted)
                     }
                 },
-                label = { Text("磁力链接") },
-                placeholder = { Text("magnet:?xt=urn:btih:...") },
+                label = { Text(inputLabel) },
+                placeholder = { Text(inputPlaceholder) },
                 isError = errorMessage != null,
                 supportingText = errorMessage?.let { { Text(it) } },
                 singleLine = false,
                 maxLines = 3,
                 modifier = Modifier.fillMaxWidth()
             )
-            
+
             Spacer(modifier = Modifier.height(12.dp))
-            
+
             // 标题输入（可选）
             OutlinedTextField(
                 value = title,
                 onValueChange = { title = it },
                 label = { Text("任务标题（可选）") },
-                placeholder = { Text("将自动从磁力链接提取") },
+                placeholder = { Text("将自动提取") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
-            
+
             Spacer(modifier = Modifier.height(8.dp))
-            
+
             // 提示文字
+            val hintText = when (currentLinkType) {
+                LinkType.MAGNET -> "提示：支持磁力链接下载，下载后可边下边播"
+                LinkType.HTTP -> "提示：直链下载，速度更快"
+                else -> "提示：支持磁力链接和直链下载"
+            }
             Text(
-                text = "提示：支持磁力链接下载，下载后可边下边播",
+                text = hintText,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            
+
             Spacer(modifier = Modifier.height(24.dp))
-            
+
             // 操作按钮
             Column(
                 modifier = Modifier.fillMaxWidth()
@@ -134,24 +188,35 @@ fun AddDownloadDialog(
                 // 添加按钮
                 Button(
                     onClick = {
-                        val link = magnetLink.text.trim()
-                        if (link.isEmpty()) {
-                            errorMessage = "请输入磁力链接"
-                            return@Button
+                        val link = urlInput.text.trim()
+                        val linkType = detectLinkType(link)
+                        when {
+                            link.isEmpty() -> {
+                                errorMessage = "请输入下载链接"
+                                return@Button
+                            }
+                            linkType == LinkType.UNKNOWN -> {
+                                errorMessage = "不支持的链接类型"
+                                return@Button
+                            }
+                            linkType == LinkType.MAGNET && !isValidMagnetLink(link) -> {
+                                errorMessage = "磁力链接格式不正确"
+                                return@Button
+                            }
+                            linkType == LinkType.HTTP && !isValidHttpUrl(link) -> {
+                                errorMessage = "直链格式不正确"
+                                return@Button
+                            }
                         }
-                        if (!isValidMagnetLink(link)) {
-                            errorMessage = "磁力链接格式不正确"
-                            return@Button
-                        }
-                        onConfirm(link, title.text.trim().takeIf { it.isNotEmpty() })
+                        onConfirm(link, title.text.trim().takeIf { it.isNotEmpty() }, linkType)
                     },
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("开始下载")
                 }
-                
+
                 Spacer(modifier = Modifier.height(8.dp))
-                
+
                 // 取消按钮
                 TextButton(
                     onClick = onDismiss,
