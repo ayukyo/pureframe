@@ -19,13 +19,19 @@ import com.pureframe.player.download.StreamPlaybackState
 import com.pureframe.player.download.StreamProgressInfo
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
-import timber.log.Timber
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import javax.inject.Inject
 
 /**
@@ -92,6 +98,11 @@ class PlayerViewModel @Inject constructor(
     // 锁屏状态
     private val _isLocked = MutableStateFlow(false)
     val isLocked: StateFlow<Boolean> = _isLocked.asStateFlow()
+
+    // 播放中保持屏幕常亮（用户设置，默认开启）
+    val keepScreenOn: StateFlow<Boolean> = userPreferencesRepository.userPreferencesFlow
+        .map { it.keepScreenOn }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
     
     // 倍速状态
     private val _playbackSpeed = MutableStateFlow(1f)
@@ -118,11 +129,23 @@ class PlayerViewModel @Inject constructor(
     private val _lastPosition = MutableStateFlow(0L)
     val lastPosition: StateFlow<Long> = _lastPosition.asStateFlow()
     
+    // 仅用于 onCleared() 中的收尾写入（viewModelScope 此时已被取消）
+    private val saveScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
     // 是否已初始化
     private var isInitialized = false
 
     // 当前播放的视频ID
     private var currentVideoId: Long? = null
+
+    init {
+        // 字幕开关：设置页修改后立即同步到播放器（无需重新加载视频）
+        viewModelScope.launch {
+            userPreferencesRepository.userPreferencesFlow.collect { prefs ->
+                playerManager.setSubtitleEnabled(prefs.showSubtitle)
+            }
+        }
+    }
     
     /**
      * 初始化本地播放
@@ -172,16 +195,15 @@ class PlayerViewModel @Inject constructor(
                 playerManager.setLooping(prefs.loopPlay)
 
                 // 等待播放器就绪后跳转并播放
-                viewModelScope.launch {
-                    playerManager.playbackState.collect { state ->
-                        if (state == PlayerState.READY && !isInitialized) {
-                            if (lastPosition != null && lastPosition > 0) {
-                                playerManager.seekTo(lastPosition)
-                            }
-                            playerManager.play()
-                            isInitialized = true
-                        }
+                // 用 first { } 而不是 collect { }：StateFlow 的 collect 永不结束，
+                // 每次进入播放页都会残留一个常驻协程（重复初始化 + 内存泄漏）
+                playerManager.playbackState.first { it == PlayerState.READY }
+                if (!isInitialized) {
+                    if (lastPosition != null && lastPosition > 0) {
+                        playerManager.seekTo(lastPosition)
                     }
+                    playerManager.play()
+                    isInitialized = true
                 }
                 
             } catch (e: Exception) {
@@ -215,6 +237,8 @@ class PlayerViewModel @Inject constructor(
                             title = downloadTask.title
                         )
                     }
+                    // 同步到 seekTo() 实际读取的 StateFlow，否则恒为 0 会导致所有拖动被拒
+                    _maxSeekPosition.value = calculateMaxSeekPosition(downloadTask)
 
                     // 应用默认播放速度
                     val defaultSpeed = userPreferencesRepository.userPreferencesFlow.first().defaultPlaySpeed
@@ -296,7 +320,9 @@ class PlayerViewModel @Inject constructor(
         
         viewModelScope.launch {
             streamPlaybackHelper.maxSeekPositionMs.collect { maxSeekMs ->
+                // 两处状态都要更新：uiState 供 UI 显示，maxSeekPosition 供 seekTo() 校验
                 _uiState.update { it.copy(maxSeekPosition = maxSeekMs) }
+                _maxSeekPosition.value = maxSeekMs
             }
         }
     }
@@ -398,8 +424,8 @@ class PlayerViewModel @Inject constructor(
     /**
      * 保存播放进度
      */
-    fun saveProgress() {
-        viewModelScope.launch {
+    fun saveProgress(scope: CoroutineScope = viewModelScope) {
+        scope.launch {
             val video = _uiState.value.video
             if (video != null) {
                 val position = currentPosition.value
@@ -422,8 +448,8 @@ class PlayerViewModel @Inject constructor(
     /**
      * 更新播放信息（播放次数、最后播放时间）
      */
-    fun updatePlayInfo() {
-        viewModelScope.launch {
+    fun updatePlayInfo(scope: CoroutineScope = viewModelScope) {
+        scope.launch {
             val videoId = _uiState.value.video?.id
             if (videoId != null) {
                 updatePlayInfoUseCase(UpdatePlayInfoUseCase.Params(videoId))
@@ -460,10 +486,18 @@ class PlayerViewModel @Inject constructor(
     
     /**
      * 设置播放速度
+     *
+     * 若用户开启「记住播放速度」，同时写回偏好，下次播放沿用该倍速
      */
     fun setPlaybackSpeed(speed: Float) {
         playerManager.setPlaybackSpeed(speed)
         _playbackSpeed.value = speed
+        viewModelScope.launch {
+            val prefs = runCatching { userPreferencesRepository.userPreferencesFlow.first() }.getOrNull()
+            if (prefs?.rememberPlaySpeed == true) {
+                userPreferencesRepository.updateDefaultPlaySpeed(speed)
+            }
+        }
         dismissSpeedDialog()
     }
     
@@ -555,19 +589,24 @@ class PlayerViewModel @Inject constructor(
      * 计算边下边播最大可跳转位置
      */
     private fun calculateMaxSeekPosition(task: DownloadTask): Long {
+        // 已下载到结尾的任务（本地文件）不限制 seek，
+        // 否则会用 1 小时的假设值限制长视频跳转
+        if (task.isCompleted) return Long.MAX_VALUE
         // 根据下载进度估算最大可播放位置
         // 简化实现：假设总时长已知，按下载比例计算
         return (task.progress / 100f * DEFAULT_VIDEO_DURATION).toLong()
     }
     
     override fun onCleared() {
-        super.onCleared()
-        // 保存最后播放位置
-        saveProgress()
-        // 更新播放信息
-        updatePlayInfo()
+        // 先做业务收尾，再调 super.onCleared()
+        // 注意：不能用 viewModelScope —— ViewModel.clear() 会先关闭所有 Closeable
+        // （viewModelScope 就是其中之一），再回调 onCleared()，此时 launch 出去的
+        // 协程会立即被取消，进度根本存不进去。这里用独立的短生命周期 scope。
+        saveProgress(saveScope)
+        updatePlayInfo(saveScope)
         // 停止播放
         playerManager.pause()
+        super.onCleared()
     }
     
     companion object {

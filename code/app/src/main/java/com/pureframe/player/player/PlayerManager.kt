@@ -1,7 +1,10 @@
 package com.pureframe.player.player
 
 import android.content.Context
+import android.net.Uri
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
@@ -20,6 +23,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -89,6 +93,10 @@ class PlayerManager @Inject constructor(
     private val _decoderType = MutableStateFlow(DecoderType.HARDWARE)
     val decoderType: StateFlow<DecoderType> = _decoderType.asStateFlow()
 
+    // 字幕显示开关
+    private val _subtitleEnabled = MutableStateFlow(true)
+    val subtitleEnabled: StateFlow<Boolean> = _subtitleEnabled.asStateFlow()
+
     // 进度更新 Job
     private var progressUpdateJob: Job? = null
 
@@ -152,19 +160,95 @@ class PlayerManager @Inject constructor(
     
     /**
      * 加载本地视频文件
-     * 
+     *
+     * 会自动查找视频同目录、同名（不含扩展名）的侧载字幕文件
+     * （.srt/.vtt/.ass/.ssa），找到则作为字幕轨附加到 MediaItem。
+     *
      * @param filePath 文件路径
      */
     fun loadLocalFile(filePath: String) {
         clearError()
-        val mediaItem = MediaItem.fromUri(filePath)
-        exoPlayer.setMediaItem(mediaItem)
+        val subtitleUri = findSidecarSubtitle(filePath)
+        val builder = MediaItem.Builder().setUri(filePath)
+        if (subtitleUri != null) {
+            builder.setSubtitleConfigurations(
+                listOf(
+                    MediaItem.SubtitleConfiguration.Builder(subtitleUri)
+                        .setMimeType(subtitleMimeType(subtitleUri))
+                        .setLanguage("zh")
+                        .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
+                        .build()
+                )
+            )
+            Timber.i("PlayerManager: 找到侧载字幕 - %s", subtitleUri)
+        }
+        exoPlayer.setMediaItem(builder.build())
         exoPlayer.prepare()
+        // 应用当前的字幕开关状态
+        applySubtitleEnabled(_subtitleEnabled.value)
     }
-    
+
+    /**
+     * 查找视频同目录、同名的侧载字幕文件
+     *
+     * @param videoPath 视频文件路径
+     * @return 字幕文件 Uri，未找到返回 null
+     */
+    private fun findSidecarSubtitle(videoPath: String): Uri? {
+        val videoFile = try {
+            java.io.File(videoPath)
+        } catch (e: Exception) {
+            return null
+        }
+        if (!videoFile.exists()) return null
+
+        val baseName = videoFile.nameWithoutExtension
+        // 按优先级排列：srt > ass/ssa > vtt
+        val candidates = listOf(".srt", ".ass", ".ssa", ".vtt")
+        for (ext in candidates) {
+            val f = java.io.File(videoFile.parentFile, baseName + ext)
+            if (f.exists() && f.canRead()) return Uri.fromFile(f)
+        }
+        return null
+    }
+
+    /**
+     * 根据字幕文件扩展名推断 MIME 类型
+     */
+    private fun subtitleMimeType(uri: Uri): String {
+        val path = uri.path?.lowercase() ?: return MimeTypes.TEXT_VTT
+        return when {
+            path.endsWith(".srt") -> MimeTypes.APPLICATION_SUBRIP
+            path.endsWith(".ass") || path.endsWith(".ssa") -> MimeTypes.TEXT_SSA
+            path.endsWith(".vtt") -> MimeTypes.TEXT_VTT
+            else -> MimeTypes.TEXT_VTT
+        }
+    }
+
+    /**
+     * 设置字幕显示开关
+     *
+     * 通过禁用/启用文本轨选择实现，无需重新加载视频，立即生效。
+     *
+     * @param enabled 是否显示字幕
+     */
+    fun setSubtitleEnabled(enabled: Boolean) {
+        _subtitleEnabled.value = enabled
+        applySubtitleEnabled(enabled)
+    }
+
+    /**
+     * 应用字幕开关到播放器的轨道选择参数
+     */
+    private fun applySubtitleEnabled(enabled: Boolean) {
+        exoPlayer.trackSelectionParameters = exoPlayer.trackSelectionParameters.buildUpon()
+            .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, !enabled)
+            .build()
+    }
+
     /**
      * 加载网络视频流
-     * 
+     *
      * @param url 视频地址
      */
     fun loadStreamUrl(url: String) {
@@ -172,6 +256,7 @@ class PlayerManager @Inject constructor(
         val mediaItem = MediaItem.fromUri(url)
         exoPlayer.setMediaItem(mediaItem)
         exoPlayer.prepare()
+        applySubtitleEnabled(_subtitleEnabled.value)
     }
     
     /**
@@ -220,7 +305,14 @@ class PlayerManager @Inject constructor(
      */
     fun seekRelative(deltaMs: Long) {
         val currentPos = exoPlayer.currentPosition
-        val newPos = (currentPos + deltaMs).coerceIn(0, exoPlayer.duration)
+        val duration = exoPlayer.duration
+        // 直播流/未就绪时 duration 可能是 TIME_UNSET(Long.MIN_VALUE)，
+        // 直接 coerceIn(0, 负数) 会抛 IllegalArgumentException 导致崩溃
+        val newPos = if (duration <= 0) {
+            (currentPos + deltaMs).coerceAtLeast(0)
+        } else {
+            (currentPos + deltaMs).coerceIn(0, duration)
+        }
         seekTo(newPos)
     }
     
