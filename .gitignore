@@ -12,6 +12,7 @@ _*.xml
 _*.db
 _*.db-wal
 _*.db-shm
+_db_*
 _*.py
 _testmedia/
 
