@@ -112,6 +112,10 @@ class DownloadRepositoryImpl @Inject constructor(
     override suspend fun pauseTask(id: Long) {
         downloadTaskDao.pauseTask(id)
     }
+
+    override suspend fun updateTotalBytes(id: Long, total: Long) {
+        downloadTaskDao.updateTotalBytes(id, total)
+    }
     
     override suspend fun startTask(id: Long, time: Date) {
         downloadTaskDao.startTask(id, time)

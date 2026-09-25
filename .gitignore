@@ -1,2 +1,33 @@
+# Claude / IDE 配置
 .claude/settings.json
 .claude/settings.local.json
+.vscode/
+.workbuddy/
+
+# ---- 本次调试产生的临时文件（下划线开头） ----
+_*.txt
+_*.log
+_*.png
+_*.xml
+_*.db
+_*.db-wal
+_*.db-shm
+_*.py
+_testmedia/
+
+# ---- Gradle / 构建 ----
+.gradle-home/
+.gradle/
+**/build/
+**/captures/
+.cxx/
+local.properties
+
+# ---- Android Studio / IDEA ----
+*.iml
+.idea/
+*.hprof
+
+# ---- 系统 ----
+.DS_Store
+Thumbs.db

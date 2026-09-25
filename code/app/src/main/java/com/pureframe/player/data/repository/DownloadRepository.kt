@@ -90,6 +90,15 @@ interface DownloadRepository {
      * 暂停任务
      */
     suspend fun pauseTask(id: Long)
+
+    /**
+     * 校准任务总大小
+     *
+     * 磁力链接在确认文件选择前 totalBytes=0；若用户只勾选了部分文件，
+     * 引擎上报的 totalDone/totalBytes 仍是整个种子的量，必须用"已选文件大小之和"
+     * 覆盖，否则进度条会永远停在部分值。
+     */
+    suspend fun updateTotalBytes(id: Long, total: Long)
     
     /**
      * 开始任务

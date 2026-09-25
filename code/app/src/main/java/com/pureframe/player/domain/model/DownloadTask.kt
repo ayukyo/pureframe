@@ -35,9 +35,16 @@ data class DownloadTask(
 ) {
     /**
      * 进度百分比
+     *
+     * - 已完成（或字节数已补齐）直接返回 100，避免 99.999% 被截断成 99%
+     * - 四舍五入而非截断，进度显示更贴近真实值
      */
     val progressPercent: Int
-        get() = progress.toInt().coerceIn(0, 100)
+        get() {
+            if (status == DownloadStatus.COMPLETED) return 100
+            if (totalSize > 0 && downloadedSize >= totalSize) return 100
+            return kotlin.math.round(progress).toInt().coerceIn(0, 100)
+        }
     
     /**
      * 格式化下载速度
@@ -102,17 +109,17 @@ data class DownloadTask(
     private fun formatSpeed(bytesPerSecond: Long): String {
         return when {
             bytesPerSecond < 1024 -> "${bytesPerSecond} B/s"
-            bytesPerSecond < 1024 * 1024 -> "${bytesPerSecond / 1024} KB/s"
-            else -> "${bytesPerSecond / (1024 * 1024)} MB/s"
+            bytesPerSecond < 1024 * 1024 -> String.format("%.1f KB/s", bytesPerSecond / 1024.0)
+            else -> String.format("%.1f MB/s", bytesPerSecond / (1024.0 * 1024))
         }
     }
-    
+
     private fun formatFileSize(bytes: Long): String {
         return when {
             bytes < 1024 -> "$bytes B"
-            bytes < 1024 * 1024 -> "${bytes / 1024} KB"
-            bytes < 1024 * 1024 * 1024 -> "${bytes / (1024 * 1024)} MB"
-            else -> "${bytes / (1024 * 1024 * 1024)} GB"
+            bytes < 1024 * 1024 -> String.format("%.1f KB", bytes / 1024.0)
+            bytes < 1024L * 1024 * 1024 -> String.format("%.1f MB", bytes / (1024.0 * 1024))
+            else -> String.format("%.2f GB", bytes / (1024.0 * 1024 * 1024))
         }
     }
 }

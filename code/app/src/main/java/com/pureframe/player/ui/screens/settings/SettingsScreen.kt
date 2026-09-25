@@ -46,7 +46,6 @@ fun SettingsScreen(
 
     var showSpeedDialog by remember { mutableStateOf(false) }
     var showThemeDialog by remember { mutableStateOf(false) }
-    var showQualityDialog by remember { mutableStateOf(false) }
     var showDecoderDialog by remember { mutableStateOf(false) }
     var showFolderPickerDialog by remember { mutableStateOf(false) }
     var showConcurrencyDialog by remember { mutableStateOf(false) }
@@ -295,18 +294,6 @@ fun SettingsScreen(
                 showThemeDialog = false
             },
             onDismiss = { showThemeDialog = false }
-        )
-    }
-
-    // 下载质量对话框
-    if (showQualityDialog) {
-        DownloadQualityDialog(
-            currentQuality = userPreferences.downloadQuality,
-            onQualitySelected = {
-                viewModel.setDownloadQuality(it)
-                showQualityDialog = false
-            },
-            onDismiss = { showQualityDialog = false }
         )
     }
 

@@ -1,6 +1,10 @@
 package com.pureframe.player.download
 
 import android.content.Context
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import com.pureframe.player.data.preferences.UserPreferencesRepository
 import com.pureframe.player.data.repository.DownloadRepository
 import com.pureframe.player.domain.model.DownloadTask
 import com.pureframe.player.domain.model.DownloadStatus
@@ -13,6 +17,7 @@ import java.io.File
 import java.net.URL
 import java.util.Date
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.ConcurrentLinkedQueue
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -26,7 +31,8 @@ import javax.inject.Singleton
 class HttpDownloadManager @Inject constructor(
     @ApplicationContext private val context: Context,
     private val httpDownloader: HttpDownloader,
-    private val downloadRepository: DownloadRepository
+    private val downloadRepository: DownloadRepository,
+    private val userPreferencesRepository: UserPreferencesRepository
 ) {
     private val managerScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
@@ -44,9 +50,44 @@ class HttpDownloadManager @Inject constructor(
     // 暂停的任务及其断点位置
     private val pausedPositions = ConcurrentHashMap<Long, Long>()
 
+    // 等待并发额度的任务参数（FIFO）
+    private val pendingQueue = ConcurrentLinkedQueue<PendingRequest>()
+
+    private data class PendingRequest(
+        val taskId: Long,
+        val url: String,
+        val savePath: String,
+        val fileName: String,
+        val resumePosition: Long
+    )
+
+    /** 用户设置的最大并行下载数（默认 3，范围 1~5） */
+    private suspend fun maxConcurrent(): Int =
+        runCatching {
+            userPreferencesRepository.userPreferencesFlow.first().maxConcurrentDownloads
+        }.getOrDefault(3).coerceIn(1, 5)
+
+    /** 是否"仅 Wi-Fi 下载"（用户设置，默认开启） */
+    private suspend fun onlyWifi(): Boolean =
+        runCatching {
+            userPreferencesRepository.userPreferencesFlow.first().autoDownloadOnWifi
+        }.getOrDefault(true)
+
+    /** 当前网络是否为 Wi-Fi（含以太网） */
+    private fun isOnWifi(): Boolean {
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+            ?: return true
+        val network = cm.activeNetwork ?: return false
+        val caps = cm.getNetworkCapabilities(network) ?: return false
+        return caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
+            caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
+    }
+
     init {
         // 监听 HTTP 下载进度并同步到 Repository
         observeHttpProgress()
+        // 网络恢复后自动拉起等待中的任务
+        registerNetworkCallback()
     }
 
     /**
@@ -107,8 +148,48 @@ class HttpDownloadManager @Inject constructor(
 
     /**
      * 内部下载方法
+     *
+     * 受用户设置的「最大并行下载数」约束：额度已满时进入 waiting 队列，
+     * 待有任务结束后自动出队启动（状态保持 PENDING，UI 显示"等待中"）。
      */
     private fun startDownloadInternal(
+        taskId: Long,
+        url: String,
+        savePath: String,
+        fileName: String,
+        resumePosition: Long
+    ) {
+        managerScope.launch {
+            // 仅 Wi-Fi 下载：当前是移动网络则排队，待网络恢复后自动启动
+            if (onlyWifi() && !isOnWifi()) {
+                Timber.i("HttpDownloadManager: 非 Wi-Fi 网络，任务等待中 - taskId=$taskId")
+                pendingQueue.add(PendingRequest(taskId, url, savePath, fileName, resumePosition))
+                downloadRepository.getTaskById(taskId)?.let { task ->
+                    downloadRepository.updateTask(
+                        task.copy(status = DownloadStatus.PENDING, updatedAt = Date())
+                    )
+                    refreshDownloadStates()
+                }
+                return@launch
+            }
+
+            if (activeHttpDownloads.size >= maxConcurrent()) {
+                Timber.i("HttpDownloadManager: 并发已满(${activeHttpDownloads.size})，任务入队 - taskId=$taskId")
+                pendingQueue.add(PendingRequest(taskId, url, savePath, fileName, resumePosition))
+                downloadRepository.getTaskById(taskId)?.let { task ->
+                    downloadRepository.updateTask(
+                        task.copy(status = DownloadStatus.PENDING, updatedAt = Date())
+                    )
+                    refreshDownloadStates()
+                }
+                return@launch
+            }
+            launchDownloadJob(taskId, url, savePath, fileName, resumePosition)
+        }
+    }
+
+    /** 实际启动一个下载协程 */
+    private fun launchDownloadJob(
         taskId: Long,
         url: String,
         savePath: String,
@@ -145,10 +226,49 @@ class HttpDownloadManager @Inject constructor(
                 onDownloadError(taskId, e.message ?: "未知错误")
             } finally {
                 activeHttpDownloads.remove(taskId)
+                // 任务结束，尝试启动队列中的下一个任务
+                drainPendingQueue()
             }
         }
 
         activeHttpDownloads[taskId] = job
+    }
+
+    /** 从等待队列取出下一个任务启动（并发额度与网络条件允许时） */
+    private fun drainPendingQueue() {
+        managerScope.launch {
+            if (onlyWifi() && !isOnWifi()) return@launch
+            while (activeHttpDownloads.size < maxConcurrent()) {
+                val next = pendingQueue.poll() ?: break
+                // 任务可能已被用户删除/暂停，跳过无效项
+                val task = downloadRepository.getTaskById(next.taskId)
+                if (task == null) continue
+                if (task.status == DownloadStatus.PAUSED) continue
+                launchDownloadJob(
+                    next.taskId, next.url, next.savePath, next.fileName, next.resumePosition
+                )
+            }
+        }
+    }
+
+    /**
+     * 注册网络变化监听：等待中的任务在 Wi-Fi 恢复后自动启动
+     */
+    private fun registerNetworkCallback() {
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+            ?: return
+        try {
+            cm.registerDefaultNetworkCallback(object : ConnectivityManager.NetworkCallback() {
+                override fun onAvailable(network: Network) {
+                    if (isOnWifi() && pendingQueue.isNotEmpty()) {
+                        Timber.i("HttpDownloadManager: 网络恢复，拉起等待队列")
+                        drainPendingQueue()
+                    }
+                }
+            })
+        } catch (e: Exception) {
+            Timber.e(e, "HttpDownloadManager: 注册网络回调失败")
+        }
     }
 
     /**
@@ -214,6 +334,9 @@ class HttpDownloadManager @Inject constructor(
      */
     fun pauseDownload(taskId: Long): Result<Unit> {
         return try {
+            // 排队中的任务直接出队，避免恢复后再被自动拉起
+            pendingQueue.removeIf { it.taskId == taskId }
+
             // 保存当前下载位置
             val progress = httpDownloader.getProgress(taskId)
             if (progress != null) {
@@ -282,24 +405,24 @@ class HttpDownloadManager @Inject constructor(
      */
     suspend fun deleteDownload(taskId: Long, deleteFiles: Boolean = false): Result<Unit> {
         return try {
-            // 停止下载
+            // 先取消活跃协程，再断开连接，避免已删除任务仍在后台写入
+            activeHttpDownloads.remove(taskId)?.cancel()
+            pendingQueue.removeIf { it.taskId == taskId }
             httpDownloader.stop(taskId, deleteFiles)
             pausedPositions.remove(taskId)
-            activeHttpDownloads.remove(taskId)
 
-            // 删除数据库记录
-            downloadRepository.deleteTaskByLongId(taskId)
-
-            // 如果需要删除文件
+            // 需要时删除数据文件（含分片进度残留）
             if (deleteFiles) {
                 val task = downloadRepository.getTaskById(taskId)
                 if (task != null) {
                     val file = File(task.savePath, task.fileName)
-                    if (file.exists()) {
-                        file.delete()
-                    }
+                    if (file.exists()) file.delete()
+                    File(task.savePath, "${task.fileName}.parts").delete()
                 }
             }
+
+            // 删除数据库记录
+            downloadRepository.deleteTaskByLongId(taskId)
 
             refreshDownloadStates()
             Timber.d("HttpDownloadManager: 删除下载任务 - taskId=$taskId, deleteFiles=$deleteFiles")
@@ -358,6 +481,7 @@ class HttpDownloadManager @Inject constructor(
         }
         activeHttpDownloads.clear()
         pausedPositions.clear()
+        pendingQueue.clear()
         managerScope.cancel()
     }
 

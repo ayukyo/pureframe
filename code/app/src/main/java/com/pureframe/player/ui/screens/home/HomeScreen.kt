@@ -1,9 +1,12 @@
 package com.pureframe.player.ui.screens.home
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import android.os.Environment
 import android.provider.MediaStore
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -84,14 +87,14 @@ fun HomeScreen(
         listState.animateScrollToItem(0)
     }
 
-    // 权限状态
+    // 是否需要"所有文件访问"（Android 11+ 分区存储下扫描全盘视频必需）
+    val needManageStorage = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
+
+    // 权限状态：API 30+ 用"所有文件访问"判断；低版本用 READ_EXTERNAL_STORAGE
     var hasStoragePermission by remember {
         mutableStateOf(
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                ContextCompat.checkSelfPermission(
-                    context,
-                    Manifest.permission.READ_MEDIA_VIDEO
-                ) == PackageManager.PERMISSION_GRANTED
+            if (needManageStorage) {
+                Environment.isExternalStorageManager()
             } else {
                 ContextCompat.checkSelfPermission(
                     context,
@@ -101,13 +104,24 @@ fun HomeScreen(
         )
     }
 
-    // 权限请求 launcher
+    // 普通运行时权限 launcher（API < 30）
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
         val allGranted = permissions.all { it.value }
         hasStoragePermission = allGranted
         if (allGranted) {
+            viewModel.scanVideos()
+        }
+    }
+
+    // "所有文件访问"设置页返回 launcher（API 30+）
+    val manageStorageLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) {
+        val granted = !needManageStorage || Environment.isExternalStorageManager()
+        hasStoragePermission = granted
+        if (granted) {
             viewModel.scanVideos()
         }
     }
@@ -242,17 +256,29 @@ fun HomeScreen(
                         onClick = {
                             if (hasStoragePermission) {
                                 viewModel.scanVideos()
+                            } else if (needManageStorage) {
+                                // API 30+：引导开启"所有文件访问"
+                                try {
+                                    val intent = Intent(
+                                        Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                                        "package:${context.packageName}".toUri()
+                                    )
+                                    manageStorageLauncher.launch(intent)
+                                } catch (e: Exception) {
+                                    // 部分机型无此页面，回退到通用应用设置
+                                    manageStorageLauncher.launch(
+                                        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                            "package:${context.packageName}".toUri())
+                                    )
+                                }
                             } else {
-                                // 请求权限
-                                val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                    arrayOf(Manifest.permission.READ_MEDIA_VIDEO)
-                                } else {
+                                // API < 30：请求运行时存储权限
+                                permissionLauncher.launch(
                                     arrayOf(
                                         Manifest.permission.READ_EXTERNAL_STORAGE,
                                         Manifest.permission.WRITE_EXTERNAL_STORAGE
                                     )
-                                }
-                                permissionLauncher.launch(permissions)
+                                )
                             }
                         },
                         containerColor = MaterialTheme.colorScheme.primaryContainer,
@@ -502,7 +528,7 @@ private fun EmptyVideosState(
 ) {
     val (message, subMessage, icon) = when {
         isSearching -> Triple("未找到视频", "尝试其他关键词搜索", Icons.Filled.Search)
-        listType == HomeViewModel.ListType.ALL -> Triple("暂无本地视频", "点击右下角刷新按钮扫描", Icons.Filled.VideoLibrary)
+        listType == HomeViewModel.ListType.ALL -> Triple("暂无本地视频", "需授权\"所有文件访问\"后，点击右下角刷新扫描", Icons.Filled.VideoLibrary)
         listType == HomeViewModel.ListType.FAVORITE -> Triple("暂无收藏", "点击视频右侧的心形图标收藏", Icons.Filled.FavoriteBorder)
         listType == HomeViewModel.ListType.RECENT -> Triple("暂无最近播放", "播放过的视频会显示在这里", Icons.Filled.History)
         else -> Triple("暂无视频", "", Icons.Filled.VideoLibrary)

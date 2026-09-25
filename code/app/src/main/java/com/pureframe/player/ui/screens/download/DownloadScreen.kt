@@ -148,14 +148,6 @@ fun DownloadScreen(
                     containerColor = Background
                 ),
                 actions = {
-                    // 篮选按钮
-                    IconButton(onClick = { /* 显示筛选菜单 */ }) {
-                        Icon(
-                            imageVector = Icons.Filled.FilterList,
-                            contentDescription = "筛选",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
                     // Torrent 文件选择按钮
                     IconButton(onClick = { openTorrentFilePicker() }) {
                         Icon(
@@ -231,10 +223,12 @@ fun DownloadScreen(
                             task = task,
                             onPlayClick = {
                                 // 播放边下边播或已完成文件
+                                //
+                                // 注意：这里必须传下载任务的 id（而不是 savePath/fileName 路径）。
+                                // StreamPlayer 路由参数是 downloadId，PlayerScreen 内部用
+                                // toLongOrNull() 解析；传路径会得到 0，导致边下边播永远打不开。
                                 if (task.canStream || task.isCompleted) {
-                                    // 使用 savePath + fileName 作为播放路径
-                                    val playPath = "${task.savePath}/${task.fileName}"
-                                    onPlayClick(playPath)
+                                    onPlayClick(task.id.toString())
                                 }
                             },
                             onPauseClick = { viewModel.pauseDownload(task) },

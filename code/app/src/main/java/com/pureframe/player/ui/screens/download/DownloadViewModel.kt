@@ -1,7 +1,10 @@
 package com.pureframe.player.ui.screens.download
 
+import android.content.Context
+import android.os.Environment
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dagger.hilt.android.qualifiers.ApplicationContext
 import com.pureframe.player.domain.model.DownloadTask
 import com.pureframe.player.domain.model.DownloadStatus
 import com.pureframe.player.domain.model.DownloadType
@@ -24,9 +27,13 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
+import java.io.File
 import javax.inject.Inject
 
 /**
@@ -41,6 +48,7 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class DownloadViewModel @Inject constructor(
+    @ApplicationContext private val appContext: Context,
     getAllDownloadsUseCase: GetAllDownloadsUseCase,
     getActiveDownloadsUseCase: GetActiveDownloadsUseCase,
     getDownloadsByStatusUseCase: GetDownloadsByStatusUseCase,
@@ -51,7 +59,8 @@ class DownloadViewModel @Inject constructor(
     private val clearCompletedDownloadsUseCase: ClearCompletedDownloadsUseCase,
     private val getActiveDownloadCountUseCase: GetActiveDownloadCountUseCase,
     private val torrentManager: TorrentManager,
-    private val httpDownloadManager: HttpDownloadManager
+    private val httpDownloadManager: HttpDownloadManager,
+    private val userPreferencesRepository: com.pureframe.player.data.preferences.UserPreferencesRepository
 ) : ViewModel() {
 
     // 列表类型
@@ -109,6 +118,9 @@ class DownloadViewModel @Inject constructor(
     // 当前正在准备的任务 ID（用于在 metadata 到达前取消）
     private var _preparingTaskId: Long? = null
 
+    // metadata 超时检测任务（用户确认/取消后需要取消，否则会弹出假的超时错误）
+    private var metadataTimeoutJob: kotlinx.coroutines.Job? = null
+
     init {
         // 初始化时获取活跃下载数量
         viewModelScope.launch {
@@ -159,16 +171,19 @@ class DownloadViewModel @Inject constructor(
             _uiState.update { it.copy(isAddingTask = true, errorMessage = null) }
             try {
                 val extractedTitle = title ?: extractTitleFromMagnet(url)
-                val savePath = "/storage/emulated/0/PureFrame/downloads"
+                val savePath = resolveDownloadDir()
                 Timber.d("DownloadViewModel: 开始准备下载任务 - title=$extractedTitle")
 
-                // 使用 torrentManager.prepareMagnetLink 仅添加到引擎获取 metadata
-                // 不创建正式任务，不显示在列表中
-                val result = torrentManager.prepareMagnetLink(
-                    magnetLink = url,
-                    savePath = savePath,
-                    name = extractedTitle
-                )
+                // 引擎侧会在主线程阻塞（内部 Thread.sleep 等待 metadata），必须切到 IO
+                val result = withContext(Dispatchers.IO) {
+                    // 使用 torrentManager.prepareMagnetLink 仅添加到引擎获取 metadata
+                    // 不创建正式任务，不显示在列表中
+                    torrentManager.prepareMagnetLink(
+                        magnetLink = url,
+                        savePath = savePath,
+                        name = extractedTitle
+                    )
+                }
 
                 result.fold(
                     onSuccess = { taskId ->
@@ -205,7 +220,7 @@ class DownloadViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isAddingTask = true, errorMessage = null) }
             try {
-                val savePath = "/storage/emulated/0/PureFrame/downloads"
+                val savePath = resolveDownloadDir()
                 val result = httpDownloadManager.createDownloadTask(
                     url = url,
                     savePath = savePath,
@@ -215,6 +230,8 @@ class DownloadViewModel @Inject constructor(
                 result.fold(
                     onSuccess = { taskId ->
                         Timber.d("DownloadViewModel: HTTP 下载任务创建成功 - taskId=$taskId")
+                        // 任务已创建，关闭"正在获取文件列表"弹窗（否则会永久卡住）
+                        _uiState.update { it.copy(isAddingTask = false) }
                     },
                     onFailure = { e ->
                         Timber.e(e, "DownloadViewModel: HTTP 下载任务创建失败")
@@ -233,8 +250,15 @@ class DownloadViewModel @Inject constructor(
      */
     @Suppress("UNUSED_PARAMETER")
     private fun startMetadataTimeout(taskId: Long, magnetLink: String) {
-        viewModelScope.launch {
+        // 取消上一个超时任务，避免旧任务误判
+        metadataTimeoutJob?.cancel()
+        metadataTimeoutJob = viewModelScope.launch {
             delay(30_000) // 30秒超时
+            // 用户已经确认或取消过这个任务，不再当作超时处理
+            if (_preparingTaskId != taskId) {
+                Timber.d("DownloadViewModel: metadata 超时检查跳过（任务已被处理）- taskId=$taskId")
+                return@launch
+            }
             // 检查是否仍然没有收到 metadata
             val pending = _pendingMetadata.value
             if (pending == null || pending.taskId.toLongOrNull() != taskId) {
@@ -247,10 +271,8 @@ class DownloadViewModel @Inject constructor(
                 }
                 // 清理临时任务
                 _pendingMetadata.value = null
-                if (_preparingTaskId == taskId) {
-                    _preparingTaskId = null
-                    torrentManager.cancelFileSelection(taskId)
-                }
+                _preparingTaskId = null
+                torrentManager.cancelFileSelection(taskId)
             }
         }
     }
@@ -263,6 +285,9 @@ class DownloadViewModel @Inject constructor(
     fun confirmFileSelection(selectedIndices: Set<Int>) {
         val metadata = _pendingMetadata.value
         Timber.d("DownloadViewModel: confirmFileSelection called, selectedIndices=$selectedIndices, metadata=$metadata")
+        // 用户已处理，取消超时检测
+        metadataTimeoutJob?.cancel()
+        metadataTimeoutJob = null
         if (metadata == null) {
             Timber.d("DownloadViewModel: pendingMetadata is null, doing nothing")
             _uiState.update { it.copy(isAddingTask = false) }
@@ -278,11 +303,16 @@ class DownloadViewModel @Inject constructor(
         }
 
         Timber.d("DownloadViewModel: 确认文件选择 - taskId=$taskId, 选择 ${selectedIndices.size} 个文件")
+        // 只勾选部分文件时，引擎上报的总量仍是整种子大小，
+        // 这里把"已选文件大小之和"算出并传给 Manager 校准，否则进度永远到不了 100%
+        val selectedTotalBytes = metadata.files
+            .filter { it.index in selectedIndices }
+            .sumOf { it.size }
         _pendingMetadata.value = null
         _preparingTaskId = null
 
         viewModelScope.launch {
-            torrentManager.confirmFileSelectionAndStart(taskId, selectedIndices)
+            torrentManager.confirmFileSelectionAndStart(taskId, selectedIndices, selectedTotalBytes)
             _uiState.update { it.copy(isAddingTask = false) }
         }
     }
@@ -296,11 +326,14 @@ class DownloadViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isAddingTask = true, errorMessage = null) }
             try {
-                val savePath = "/storage/emulated/0/PureFrame/downloads"
-                val result = torrentManager.createDownloadTaskFromFile(
-                    torrentFile = java.io.File(torrentFilePath),
-                    savePath = savePath
-                )
+                val savePath = resolveDownloadDir()
+                // 读取 torrent 文件并交给引擎，属 IO 操作
+                val result = withContext(Dispatchers.IO) {
+                    torrentManager.createDownloadTaskFromFile(
+                        torrentFile = java.io.File(torrentFilePath),
+                        savePath = savePath
+                    )
+                }
 
                 result.fold(
                     onSuccess = { taskId ->
@@ -325,6 +358,11 @@ class DownloadViewModel @Inject constructor(
     fun cancelFileSelection() {
         val metadata = _pendingMetadata.value
         Timber.d("DownloadViewModel: cancelFileSelection called, pendingMetadata=$metadata, preparingTaskId=$_preparingTaskId")
+
+        // 用户已处理，取消超时检测
+        metadataTimeoutJob?.cancel()
+        metadataTimeoutJob = null
+        _preparingTaskId = null
 
         // 标记加载结束
         _uiState.update { it.copy(isAddingTask = false) }
@@ -366,9 +404,11 @@ class DownloadViewModel @Inject constructor(
      */
     fun startDownload(task: DownloadTask) {
         viewModelScope.launch {
-            when (task.downloadType) {
-                DownloadType.BT -> torrentManager.resumeDownload(task.id)
-                DownloadType.HTTP -> httpDownloadManager.resumeDownload(task.id)
+            withContext(Dispatchers.IO) {
+                when (task.downloadType) {
+                    DownloadType.BT -> torrentManager.resumeDownload(task.id)
+                    DownloadType.HTTP -> httpDownloadManager.resumeDownload(task.id)
+                }
             }
         }
     }
@@ -380,15 +420,24 @@ class DownloadViewModel @Inject constructor(
      */
     fun pauseDownload(task: DownloadTask) {
         viewModelScope.launch {
-            when (task.downloadType) {
-                DownloadType.BT -> torrentManager.pauseDownload(task.id)
-                DownloadType.HTTP -> httpDownloadManager.pauseDownload(task.id)
+            withContext(Dispatchers.IO) {
+                when (task.downloadType) {
+                    DownloadType.BT -> torrentManager.pauseDownload(task.id)
+                    DownloadType.HTTP -> httpDownloadManager.pauseDownload(task.id)
+                }
             }
         }
     }
 
     /**
      * 删除下载任务
+     *
+     * 必须按下载类型分流到各自的 Manager：
+     *  - Manager 会先取消正在跑的下载协程 / 断开连接，再删记录
+     *  - 只有 Manager 知道真正的落盘位置（BT 在种子子目录里），能正确删文件
+     *
+     * 之前统一走 DeleteDownloadUseCase（只删数据库记录），导致
+     * 1) "删除任务和文件" 从不真正删文件  2) 删除进行中的任务后协程仍在后台写入
      *
      * @param task 下载任务对象
      * @param deleteFiles 是否删除已下载文件
@@ -397,7 +446,14 @@ class DownloadViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isDeleting = true) }
             try {
-                deleteDownloadUseCase(DeleteDownloadUseCase.Params(task, deleteFiles))
+                withContext(Dispatchers.IO) {
+                    when (task.downloadType) {
+                        DownloadType.BT -> torrentManager.deleteDownload(task.id, deleteFiles)
+                        DownloadType.HTTP -> httpDownloadManager.deleteDownload(task.id, deleteFiles)
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "DownloadViewModel: 删除下载任务失败 - taskId=${task.id}")
             } finally {
                 _uiState.update { it.copy(isDeleting = false) }
             }
@@ -437,6 +493,39 @@ class DownloadViewModel @Inject constructor(
      */
     fun clearError() {
         _uiState.update { it.copy(errorMessage = null) }
+    }
+
+    /**
+     * 解析可用的下载保存目录
+     *
+     * 原先硬编码 `/storage/emulated/0/PureFrame/downloads`：
+     * 在 Android 11（targetSdk 30）分区存储下，应用无权在 /storage/emulated/0
+     * 自建顶层目录，mkdirs() 会失败，导致下载必然报错。
+     * 这里改为应用专属外部目录，无需任何存储权限且一定可写。
+     */
+    private suspend fun resolveDownloadDir(): String {
+        // 1) 用户在设置里指定的目录优先（前提是确实可写）
+        val configured = runCatching {
+            userPreferencesRepository.userPreferencesFlow.first().downloadPath
+        }.getOrNull()
+        if (!configured.isNullOrBlank()) {
+            val dir = File(configured)
+            val usable = (dir.exists() && dir.isDirectory && dir.canWrite()) || dir.mkdirs()
+            if (usable) {
+                return dir.absolutePath
+            }
+            Timber.w("DownloadViewModel: 设置的下载目录不可用，回退到应用目录 - $configured")
+        }
+
+        // 2) 回退到应用专属外部目录
+        val base = appContext.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
+            ?: appContext.getExternalFilesDir(null)
+            ?: appContext.filesDir
+        val dir = File(base, "PureFrame/downloads")
+        if (!dir.exists()) {
+            dir.mkdirs()
+        }
+        return dir.absolutePath
     }
 
     /**

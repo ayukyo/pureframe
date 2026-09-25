@@ -160,8 +160,8 @@ public class LibTorrentWrapper {
             sessionManager.startDht();
             Log.i("LibTorrentWrapper", "DHT 已启动");
 
-            // 打印 SessionManager 的所有公共方法（调试用）
-            printSessionManagerMethods();
+            // 调试代码已移除：printSessionManagerMethods() 会在每次启动
+            // 打印上百行 SessionManager 反射方法列表，严重拖慢启动并污染日志
 
             // 使用简单的轮询来更新状态
             startStatusPolling();
@@ -207,17 +207,8 @@ public class LibTorrentWrapper {
             "dhttracker.saravideo.org:6881",
             "dhttracker.sonata-app.com:6881",
             "dhttracker.tank-s03.gntx.net:6881",
-            "dhttracker.torrent.、愛:6881",
             "dht.udp.cn:6881",
-            "dht.udp.work:6881",
-            // 中国常用节点
-            "dht.4 trackers.com:6881",
-            "dht.5 trackers.com:6881",
-            "dht.6 trackers.com:6881",
-            "dht.7 trackers.com:6881",
-            "dht.8 trackers.com:6881",
-            "dht.9 trackers.com:6881",
-            "dht.10 trackers.com:6881"
+            "dht.udp.work:6881"
         };
 
         try {
@@ -258,22 +249,9 @@ public class LibTorrentWrapper {
             Log.e("LibTorrentWrapper", "addDhtNodes 失败", e);
         }
 
-        // 同时使用 announce 来加快 peer 发现
-        try {
-            Method dhtAnnounceMethod = SessionManager.class.getMethod("dhtAnnounce", String.class, int.class);
-            for (String node : dhtNodes) {
-                try {
-                    String[] parts = node.split(":");
-                    if (parts.length == 2) {
-                        dhtAnnounceMethod.invoke(sessionManager, parts[0], Integer.parseInt(parts[1]));
-                    }
-                } catch (Exception e) {
-                    // 忽略
-                }
-            }
-        } catch (Exception e) {
-            Log.w("LibTorrentWrapper", "dhtAnnounce 方法不可用", e);
-        }
+        // 已移除错误的 dhtAnnounce 调用：
+        // dhtAnnounce 的参数是 (infoHash, port)，用来宣告某个种子，
+        // 这里把 DHT 节点的主机名当成 infoHash 传进去，语义完全不对且无效。
     }
 
     private void configureSession() {
@@ -456,8 +434,10 @@ public class LibTorrentWrapper {
             // 设置 cache 大小（单位 KB）
             try {
                 Method setCacheSize = SessionManager.class.getMethod("setCacheSize", int.class);
-                setCacheSize.invoke(sessionManager, 1024 * 1024); // 1GB cache
-                Log.i("LibTorrentWrapper", "Cache 大小已设置为 1GB");
+                // 注意单位是 16KiB 的块：1024*1024 块 = 16GB，手机上会直接 OOM。
+                // 2048 块 ≈ 32MB，是移动端合理的取值。
+                setCacheSize.invoke(sessionManager, 2048);
+                Log.i("LibTorrentWrapper", "Cache 大小已设置为 2048 块 (约 32MB)");
             } catch (Exception e) {
                 Log.w("LibTorrentWrapper", "setCacheSize 不存在", e);
             }

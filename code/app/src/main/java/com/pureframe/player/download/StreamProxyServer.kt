@@ -36,11 +36,18 @@ class StreamProxyServer @Inject constructor(
     
     // 代理服务器端口
     private var serverSocket: ServerSocket? = null
+    // 监听线程与调用方在不同线程访问，必须可见
+    @Volatile
     private var isRunning = false
+    @Volatile
     private var serverPort = 0
     
     // 当前活跃的流
     private val activeStreams = ConcurrentHashMap<String, StreamSession>()
+
+    // 监听 accept 循环的协程，停止时只取消它而不取消 serverScope，
+    // 否则 stop() 之后再 start() 会因为 scope 已取消而再也起不来
+    private var acceptJob: Job? = null
     
     // 服务器状态
     private val _serverStatus = MutableStateFlow(ServerStatus.STOPPED)
@@ -66,7 +73,7 @@ class StreamProxyServer @Inject constructor(
             _serverStatus.value = ServerStatus.RUNNING
             
             // 启动监听协程
-            serverScope.launch {
+            acceptJob = serverScope.launch {
                 listenForConnections()
             }
             
@@ -479,9 +486,11 @@ class StreamProxyServer @Inject constructor(
             Timber.e(e, "StreamProxyServer: 关闭服务器异常")
         }
         serverSocket = null
-        
-        serverScope.cancel()
-        
+
+        // 只取消 accept 循环，保留 serverScope，保证可以再次 start()
+        acceptJob?.cancel()
+        acceptJob = null
+
         Timber.i("StreamProxyServer: 已停止")
     }
     

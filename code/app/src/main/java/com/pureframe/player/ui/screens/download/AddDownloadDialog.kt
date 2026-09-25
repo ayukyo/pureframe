@@ -49,6 +49,9 @@ fun AddDownloadDialog(
     var urlInput by remember(initialUrl) { mutableStateOf(TextFieldValue(initialUrl)) }
     var title by remember(initialUrl) { mutableStateOf(TextFieldValue("")) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    // 标题是否为自动填充（用户未手动修改过）。用于在继续输入 URL 时持续刷新标题，
+    // 否则会停在首个能被解析的中间态（如 ...1MB.），导致扩展名被吞。
+    var titleAutoFilled by remember { mutableStateOf(false) }
 
     // 检测链接类型
     fun detectLinkType(link: String): LinkType {
@@ -140,8 +143,10 @@ fun AddDownloadDialog(
                         LinkType.HTTP -> extractTitleFromUrl(it.text)
                         else -> null
                     }
-                    if (extracted != null && title.text.isEmpty()) {
+                    // 仅在用户没有手动改过标题时自动跟随，持续刷新为完整文件名
+                    if (extracted != null && (title.text.isEmpty() || titleAutoFilled)) {
                         title = TextFieldValue(extracted)
+                        titleAutoFilled = true
                     }
                 },
                 label = { Text(inputLabel) },
@@ -158,7 +163,11 @@ fun AddDownloadDialog(
             // 标题输入（可选）
             OutlinedTextField(
                 value = title,
-                onValueChange = { title = it },
+                onValueChange = {
+                    title = it
+                    // 用户手动编辑过标题，之后不再自动覆盖
+                    titleAutoFilled = false
+                },
                 label = { Text("任务标题（可选）") },
                 placeholder = { Text("将自动提取") },
                 singleLine = true,

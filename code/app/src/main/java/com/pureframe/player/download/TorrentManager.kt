@@ -144,10 +144,26 @@ class TorrentManager @Inject constructor(
             }
 
             // 更新任务字段
+            //
+            // 总大小以"已校准值"为准：用户只勾选部分文件时，我们在
+            // selectFilesAndStart 里把 totalBytes 改成了已选文件之和；
+            // 但引擎每次上报的 progress.totalBytes 仍是整种子大小，
+            // 若直接覆盖会让进度条永远到不了 100%。所以当已有值更小且为正时保留它。
+            val calibratedTotal = when {
+                existingTask.totalSize > 0 &&
+                    progress.totalBytes > existingTask.totalSize -> existingTask.totalSize
+                else -> progress.totalBytes
+            }
+
             val updatedTask = existingTask.copy(
                 progress = progress.progress,
-                downloadedSize = progress.downloadedBytes,
-                totalSize = progress.totalBytes,
+                // 引擎的 totalDone 可能包含未勾选文件，钳一下避免出现 >100% 的进度
+                downloadedSize = if (calibratedTotal > 0) {
+                    progress.downloadedBytes.coerceAtMost(calibratedTotal)
+                } else {
+                    progress.downloadedBytes
+                },
+                totalSize = calibratedTotal,
                 speed = progress.downloadSpeed,
                 status = status,
                 updatedAt = Date()
@@ -280,22 +296,10 @@ class TorrentManager @Inject constructor(
      */
     suspend fun confirmFileSelectionAndStart(
         taskId: Long,
-        selectedFileIndices: Set<Int>
+        selectedFileIndices: Set<Int>,
+        selectedTotalBytes: Long = 0L
     ) {
-        val taskIdStr = taskId.toString()
-        try {
-            // 设置选中的文件并开始下载
-            torrentEngine.setDownloadFiles(taskIdStr, selectedFileIndices)
-            torrentEngine.startDownload(taskIdStr)
-
-            // 更新任务状态为 DOWNLOADING
-            downloadRepository.updateTaskStatus(taskIdStr, DownloadStatus.DOWNLOADING)
-            refreshDownloadStates()
-
-            Timber.i("TorrentManager: 文件选择确认，开始下载 - taskId=$taskId, 选择 ${selectedFileIndices.size} 个文件")
-        } catch (e: Exception) {
-            Timber.e(e, "TorrentManager: 确认文件选择失败 - taskId=$taskId")
-        }
+        selectFilesAndStart(taskId, selectedFileIndices, selectedTotalBytes)
     }
 
     /**
@@ -429,22 +433,112 @@ class TorrentManager @Inject constructor(
     
     /**
      * 删除下载任务
-     * 
+     *
      * @param taskId 任务 ID
      * @param deleteFiles 是否删除已下载文件
      */
     suspend fun deleteDownload(taskId: Long, deleteFiles: Boolean = false): Result<Unit> {
         return try {
             val taskIdStr = taskId.toString()
-            torrentEngine.remove(taskIdStr, deleteFiles)
+
+            // 必须在删除 DB 记录 / 从引擎移除之前取任务信息并定位文件，
+            // 否则拿不到 savePath，且引擎移除后查不到落盘路径
+            val task = downloadRepository.getTaskById(taskId)
+            val filesToDelete = if (deleteFiles && task != null) {
+                collectTaskFiles(task)
+            } else {
+                emptyList()
+            }
+
+            // 从引擎移除（不依赖 SWIG 的 delete_files flag，文件删除由下面自己完成）
+            torrentEngine.remove(taskIdStr, false)
             downloadRepository.deleteTaskByLongId(taskId)
             refreshDownloadStates()
-            Timber.d("TorrentManager: 删除下载任务 - $taskId, deleteFiles=$deleteFiles")
+
+            // 删除磁盘文件
+            filesToDelete.forEach { target ->
+                runCatching {
+                    if (target.isDirectory) {
+                        target.deleteRecursively()
+                        Timber.i("TorrentManager: 已删除种子目录 - ${target.absolutePath}")
+                    } else {
+                        target.delete()
+                        File(target.absolutePath + ".parts").delete()
+                        Timber.i("TorrentManager: 已删除文件 - ${target.absolutePath}")
+                    }
+                }.onFailure { Timber.w(it, "TorrentManager: 删除文件失败 - ${target.absolutePath}") }
+            }
+
+            Timber.d("TorrentManager: 删除下载任务 - $taskId, deleteFiles=$deleteFiles, 清理 ${filesToDelete.size} 项")
             Result.success(Unit)
         } catch (e: Exception) {
             Timber.e(e, "TorrentManager: 删除下载任务失败 - $taskId")
             Result.failure(e)
         }
+    }
+
+    /**
+     * 计算某个 BT 任务删除时应清理哪些文件/目录。
+     *
+     * BT 的落盘结构有两种：
+     *  - 多文件种子：savePath/<种子名>/ 下放各文件 → 整目录都归这个任务，可递归删
+     *  - 单文件种子：savePath/xxx.mp4            → 只删文件本身，绝不能删 savePath
+     *
+     * 注意不能直接用任务标题拼目录名：库里存的是磁力链接 dn（下划线写法，
+     * 如 Big_Buck_Bunny），而 libtorrent 用的是种子真实名（Big Buck Bunny），
+     * 两者并不一致。所以按"最大视频文件所在的父目录"来定位。
+     */
+    private fun collectTaskFiles(task: DownloadTask): List<File> {
+        return try {
+            val base = File(task.savePath)
+            if (task.downloadType != DownloadType.BT) {
+                // HTTP 直链：固定的 savePath/fileName
+                val f = File(base, task.fileName)
+                return if (f.exists()) listOf(f) else emptyList()
+            }
+
+            val target = resolveLargestVideo(task) ?: return emptyList()
+            val parent = target.parentFile
+            when {
+                // 在独立子目录里 → 整个种子目录一起删
+                parent != null &&
+                    parent.absolutePath != base.absolutePath &&
+                    parent.absolutePath.startsWith(base.absolutePath) -> listOf(parent)
+                // 直接躺在 savePath 根下 → 只删该文件
+                else -> listOf(target)
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "TorrentManager: 计算待删除文件失败 - taskId=${task.id}")
+            emptyList()
+        }
+    }
+
+    /**
+     * 找到该任务落盘的最大视频文件（与 StreamPlaybackHelper 的定位策略一致）。
+     *
+     * 注意必须在 `torrentEngine.remove()` 之前调用：一旦从 session 移除，
+     * 引擎侧就查不到路径了，只剩目录扫描这一条路。
+     */
+    private fun resolveLargestVideo(task: DownloadTask): File? {
+        val base = File(task.savePath)
+        val exts = setOf("mp4", "mkv", "avi", "mov", "flv", "ts", "wmv", "webm", "m4v", "mpg", "mpeg", "3gp")
+        fun isVideo(f: File) = f.isFile && f.extension.lowercase() in exts
+
+        // 引擎还在时优先用引擎路径
+        getStreamableInfo(task.id)?.let { info ->
+            val f = File(base, info.largestFilePath)
+            if (isVideo(f)) return f
+        }
+
+        // 扫描子目录
+        val subs = base.listFiles { f -> f.isDirectory }?.flatMap { dir ->
+            dir.listFiles { f -> isVideo(f) }?.toList().orEmpty()
+        }.orEmpty()
+        if (subs.isNotEmpty()) return subs.maxByOrNull { it.length() }
+
+        // 根目录兜底
+        val roots = base.listFiles { f -> isVideo(f) }?.toList().orEmpty()
+        return roots.maxByOrNull { it.length() }
     }
     
     /**
@@ -473,17 +567,28 @@ class TorrentManager @Inject constructor(
      *
      * @param taskId 任务 ID
      * @param fileIndices 要下载的文件索引集合
+     * @param selectedTotalBytes 已选文件大小之和（可选）。只勾选部分文件时用它
+     *        覆盖整种子大小，否则进度会按整种子计算而永远到不了 100%
      */
-    suspend fun selectFilesAndStart(taskId: Long, fileIndices: Set<Int>) {
+    suspend fun selectFilesAndStart(
+        taskId: Long,
+        fileIndices: Set<Int>,
+        selectedTotalBytes: Long = 0L
+    ) {
         val taskIdStr = taskId.toString()
         torrentEngine.setDownloadFiles(taskIdStr, fileIndices)
         torrentEngine.startDownload(taskIdStr)
+
+        // 校准总大小（必须在 updateTaskStatus 之前，避免一次多余的进度回退）
+        if (selectedTotalBytes > 0) {
+            downloadRepository.updateTotalBytes(taskId, selectedTotalBytes)
+        }
 
         // 更新任务状态为下载中
         downloadRepository.updateTaskStatus(taskIdStr, DownloadStatus.DOWNLOADING)
         refreshDownloadStates()
 
-        Timber.d("TorrentManager: 已选择 ${fileIndices.size} 个文件并开始下载 - $taskId")
+        Timber.d("TorrentManager: 已选择 ${fileIndices.size} 个文件并开始下载 - $taskId, 总大小=${selectedTotalBytes}B")
     }
 
     /**

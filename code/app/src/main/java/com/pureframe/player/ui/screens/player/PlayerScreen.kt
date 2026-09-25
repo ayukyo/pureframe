@@ -98,6 +98,19 @@ fun PlayerScreen(
     var showControls by remember { mutableStateOf(true) }
     // 控制栏显示触发器（用于重置自动隐藏计时器）
     var controlsTrigger by remember { mutableStateOf(0L) }
+
+    // 播放中保持屏幕常亮（来自设置项，默认开启）
+    val keepScreenOn by viewModel.keepScreenOn.collectAsStateWithLifecycle()
+    if (activity != null) {
+        DisposableEffect(keepScreenOn) {
+            if (keepScreenOn) {
+                activity.window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            }
+            onDispose {
+                activity.window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            }
+        }
+    }
     
     // 初始化播放器
     LaunchedEffect(videoIdLong, downloadIdLong, isStreamPlayback) {
@@ -134,7 +147,12 @@ fun PlayerScreen(
         onDispose {
             viewModel.saveProgress()
             // 恢复正常屏幕模式
-            activity?.let { setFullscreenMode(it, false) }
+            activity?.let {
+                setFullscreenMode(it, false)
+                // 归还系统亮度与屏幕方向，避免影响其他页面
+                it.resetWindowBrightness()
+                it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+            }
         }
     }
     
@@ -164,6 +182,19 @@ fun PlayerScreen(
                     player = viewModel.getPlayer()
                     useController = false  // 使用自定义控制器
                     setBackgroundColor(android.graphics.Color.BLACK)
+                    // 字幕样式：半透明淡底色，避免纯黑底完全遮盖视频画面
+                    subtitleView?.apply {
+                        setStyle(
+                            androidx.media3.ui.CaptionStyleCompat(
+                                /* foregroundColor = */ android.graphics.Color.WHITE,
+                                /* backgroundColor = */ (0x66000000).toInt(), // 40% 透明黑底
+                                /* windowColor = */ android.graphics.Color.TRANSPARENT,
+                                /* edgeType = */ androidx.media3.ui.CaptionStyleCompat.EDGE_TYPE_OUTLINE,
+                                /* edgeColor = */ (0x99000000).toInt(), // 60% 黑色描边增强可读性
+                                /* typeface = */ null
+                            )
+                        )
+                    }
                 }
             },
             update = { playerView ->
@@ -176,7 +207,7 @@ fun PlayerScreen(
             modifier = Modifier.fillMaxSize()
         )
         
-        // 水平滑动进度控制区域
+        // 水平滑动进度控制区域（中间 40% 宽）
         SeekGestureOverlay(
             currentPosition = currentPosition,
             duration = duration,
@@ -186,33 +217,42 @@ fun PlayerScreen(
             onSeekStart = { showControls = false },
             modifier = Modifier
                 .align(Alignment.Center)
-                .fillMaxWidth(0.7f)
-                .fillMaxHeight(0.5f)
+                .fillMaxWidth(0.4f)
+                .fillMaxHeight(0.6f)
         )
 
-        // 左侧亮度控制区域
+        // 左侧亮度控制区域（左 30% 宽，扩大热区，避免划不到）
         BrightnessGestureArea(
-            onBrightnessChange = { viewModel.setBrightness(it) },
+            onBrightnessChange = { value ->
+                viewModel.setBrightness(value)
+                // 真正写入系统窗口亮度，否则手势只改了状态、屏幕不会变
+                activity?.applyWindowBrightness(value)
+            },
             modifier = Modifier
                 .align(Alignment.CenterStart)
-                .fillMaxHeight(0.6f)
-                .width(100.dp)
+                .fillMaxHeight(0.8f)
+                .fillMaxWidth(0.3f)
         )
 
-        // 右侧音量控制区域
+        // 右侧音量控制区域（右 30% 宽，扩大热区，避免划不到）
         VolumeGestureArea(
             onVolumeChange = { viewModel.setVolume(it) },
             modifier = Modifier
                 .align(Alignment.CenterEnd)
-                .fillMaxHeight(0.6f)
-                .width(100.dp)
+                .fillMaxHeight(0.8f)
+                .fillMaxWidth(0.3f)
         )
         
-        // 手势指示器
+        // 手势指示器：靠边显示，避免遮挡画面中心
         gestureIndicator?.let { indicator ->
+            val alignment = when (indicator) {
+                is GestureIndicator.Brightness -> Alignment.CenterStart
+                is GestureIndicator.Volume -> Alignment.CenterEnd
+                is GestureIndicator.Seek -> Alignment.TopCenter
+            }
             GestureIndicatorOverlay(
                 indicator = indicator,
-                modifier = Modifier.align(Alignment.Center)
+                modifier = Modifier.align(alignment)
             )
         }
         
@@ -384,27 +424,32 @@ fun GestureIndicatorOverlay(
             Triple(Icons.Filled.FastForward, 1f, seekText)
         }
     }
-    
+
+    val isSeek = indicator is GestureIndicator.Seek
+    // 侧边 24dp / 顶部 48dp 内边距：贴边显示且避开系统栏
+    val outerPadding = if (isSeek) PaddingValues(top = 48.dp, start = 24.dp, end = 24.dp)
+                       else PaddingValues(horizontal = 24.dp)
+
     Surface(
         shape = RoundedCornerShape(8.dp),
-        color = Color.Black.copy(alpha = 0.7f),
-        modifier = modifier.padding(16.dp)
+        color = Color.Black.copy(alpha = 0.55f),
+        modifier = modifier.padding(outerPadding)
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = label,
                 tint = Color.White,
-                modifier = Modifier.size(32.dp)
+                modifier = Modifier.size(24.dp)
             )
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(6.dp))
             Text(
-                text = "${(value * 100).toInt()}%",
+                text = if (isSeek) label else "${(value * 100).toInt()}%",
                 color = Color.White,
-                style = MaterialTheme.typography.bodyLarge
+                style = MaterialTheme.typography.bodyMedium
             )
         }
     }
@@ -461,13 +506,13 @@ fun SeekGestureOverlay(
         if (showSeekIndicator && seekIndicatorText.isNotEmpty()) {
             Surface(
                 shape = RoundedCornerShape(8.dp),
-                color = Color.Black.copy(alpha = 0.7f),
-                modifier = Modifier.align(Alignment.Center).padding(16.dp)
+                color = Color.Black.copy(alpha = 0.55f),
+                modifier = Modifier.align(Alignment.TopCenter).padding(top = 48.dp)
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.padding(16.dp)
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)
                 ) {
                     Icon(
                         imageVector = if (accumulatedDelta > 0) Icons.Filled.FastForward 
@@ -566,6 +611,24 @@ fun ErrorOverlay(
 }
 
 /**
+ * 将亮度值写入当前窗口（0f~1f，-1f 表示跟随系统）
+ */
+private fun Activity.applyWindowBrightness(value: Float) {
+    val lp = window.attributes
+    lp.screenBrightness = value.coerceIn(0.01f, 1f)
+    window.attributes = lp
+}
+
+/**
+ * 退出播放页时恢复系统亮度，避免把用户在播放器里调暗的亮度带回其他页面
+ */
+private fun Activity.resetWindowBrightness() {
+    val lp = window.attributes
+    lp.screenBrightness = -1f
+    window.attributes = lp
+}
+
+/**
  * 设置全屏模式
  */
 fun setFullscreenMode(activity: Activity, fullscreen: Boolean) {
@@ -573,14 +636,14 @@ fun setFullscreenMode(activity: Activity, fullscreen: Boolean) {
     val controller = WindowInsetsControllerCompat(window, window.decorView)
     
     if (fullscreen) {
-        // 全屏模式：隐藏系统栏，锁定横屏
+        // 全屏模式：隐藏系统栏，跟随传感器横屏（不再硬锁死 LANDSCAPE）
         controller.hide(WindowInsetsCompat.Type.systemBars())
         controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-        activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+        activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
     } else {
-        // 正常模式：显示系统栏，恢复竖屏
+        // 正常模式：显示系统栏，把方向交还给系统/用户
         controller.show(WindowInsetsCompat.Type.systemBars())
-        activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
     }
     
     // 设置沉浸式模式

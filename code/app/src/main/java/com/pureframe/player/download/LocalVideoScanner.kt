@@ -104,6 +104,8 @@ class LocalVideoScanner @Inject constructor(
                 sortOrder
             )
 
+            Timber.i("LocalVideoScanner[DIAG]: collection=$collection, cursor=${cursor != null}, count=${cursor?.count}")
+
             cursor?.use {
                 val idColumn = it.getColumnIndexOrThrow(MediaStore.Video.Media._ID)
                 val nameColumn = it.getColumnIndexOrThrow(MediaStore.Video.Media.DISPLAY_NAME)
@@ -128,12 +130,17 @@ class LocalVideoScanner @Inject constructor(
 
                     // 检查文件是否存在
                     val file = File(path)
-                    if (!file.exists()) {
+                    val exists = file.exists()
+                    val canRead = file.canRead()
+                    val supported = isVideoFormatSupported(path)
+                    Timber.i("LocalVideoScanner[DIAG]: name=$name path=$path exists=$exists canRead=$canRead supported=$supported")
+
+                    if (!exists) {
                         continue
                     }
 
                     // 过滤不支持的格式
-                    if (!isVideoFormatSupported(path)) {
+                    if (!supported) {
                         continue
                     }
 

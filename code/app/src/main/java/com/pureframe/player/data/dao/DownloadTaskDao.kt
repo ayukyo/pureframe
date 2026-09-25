@@ -35,7 +35,7 @@ interface DownloadTaskDao {
     @Query("UPDATE download_tasks SET status = :status, downloadedBytes = :bytes, downloadSpeed = :speed WHERE id = :id")
     suspend fun updateProgress(id: Long, status: String, bytes: Long, speed: Long)
     
-    @Query("UPDATE download_tasks SET status = 'completed', completedAt = :time, totalBytes = :total WHERE id = :id")
+    @Query("UPDATE download_tasks SET status = 'completed', completedAt = :time, totalBytes = :total, downloadedBytes = :total WHERE id = :id")
     suspend fun markCompleted(id: Long, time: Date, total: Long)
     
     @Query("UPDATE download_tasks SET status = 'error', errorMessage = :message WHERE id = :id")
@@ -43,6 +43,9 @@ interface DownloadTaskDao {
     
     @Query("UPDATE download_tasks SET status = 'paused' WHERE id = :id")
     suspend fun pauseTask(id: Long)
+
+    @Query("UPDATE download_tasks SET totalBytes = :total WHERE id = :id")
+    suspend fun updateTotalBytes(id: Long, total: Long)
     
     @Query("UPDATE download_tasks SET status = 'downloading', startedAt = :time WHERE id = :id AND status = 'pending'")
     suspend fun startTask(id: Long, time: Date)

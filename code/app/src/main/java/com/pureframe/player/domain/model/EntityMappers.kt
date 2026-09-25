@@ -67,7 +67,9 @@ fun DownloadTaskEntity.toDomainModel(): DownloadTask {
         totalSize = totalBytes,
         downloadedSize = downloadedBytes,
         status = parseDownloadStatus(status),
-        progress = if (totalBytes > 0) (downloadedBytes * 100f / totalBytes) else 0f,
+        // 注意：必须先除后乘。downloadedBytes * 100f 会在 Float32 下丢失精度
+        //（如 991017 * 100f = 99101696），导致已完成任务显示 99% 而不是 100%。
+        progress = if (totalBytes > 0) (downloadedBytes.toFloat() / totalBytes * 100f) else 0f,
         speed = downloadSpeed,
         errorCode = errorMessage,
         createdAt = createdAt,
