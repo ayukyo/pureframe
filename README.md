@@ -1,10 +1,10 @@
 # 纯帧 - PureFrame
 
-> 纯粹观影，只留帧影
+> 纯粹观影，只留帧影 · *Pure viewing, frame by frame*
 
-## 📱 产品定位
+简体中文 | [English](./README_EN.md)
 
-**纯帧** 是一款文艺极简的本地视频播放器，支持磁链下载和边下边播功能。
+**纯帧** 是一款文艺极简的 Android 本地视频播放器，支持磁力下载与边下边播。
 
 - **无广告** - 零推广、零打扰
 - **纯黑沉浸** - 高级感观影体验
@@ -12,85 +12,66 @@
 
 ## ✨ 核心功能
 
-### 1. 本地视频播放
-- 自动扫描本地视频
-- 支持文件夹浏览、手动添加目录
-- 支持 mp4、mkv、mov、avi、flv、ts 等主流格式
-- 硬解/软解可切换
-- 倍速：0.5x ~ 3x
-- 手势调节亮度、音量、进度
-- 自动记忆播放进度
-- 全屏播放、后台音频播放
+### 本地视频播放
+- 自动扫描本地视频（mp4 / mkv / mov / avi / flv / ts 等）
+- 硬解 / 软解可切换，倍速 0.5x ~ 3x
+- 手势调节亮度、音量、进度；双击播放/暂停
+- 自动记忆播放进度，续播提示
+- 全屏沉浸播放，edge-to-edge 适配
+- **侧载字幕**：自动加载视频同目录同名 `.srt` / `.ass` / `.ssa` / `.vtt` 字幕，半透明底色，设置页开关实时生效
+- 排序：日期 / 大小 / 时长一键切换，偏好持久化
 
-### 2. 磁链下载
-- magnet: 磁链粘贴解析
-- .torrent 文件上传/打开
-- 多任务同时下载
-- 暂停、继续、删除
-- 后台下载
-- 下载完成提示
+### 磁链下载
+- magnet: 磁链粘贴解析 / `.torrent` 文件打开
+- 多任务并行下载（1~5 可配），暂停、继续、删除（可选是否删除文件）
+- 自定义保存目录（SAF 目录选择器）
+- 后台下载服务
 
-### 3. 边下边播（核心亮点）
+### 边下边播（核心亮点）
 - 下载到可播放阈值（约 10%）即可播放
-- 仅允许在已下载区域内拖动进度
-- 界面显示「已缓存 XX%」
-- 播放时不影响下载速度
-
-## 🎨 界面风格
-
-- **主色调**：纯黑 + 浅白文字
-- **无广告**：无推广、无首页推荐
-- **控制栏**：极简，自动隐藏
-- **播放页**：沉浸式，无边框、无多余按钮
-- **列表**：像私人影集，干净克制
-
-## 📐 页面结构
-
-| Tab | 内容 |
-|-----|------|
-| 首页 | 本地视频、最近播放、收藏 |
-| 下载 | 磁链输入、下载中、已完成 |
-| 播放 | 全屏沉浸播放 |
-| 我的 | 设置、清理缓存、关于 |
+- 仅允许在已下载区域内拖动进度，界面显示「已缓存 XX%」
+- 播放不影响下载速度
 
 ## 🛠️ 技术栈
 
-- **语言**：Kotlin
-- **最低版本**：Android 8.0 (API 26)
-- **目标版本**：Android 14 (API 34)
-- **播放器**：ExoPlayer / VLC
-- **下载引擎**：libtorrent
-- **构建工具**：Gradle 8.0+
+| 类别 | 选型 |
+|------|------|
+| 语言 | Kotlin |
+| 架构 | MVVM + Hilt + DataStore |
+| UI | Jetpack Compose (Material3) |
+| 播放器 | Media3 / ExoPlayer |
+| 下载引擎 | libtorrent4j |
+| 最低版本 | Android 8.0 (API 26) |
+
+## 🔄 自动构建
+
+配置了 GitHub Actions CI（`.github/workflows/build.yml`）：
+
+- push 到 main / 提交 PR 自动触发 `assembleDebug` + `lintDebug`
+- APK 与 Lint 报告自动上传为 Artifact（保留 7 天）
 
 ## 📦 项目结构
 
 ```
 pureframe/
-├── code/              # 源代码
-│   ├── app/           # Android 应用
-│   ├── build.gradle.kts
-│   └── settings.gradle.kts
-├── docs/              # 文档
-├── memory/            # 项目记忆
-└── state/             # 项目状态
+├── code/              # 源代码（Gradle 根）
+│   └── app/           # Android 应用模块
+├── docs/              # 需求与技术设计文档
+├── LICENSE            # Apache-2.0
+├── NOTICE             # 第三方组件许可声明
+└── DISCLAIMER.md      # 免责声明
 ```
 
-## 🔄 自动构建
+## 🤝 参与贡献
 
-本项目配置了 GitHub Actions CI（`.github/workflows/build.yml`）：
-
-- 每次 push 到 main / 提交 PR 自动触发
-- 自动执行 `assembleDebug` 构建 + `lintDebug` 静态检查
-- 构建产物（APK）与 Lint 报告自动上传为 Artifact，保留 7 天
-
-可在仓库 **Actions** 页面查看构建状态并下载 APK。
+欢迎 Issue 与 PR，请先阅读 [CONTRIBUTING.md](./CONTRIBUTING.md)。
 
 ## 📄 许可证
 
 本项目基于 [Apache License 2.0](./LICENSE) 开源。
 
 - 第三方组件及其许可声明见 [NOTICE](./NOTICE)
-- 使用本软件前请阅读[免责声明](./DISCLAIMER.md)
+- **使用本软件前请阅读[免责声明](./DISCLAIMER.md)**：本软件仅为用户端工具，不提供、不存储、不传播任何内容；使用磁力下载功能的合法性由使用者自行负责。
 
 ---
 
