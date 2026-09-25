@@ -1,9 +1,12 @@
 package com.pureframe.player.ui.theme
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import com.pureframe.player.data.preferences.ThemeMode
 
 /**
  * 纯帧主题
@@ -63,22 +66,55 @@ private val DarkColorScheme = darkColorScheme(
 )
 
 /**
- * 纯帧主题包装器
- * 
- * 所有页面都应该使用此主题，确保统一的视觉效果
+ * 浅色主题方案
  */
-@Suppress("UNUSED_PARAMETER")  // 参数保留用于兼容性，实际固定为特定值
+private val LightColorScheme = lightColorScheme(
+    primary = LightPrimary,
+    onPrimary = LightOnPrimary,
+    primaryContainer = LightSurfaceVariant,
+    onPrimaryContainer = Color(0xFF1A1A1A),
+
+    secondary = Color(0xFF5C5C5C),
+    onSecondary = Color.White,
+    secondaryContainer = LightSurface,
+    onSecondaryContainer = LightOnSurface,
+
+    error = MaterialError,
+    onError = Color.White,
+
+    background = LightBackground,
+    onBackground = LightOnBackground,
+
+    surface = LightSurface,
+    onSurface = LightOnSurface,
+    surfaceVariant = LightSurfaceVariant,
+    onSurfaceVariant = LightOnSurfaceVariant,
+
+    outline = LightOutline,
+    outlineVariant = LightDivider,
+
+    inversePrimary = Color.White,
+    inverseSurface = Color(0xFF1A1A1A),
+    inverseOnSurface = Color.White,
+
+    scrim = Color.Black.copy(alpha = 0.5f)
+)
+
+/**
+ * 纯帧主题包装器
+ *
+ * 根据 ThemeMode 偏好切换浅色/深色/跟随系统。
+ */
 @Composable
 fun PureFrameTheme(
-    // 纯帧只支持深色主题
-    darkTheme: Boolean = true,  // 固定为深色
+    // 传入 null 表示跟随系统深浅色设置
+    darkTheme: Boolean = isSystemInDarkTheme(),
     // 动态颜色禁用（保持自定义颜色）
     dynamicColor: Boolean = false,  // 固定禁用
     content: @Composable () -> Unit
 ) {
-    // 纯帧始终使用深色主题
-    val colorScheme = DarkColorScheme
-    
+    val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
+
     MaterialTheme(
         colorScheme = colorScheme,
         typography = PureFrameTypography,

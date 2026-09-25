@@ -27,7 +27,6 @@ import androidx.navigation.compose.rememberNavController
 import com.pureframe.player.ui.navigation.NavigationState
 import com.pureframe.player.ui.navigation.PureFrameNavGraph
 import com.pureframe.player.ui.navigation.Screen
-import com.pureframe.player.ui.theme.PureFrameTheme
 
 /**
  * 底部导航栏项目
@@ -72,8 +71,8 @@ fun MainScreen(
     navController: NavHostController = rememberNavController(),
     navigationState: NavigationState
 ) {
-    PureFrameTheme {
-        Scaffold(
+    // 主题由 MainActivity 的 PureFrameTheme 统一提供（跟随设置页偏好），这里不再嵌套包装
+    Scaffold(
             bottomBar = {
                 // 只在主页面显示底部导航栏
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -116,7 +115,6 @@ fun MainScreen(
                 )
             }
         }
-    }
 }
 
 /**
@@ -142,8 +140,14 @@ fun PureFrameBottomBar(
                     } else {
                         // 切换到其他页面
                         navController.navigate(item.screen.route) {
+                            // 回到起始页并保存状态，避免底部 Tab 越点栈越深
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
+                            }
                             // 避免多次点击时创建多个实例
                             launchSingleTop = true
+                            // 切回已访问过的 Tab 时恢复滚动位置等状态
+                            restoreState = true
                         }
                     }
                 },

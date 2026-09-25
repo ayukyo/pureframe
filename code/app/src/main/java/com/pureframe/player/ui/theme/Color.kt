@@ -85,3 +85,15 @@ val MaterialSurfaceVariant = SurfaceVariant
 val MaterialOnSurfaceVariant = OnSurfaceVariant
 val MaterialOutline = Border
 val MaterialOutlineVariant = Divider
+
+// ===== 浅色主题（Material3 适配） =====
+val LightBackground = Color(0xFFFAFAFA)          // 浅灰白背景
+val LightSurface = Color(0xFFF2F2F2)             // 浅灰表面
+val LightSurfaceVariant = Color(0xFFE8E8E8)      // 卡片背景
+val LightOnBackground = Color(0xFF1A1A1A)        // 深色主文字
+val LightOnSurface = Color(0xFF1A1A1A)           // 深色文字
+val LightOnSurfaceVariant = Color(0xFF5C5C5C)    // 中灰次要文字
+val LightPrimary = Color(0xFF1A1A1A)             // 深色主要交互（按钮/开关）
+val LightOnPrimary = Color(0xFFFFFFFF)
+val LightOutline = Color(0xFFD0D0D0)             // 浅边框
+val LightDivider = Color(0xFFDDDDDD)             // 浅分隔线
