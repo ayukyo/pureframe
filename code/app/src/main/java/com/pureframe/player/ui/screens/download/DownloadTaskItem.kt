@@ -135,56 +135,60 @@ fun DownloadTaskItem(
                     )
                 }
                 
-                // 更多菜单按钮
-                IconButton(
-                    onClick = { showMenu = true },
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.MoreVert,
-                        contentDescription = "更多选项",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-                
-                DropdownMenu(
-                    expanded = showMenu,
-                    onDismissRequest = { showMenu = false }
-                ) {
-                    // 边下边播（仅当可播放时）
-                    if (task.canStream || task.isCompleted) {
+                // 更多菜单按钮（DropdownMenu 必须与 IconButton 同处一个 Box，
+                // 否则会锚定到整个 Row 的左上角，弹出位置错误）
+                Box {
+                    IconButton(
+                        onClick = { showMenu = true },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.MoreVert,
+                            contentDescription = "更多选项",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+
+                    DropdownMenu(
+                        expanded = showMenu,
+                        onDismissRequest = { showMenu = false },
+                        offset = androidx.compose.ui.unit.DpOffset(x = (-8).dp, y = 4.dp)
+                    ) {
+                        // 边下边播（仅当可播放时）
+                        if (task.canStream || task.isCompleted) {
+                            DropdownMenuItem(
+                                text = { Text("边下边播") },
+                                onClick = {
+                                    showMenu = false
+                                    onPlayClick()
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Filled.PlayArrow,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            )
+                        }
+
+                        // 删除选项
                         DropdownMenuItem(
-                            text = { Text("边下边播") },
+                            text = { Text("删除任务") },
                             onClick = {
                                 showMenu = false
-                                onPlayClick()
+                                showDeleteDialog = true
                             },
                             leadingIcon = {
                                 Icon(
-                                    imageVector = Icons.Filled.PlayArrow,
+                                    imageVector = Icons.Filled.Delete,
                                     contentDescription = null,
                                     modifier = Modifier.size(20.dp)
                                 )
                             }
                         )
                     }
-                    
-                    // 删除选项
-                    DropdownMenuItem(
-                        text = { Text("删除任务") },
-                        onClick = {
-                            showMenu = false
-                            showDeleteDialog = true
-                        },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Filled.Delete,
-                                contentDescription = null,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    )
                 }
             }
             
