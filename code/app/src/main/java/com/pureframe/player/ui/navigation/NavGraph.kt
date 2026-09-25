@@ -66,7 +66,8 @@ fun PureFrameNavGraph(
             PlayerScreen(
                 videoId = videoId,
                 isStreamPlayback = false,
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                navigationState = navigationState
             )
         }
         
@@ -81,7 +82,8 @@ fun PureFrameNavGraph(
             PlayerScreen(
                 downloadId = downloadId,
                 isStreamPlayback = true,
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                navigationState = navigationState
             )
         }
     }

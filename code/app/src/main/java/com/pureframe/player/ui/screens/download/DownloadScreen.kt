@@ -56,9 +56,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.pureframe.player.domain.model.DownloadTask
 import com.pureframe.player.domain.model.DownloadStatus
 import com.pureframe.player.ui.navigation.NavigationState
-import com.pureframe.player.ui.theme.Background
 import timber.log.Timber
-import com.pureframe.player.ui.theme.SurfaceVariant
 
 /**
  * 下载页面
@@ -135,7 +133,7 @@ fun DownloadScreen(
     }
     
     Scaffold(
-        containerColor = Background,
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
                 title = { 
@@ -145,7 +143,7 @@ fun DownloadScreen(
                     )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Background
+                    containerColor = MaterialTheme.colorScheme.background
                 ),
                 actions = {
                     // Torrent 文件选择按钮
@@ -370,7 +368,7 @@ private fun FilterTab(
 ) {
     Surface(
         modifier = modifier.clip(RoundedCornerShape(20.dp)),
-        color = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f) else SurfaceVariant,
+        color = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant,
         onClick = onClick
     ) {
         Text(

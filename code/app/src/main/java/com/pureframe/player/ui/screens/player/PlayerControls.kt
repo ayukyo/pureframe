@@ -66,6 +66,7 @@ fun EnhancedPlayerControls(
     onFullscreenToggle: () -> Unit,
     onShowSpeedDialog: () -> Unit,
     onShowAspectRatioDialog: () -> Unit,
+    onEnterPip: (() -> Unit)? = null,
     onUserInteraction: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -92,6 +93,7 @@ fun EnhancedPlayerControls(
             onBack = onBack,
             onShowSpeedDialog = onShowSpeedDialog,
             onShowAspectRatioDialog = onShowAspectRatioDialog,
+            onEnterPip = onEnterPip,
             onUserInteraction = onUserInteraction,
             modifier = Modifier
                 .align(Alignment.TopCenter)
@@ -141,6 +143,7 @@ fun TopControlBar(
     onBack: () -> Unit,
     onShowSpeedDialog: () -> Unit,
     onShowAspectRatioDialog: () -> Unit,
+    onEnterPip: (() -> Unit)? = null,
     onUserInteraction: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -178,7 +181,7 @@ fun TopControlBar(
                     modifier = Modifier.size(28.dp)
                 )
             }
-            
+
             // 标题
             Text(
                 text = title,
@@ -190,6 +193,24 @@ fun TopControlBar(
                     .weight(1f)
                     .padding(horizontal = 12.dp)
             )
+
+            // 画中画按钮（非全屏且支持时显示）
+            if (onEnterPip != null && !isFullscreen) {
+                IconButton(
+                    onClick = {
+                        onUserInteraction()
+                        onEnterPip()
+                    },
+                    modifier = Modifier.size(40.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.PictureInPictureAlt,
+                        contentDescription = "画中画",
+                        tint = Color.White,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
 
             // 更多选项
             IconButton(

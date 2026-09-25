@@ -60,6 +60,7 @@ fun PlayerScreen(
     downloadId: String = "",
     isStreamPlayback: Boolean = false,
     onBack: () -> Unit,
+    navigationState: com.pureframe.player.ui.navigation.NavigationState? = null,
     viewModel: PlayerViewModel = hiltViewModel(),
     modifier: Modifier = Modifier
 ) {
@@ -155,25 +156,53 @@ fun PlayerScreen(
             }
         }
     }
+
+    // ---- 画中画（PiP）支持 ----
+    // 监听 PiP 模式变化：小窗模式下隐藏全部控制栏，只留画面
+    // activity 1.8.1 没有 PictureInPictureModeChangedInfo API，
+    // 通过 NavigationState 的共享流从 MainActivity 覆写回调桥接过来
+    val isInPipMode by (navigationState?.isInPipMode
+        ?: kotlinx.coroutines.flow.MutableStateFlow(false)).collectAsState()
+
+    // 进入画中画：按视频真实宽高比自适应小窗形状 + 小窗内控制按钮
+    val enterPip = {
+        activity?.let { act ->
+            runCatching {
+                act.enterPictureInPictureMode(
+                    com.pureframe.player.player.PiPHelper.buildParams(
+                        act,
+                        viewModel.getPlayer()
+                    )
+                )
+            }
+        }
+        Unit
+    }
     
+    // PiP 小窗模式下控制栏强制隐藏，禁用手势
+    val controlsVisible = showControls && !isInPipMode
+
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(Color.Black)
-            .pointerInput(Unit) {
-                detectTapGestures(
-                    onTap = {
-                        showControls = !showControls
-                        if (showControls) {
-                            // 重置自动隐藏计时器
-                            controlsTrigger++
+            .then(
+                if (isInPipMode) Modifier
+                else Modifier.pointerInput(Unit) {
+                    detectTapGestures(
+                        onTap = {
+                            showControls = !showControls
+                            if (showControls) {
+                                // 重置自动隐藏计时器
+                                controlsTrigger++
+                            }
+                        },
+                        onDoubleTap = {
+                            viewModel.togglePlayPause()
                         }
-                    },
-                    onDoubleTap = {
-                        viewModel.togglePlayPause()
-                    }
-                )
-            }
+                    )
+                }
+            )
     ) {
         // 视频播放器
         AndroidView(
@@ -207,58 +236,60 @@ fun PlayerScreen(
             modifier = Modifier.fillMaxSize()
         )
         
-        // 水平滑动进度控制区域（中间 40% 宽）
-        SeekGestureOverlay(
-            currentPosition = currentPosition,
-            duration = duration,
-            onSeekRelative = { deltaMs ->
-                viewModel.seekRelative(deltaMs)
-            },
-            onSeekStart = { showControls = false },
-            modifier = Modifier
-                .align(Alignment.Center)
-                .fillMaxWidth(0.4f)
-                .fillMaxHeight(0.6f)
-        )
-
-        // 左侧亮度控制区域（左 30% 宽，扩大热区，避免划不到）
-        BrightnessGestureArea(
-            onBrightnessChange = { value ->
-                viewModel.setBrightness(value)
-                // 真正写入系统窗口亮度，否则手势只改了状态、屏幕不会变
-                activity?.applyWindowBrightness(value)
-            },
-            modifier = Modifier
-                .align(Alignment.CenterStart)
-                .fillMaxHeight(0.8f)
-                .fillMaxWidth(0.3f)
-        )
-
-        // 右侧音量控制区域（右 30% 宽，扩大热区，避免划不到）
-        VolumeGestureArea(
-            onVolumeChange = { viewModel.setVolume(it) },
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .fillMaxHeight(0.8f)
-                .fillMaxWidth(0.3f)
-        )
-        
-        // 手势指示器：靠边显示，避免遮挡画面中心
-        gestureIndicator?.let { indicator ->
-            val alignment = when (indicator) {
-                is GestureIndicator.Brightness -> Alignment.CenterStart
-                is GestureIndicator.Volume -> Alignment.CenterEnd
-                is GestureIndicator.Seek -> Alignment.TopCenter
-            }
-            GestureIndicatorOverlay(
-                indicator = indicator,
-                modifier = Modifier.align(alignment)
+        // 水平滑动进度控制区域（中间 40% 宽）—— PiP 模式下不启用手势
+        if (!isInPipMode) {
+            SeekGestureOverlay(
+                currentPosition = currentPosition,
+                duration = duration,
+                onSeekRelative = { deltaMs ->
+                    viewModel.seekRelative(deltaMs)
+                },
+                onSeekStart = { showControls = false },
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .fillMaxWidth(0.4f)
+                    .fillMaxHeight(0.6f)
             )
+
+            // 左侧亮度控制区域（左 30% 宽，扩大热区，避免划不到）
+            BrightnessGestureArea(
+                onBrightnessChange = { value ->
+                    viewModel.setBrightness(value)
+                    // 真正写入系统窗口亮度，否则手势只改了状态、屏幕不会变
+                    activity?.applyWindowBrightness(value)
+                },
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .fillMaxHeight(0.8f)
+                    .fillMaxWidth(0.3f)
+            )
+
+            // 右侧音量控制区域（右 30% 宽，扩大热区，避免划不到）
+            VolumeGestureArea(
+                onVolumeChange = { viewModel.setVolume(it) },
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .fillMaxHeight(0.8f)
+                    .fillMaxWidth(0.3f)
+            )
+
+            // 手势指示器：靠边显示，避免遮挡画面中心
+            gestureIndicator?.let { indicator ->
+                val alignment = when (indicator) {
+                    is GestureIndicator.Brightness -> Alignment.CenterStart
+                    is GestureIndicator.Volume -> Alignment.CenterEnd
+                    is GestureIndicator.Seek -> Alignment.TopCenter
+                }
+                GestureIndicatorOverlay(
+                    indicator = indicator,
+                    modifier = Modifier.align(alignment)
+                )
+            }
         }
-        
-        // 控制栏（点击显示/隐藏）
+
+        // 控制栏（点击显示/隐藏）—— PiP 模式下隐藏
         AnimatedVisibility(
-            visible = showControls,
+            visible = controlsVisible,
             enter = fadeIn(animationSpec = tween(200)),
             exit = fadeOut(animationSpec = tween(200))
         ) {
@@ -290,15 +321,16 @@ fun PlayerScreen(
                 onFullscreenToggle = { viewModel.toggleFullscreen() },
                 onShowSpeedDialog = { viewModel.showSpeedDialog() },
                 onShowAspectRatioDialog = { viewModel.showAspectRatioDialog() },
+                onEnterPip = { enterPip() },
                 onUserInteraction = {
                     controlsTrigger++
                 },
                 modifier = Modifier.fillMaxSize()
             )
         }
-        
-        // 边下边播状态指示
-        if (isStreamPlayback && uiState.streamProgress > 0) {
+
+        // 边下边播状态指示（PiP 模式下隐藏）
+        if (isStreamPlayback && uiState.streamProgress > 0 && !isInPipMode) {
             StreamPlaybackIndicator(
                 progress = uiState.streamProgress,
                 maxSeekPosition = uiState.maxSeekPosition,

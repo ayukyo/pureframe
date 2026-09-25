@@ -39,4 +39,14 @@ class NavigationState @Inject constructor() {
     fun resetDownloadScrollFlag() {
         _scrollToDownloadTop.value = false
     }
+
+    // ---- 画中画（PiP）模式状态 ----
+    // MainActivity.onPictureInPictureModeChanged 覆写回调写入，
+    // PlayerScreen 订阅以在小窗模式下隐藏控制栏与手势
+    private val _isInPipMode = MutableStateFlow(false)
+    val isInPipMode: StateFlow<Boolean> = _isInPipMode.asStateFlow()
+
+    fun setPipMode(inPip: Boolean) {
+        _isInPipMode.value = inPip
+    }
 }

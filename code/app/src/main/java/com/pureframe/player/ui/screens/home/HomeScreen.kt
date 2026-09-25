@@ -39,8 +39,6 @@ import coil.request.ImageRequest
 import com.pureframe.player.data.preferences.SortBy
 import com.pureframe.player.domain.model.Video
 import com.pureframe.player.ui.navigation.NavigationState
-import com.pureframe.player.ui.theme.Background
-import com.pureframe.player.ui.theme.SurfaceVariant
 
 /**
  * 本地视频页面
@@ -145,7 +143,7 @@ fun HomeScreen(
     }
 
     Scaffold(
-        containerColor = Background,
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
                 title = {
@@ -172,7 +170,7 @@ fun HomeScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Background
+                    containerColor = MaterialTheme.colorScheme.background
                 ),
                 actions = {
                     // 搜索按钮
@@ -394,7 +392,7 @@ private fun FilterTab(
 ) {
     Surface(
         modifier = modifier.clip(RoundedCornerShape(20.dp)),
-        color = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f) else SurfaceVariant,
+        color = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant,
         onClick = onClick
     ) {
         Text(
@@ -427,7 +425,7 @@ fun VideoGridItem(
             .fillMaxWidth()
             .clickable(onClick = onClick),
         colors = CardDefaults.cardColors(
-            containerColor = SurfaceVariant
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
         ),
         shape = RoundedCornerShape(12.dp)
     ) {
@@ -438,7 +436,7 @@ fun VideoGridItem(
                     .fillMaxWidth()
                     .aspectRatio(if (isPortrait) 9f / 16f else 16f / 9f)
                     .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
-                    .background(Color(0xFF2A2A2A)),
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentAlignment = Alignment.Center
             ) {
                 val context = LocalContext.current

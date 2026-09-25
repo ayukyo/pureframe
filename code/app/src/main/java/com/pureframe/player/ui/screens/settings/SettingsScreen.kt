@@ -24,8 +24,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import timber.log.Timber
 import com.pureframe.player.data.preferences.DecoderType
 import com.pureframe.player.data.preferences.ThemeMode
-import com.pureframe.player.ui.theme.Background
-import com.pureframe.player.ui.theme.SurfaceVariant
 
 /**
  * 设置页面
@@ -84,7 +82,7 @@ fun SettingsScreen(
     }
 
     Scaffold(
-        containerColor = Background,
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
                 title = {
@@ -94,7 +92,7 @@ fun SettingsScreen(
                     )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Background
+                    containerColor = MaterialTheme.colorScheme.background
                 )
             )
         }
@@ -118,7 +116,7 @@ fun SettingsScreen(
                         onCheckedChange = { viewModel.setLoopPlay(it) }
                     )
 
-                    Divider(color = Color(0xFF2A2A2A), modifier = Modifier.padding(vertical = 8.dp))
+                    Divider(color = MaterialTheme.colorScheme.outlineVariant, modifier = Modifier.padding(vertical = 8.dp))
 
                     // 字幕显示
                     SwitchSettingsItem(
@@ -129,7 +127,7 @@ fun SettingsScreen(
                         onCheckedChange = { viewModel.setShowSubtitle(it) }
                     )
 
-                    Divider(color = Color(0xFF2A2A2A), modifier = Modifier.padding(vertical = 8.dp))
+                    Divider(color = MaterialTheme.colorScheme.outlineVariant, modifier = Modifier.padding(vertical = 8.dp))
 
                     // 解码器类型
                     ClickableSettingsItem(
@@ -143,7 +141,7 @@ fun SettingsScreen(
                         onClick = { showDecoderDialog = true }
                     )
 
-                    Divider(color = Color(0xFF2A2A2A), modifier = Modifier.padding(vertical = 8.dp))
+                    Divider(color = MaterialTheme.colorScheme.outlineVariant, modifier = Modifier.padding(vertical = 8.dp))
 
                     // 保持屏幕常亮
                     SwitchSettingsItem(
@@ -154,7 +152,7 @@ fun SettingsScreen(
                         onCheckedChange = { viewModel.setKeepScreenOn(it) }
                     )
 
-                    Divider(color = Color(0xFF2A2A2A), modifier = Modifier.padding(vertical = 8.dp))
+                    Divider(color = MaterialTheme.colorScheme.outlineVariant, modifier = Modifier.padding(vertical = 8.dp))
 
                     // 手势控制
                     SwitchSettingsItem(
@@ -165,7 +163,7 @@ fun SettingsScreen(
                         onCheckedChange = { viewModel.setBrightnessGesture(it) }
                     )
 
-                    Divider(color = Color(0xFF2A2A2A), modifier = Modifier.padding(vertical = 8.dp))
+                    Divider(color = MaterialTheme.colorScheme.outlineVariant, modifier = Modifier.padding(vertical = 8.dp))
 
                     SwitchSettingsItem(
                         icon = Icons.Filled.TouchApp,
@@ -188,7 +186,7 @@ fun SettingsScreen(
                         onClick = { showFolderPickerDialog = true }
                     )
 
-                    Divider(color = Color(0xFF2A2A2A), modifier = Modifier.padding(vertical = 8.dp))
+                    Divider(color = MaterialTheme.colorScheme.outlineVariant, modifier = Modifier.padding(vertical = 8.dp))
 
                     // 最大并行下载数
                     ClickableSettingsItem(
@@ -198,7 +196,7 @@ fun SettingsScreen(
                         onClick = { showConcurrencyDialog = true }
                     )
 
-                    Divider(color = Color(0xFF2A2A2A), modifier = Modifier.padding(vertical = 8.dp))
+                    Divider(color = MaterialTheme.colorScheme.outlineVariant, modifier = Modifier.padding(vertical = 8.dp))
 
                     // WiFi 自动下载
                     SwitchSettingsItem(
@@ -369,7 +367,7 @@ private fun SettingsSection(
 
         Card(
             colors = CardDefaults.cardColors(
-                containerColor = SurfaceVariant
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
             ),
             shape = RoundedCornerShape(12.dp)
         ) {
@@ -718,7 +716,7 @@ private fun FolderPickerDialog(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Divider(color = Color(0xFF3A3A3A))
+                Divider(color = MaterialTheme.colorScheme.outlineVariant)
 
                 Spacer(modifier = Modifier.height(16.dp))
 

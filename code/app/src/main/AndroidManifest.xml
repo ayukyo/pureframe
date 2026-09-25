@@ -44,7 +44,10 @@
         <activity
             android:name=".ui.MainActivity"
             android:exported="true"
-            android:theme="@style/Theme.PureFrame">
+            android:theme="@style/Theme.PureFrame"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
+            android:supportsPictureInPicture="true"
+            android:launchMode="singleTask">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -60,6 +63,11 @@
                 <action android:name="androidx.media3.session.MediaSessionService" />
             </intent-filter>
         </service>
+
+        <!-- 画中画小窗控制按钮 -->
+        <receiver
+            android:name=".player.PiPActionReceiver"
+            android:exported="false" />
 
         <!-- 下载服务 -->
         <service
