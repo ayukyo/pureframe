@@ -75,9 +75,22 @@ pureframe/
 └── state/             # 项目状态
 ```
 
+## 🔄 自动构建
+
+本项目配置了 GitHub Actions CI（`.github/workflows/build.yml`）：
+
+- 每次 push 到 main / 提交 PR 自动触发
+- 自动执行 `assembleDebug` 构建 + `lintDebug` 静态检查
+- 构建产物（APK）与 Lint 报告自动上传为 Artifact，保留 7 天
+
+可在仓库 **Actions** 页面查看构建状态并下载 APK。
+
 ## 📄 许可证
 
-MIT License
+本项目基于 [Apache License 2.0](./LICENSE) 开源。
+
+- 第三方组件及其许可声明见 [NOTICE](./NOTICE)
+- 使用本软件前请阅读[免责声明](./DISCLAIMER.md)
 
 ---
 
