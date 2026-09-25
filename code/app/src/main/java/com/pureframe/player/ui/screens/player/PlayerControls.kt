@@ -155,6 +155,8 @@ fun TopControlBar(
                     )
                 )
             )
+            // edge-to-edge 下内容画进状态栏后面，顶部控制栏需要避开状态栏
+            .statusBarsPadding()
             .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
         Row(
@@ -390,6 +392,8 @@ fun BottomControlBar(
                     )
                 )
             )
+            // 避开系统导航条/手势条，否则全屏按钮会被压在屏幕最底部无法点击
+            .navigationBarsPadding()
             .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
         Column(
