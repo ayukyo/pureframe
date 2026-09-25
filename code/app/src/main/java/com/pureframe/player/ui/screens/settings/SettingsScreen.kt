@@ -21,7 +21,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.pureframe.player.data.preferences.DownloadQuality
+import timber.log.Timber
 import com.pureframe.player.data.preferences.DecoderType
 import com.pureframe.player.data.preferences.ThemeMode
 import com.pureframe.player.ui.theme.Background
@@ -49,6 +49,9 @@ fun SettingsScreen(
     var showQualityDialog by remember { mutableStateOf(false) }
     var showDecoderDialog by remember { mutableStateOf(false) }
     var showFolderPickerDialog by remember { mutableStateOf(false) }
+    var showConcurrencyDialog by remember { mutableStateOf(false) }
+
+    val context = LocalContext.current
 
     // 文件夹选择器
     val folderPickerLauncher = rememberLauncherForActivityResult(
@@ -56,11 +59,18 @@ fun SettingsScreen(
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             result.data?.data?.let { uri ->
-                // 获取文件夹路径
-                val path = uri.path
-                if (path != null) {
-                    viewModel.setDownloadPath(path)
+                // ACTION_OPEN_DOCUMENT_TREE 返回的是 content:// 的树 URI，
+                // uri.path 形如 "/tree/primary:PureFrame"，不是真实文件路径，
+                // 直接存下来会让下载引擎把目录建到一个不存在的路径上。
+                // 这里持久化授予权限，并把可读的显示路径写进设置。
+                val flags = result.data?.flags ?: 0
+                val persistable = flags and (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                try {
+                    context.contentResolver.takePersistableUriPermission(uri, persistable)
+                } catch (e: Exception) {
+                    Timber.w(e, "SettingsScreen: 持久化目录权限失败")
                 }
+                viewModel.setDownloadPath(resolveDisplayPath(context, uri))
             }
         }
     }
@@ -186,7 +196,7 @@ fun SettingsScreen(
                         icon = Icons.Filled.Download,
                         title = "最大并行下载数",
                         subtitle = "${userPreferences.maxConcurrentDownloads} 个任务同时下载",
-                        onClick = { /* TODO: 打开数字选择器 */ }
+                        onClick = { showConcurrencyDialog = true }
                     )
 
                     Divider(color = Color(0xFF2A2A2A), modifier = Modifier.padding(vertical = 8.dp))
@@ -200,20 +210,7 @@ fun SettingsScreen(
                         onCheckedChange = { viewModel.setAutoDownloadOnWifi(it) }
                     )
 
-                    Divider(color = Color(0xFF2A2A2A), modifier = Modifier.padding(vertical = 8.dp))
-
-                    // 下载质量
-                    ClickableSettingsItem(
-                        icon = Icons.Filled.HighQuality,
-                        title = "下载画质",
-                        subtitle = when (userPreferences.downloadQuality) {
-                            DownloadQuality.LOW -> "480P"
-                            DownloadQuality.MEDIUM -> "720P"
-                            DownloadQuality.HIGH -> "1080P"
-                            DownloadQuality.ORIGINAL -> "原画"
-                        },
-                        onClick = { showQualityDialog = true }
-                    )
+                    // 下载画质设置已移除：下载源（种子/直链文件）的画质由源文件本身决定，该设置无实际作用
                 }
             }
 
@@ -325,6 +322,18 @@ fun SettingsScreen(
         )
     }
 
+    // 最大并行下载数对话框
+    if (showConcurrencyDialog) {
+        ConcurrencyDialog(
+            currentCount = userPreferences.maxConcurrentDownloads,
+            onCountSelected = {
+                viewModel.setMaxConcurrentDownloads(it)
+                showConcurrencyDialog = false
+            },
+            onDismiss = { showConcurrencyDialog = false }
+        )
+    }
+
     // 下载路径选择对话框
     if (showFolderPickerDialog) {
         FolderPickerDialog(
@@ -339,6 +348,20 @@ fun SettingsScreen(
             onDismiss = { showFolderPickerDialog = false }
         )
     }
+}
+
+/**
+ * 把 ACTION_OPEN_DOCUMENT_TREE 返回的树 URI 转成可读路径
+ *
+ * 例：content://.../tree/primary%3APureFrame -> /storage/emulated/0/PureFrame
+ * 这个路径只用于展示与「是否可写」的判断，真正的写入由下载侧校验后决定。
+ */
+private fun resolveDisplayPath(context: android.content.Context, uri: android.net.Uri): String {
+    val raw = uri.path ?: return uri.toString()
+    val relative = raw.substringAfter(':', "").trim()
+    if (relative.isEmpty()) return uri.toString()
+    val primary = android.os.Environment.getExternalStorageDirectory()
+    return "$primary/$relative"
 }
 
 /**
@@ -559,40 +582,35 @@ private fun ThemeModeDialog(
 }
 
 /**
- * 下载质量对话框
+ * 最大并行下载数对话框
  */
 @Composable
-private fun DownloadQualityDialog(
-    currentQuality: DownloadQuality,
-    onQualitySelected: (DownloadQuality) -> Unit,
+private fun ConcurrencyDialog(
+    currentCount: Int,
+    onCountSelected: (Int) -> Unit,
     onDismiss: () -> Unit
 ) {
+    // 1~5 个并发：过多会争抢带宽反而变慢
+    val options = listOf(1, 2, 3, 4, 5)
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("下载画质") },
+        title = { Text("最大并行下载数") },
         text = {
             Column {
-                DownloadQuality.entries.forEach { quality ->
+                options.forEach { count ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { onQualitySelected(quality) }
+                            .clickable { onCountSelected(count) }
                             .padding(vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         RadioButton(
-                            selected = quality == currentQuality,
-                            onClick = { onQualitySelected(quality) }
+                            selected = count == currentCount,
+                            onClick = { onCountSelected(count) }
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            when (quality) {
-                                DownloadQuality.LOW -> "480P"
-                                DownloadQuality.MEDIUM -> "720P"
-                                DownloadQuality.HIGH -> "1080P"
-                                DownloadQuality.ORIGINAL -> "原画"
-                            }
-                        )
+                        Text("$count 个")
                     }
                 }
             }
