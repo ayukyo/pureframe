@@ -3,6 +3,10 @@ package com.pureframe.player.domain.usecase.player
 import com.pureframe.player.domain.usecase.ParamSuspendActionUseCase
 import javax.inject.Inject
 import javax.inject.Singleton
+import android.content.Context
+import dagger.hilt.android.qualifiers.ApplicationContext
+import com.pureframe.player.R
+import com.pureframe.player.i18n.LocaleManager
 
 /**
  * 检查播放位置有效性 UseCase
@@ -12,7 +16,9 @@ import javax.inject.Singleton
  * @param params CheckSeekPositionParams 包含目标位置和最大允许位置
  */
 @Singleton
-class CheckSeekPositionUseCase @Inject constructor() : 
+class CheckSeekPositionUseCase @Inject constructor(
+    @ApplicationContext private val context: Context
+) : 
     ParamSuspendActionUseCase<CheckSeekPositionUseCase.Params>() {
     
     data class Params(
@@ -37,7 +43,7 @@ class CheckSeekPositionUseCase @Inject constructor() :
             return Result(
                 isValid = false,
                 allowedPosition = params.maxPosition,
-                message = "超出已缓存范围，最多可跳转到 ${percentage}%"
+                message = LocaleManager.getString(context, R.string.error_seek_beyond_cached, percentage)
             )
         }
         

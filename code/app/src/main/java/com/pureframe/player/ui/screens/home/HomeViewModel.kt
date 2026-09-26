@@ -24,6 +24,10 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import android.content.Context
+import dagger.hilt.android.qualifiers.ApplicationContext
+import com.pureframe.player.R
+import com.pureframe.player.i18n.LocaleManager
 
 /**
  * 本地视频页面 ViewModel
@@ -45,7 +49,8 @@ class HomeViewModel @Inject constructor(
     private val toggleFavoriteUseCase: ToggleFavoriteUseCase,
     private val deleteVideoUseCase: DeleteVideoUseCase,
     private val scanLocalVideosUseCase: ScanLocalVideosUseCase,
-    private val userPreferencesRepository: UserPreferencesRepository
+    private val userPreferencesRepository: UserPreferencesRepository,
+    @ApplicationContext private val appContext: Context
 ) : ViewModel() {
 
     // 列表类型
@@ -276,7 +281,7 @@ class HomeViewModel @Inject constructor(
                         }
                     },
                     onFailure = { e ->
-                        _scanState.value = ScanState.Error(e.message ?: "扫描失败")
+                        _scanState.value = ScanState.Error(e.message ?: LocaleManager.getString(appContext, R.string.scan_failed))
                         kotlinx.coroutines.delay(3000)
                         if (_scanState.value is ScanState.Error) {
                             _scanState.value = ScanState.Idle
@@ -284,7 +289,7 @@ class HomeViewModel @Inject constructor(
                     }
                 )
             } catch (e: Exception) {
-                _scanState.value = ScanState.Error(e.message ?: "扫描失败")
+                _scanState.value = ScanState.Error(e.message ?: LocaleManager.getString(appContext, R.string.scan_failed))
             }
         }
     }

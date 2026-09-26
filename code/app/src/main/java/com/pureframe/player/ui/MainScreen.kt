@@ -31,6 +31,9 @@ import androidx.navigation.compose.rememberNavController
 import com.pureframe.player.ui.navigation.NavigationState
 import com.pureframe.player.ui.navigation.PureFrameNavGraph
 import com.pureframe.player.ui.navigation.Screen
+import androidx.annotation.StringRes
+import androidx.compose.ui.res.stringResource
+import com.pureframe.player.R
 
 /**
  * 底部导航栏项目
@@ -39,7 +42,7 @@ data class BottomNavItem(
     val screen: Screen,
     val selectedIcon: ImageVector,
     val unselectedIcon: ImageVector,
-    val label: String
+    @StringRes val labelRes: Int
 )
 
 /**
@@ -50,19 +53,19 @@ val bottomNavItems = listOf(
         screen = Screen.Home,
         selectedIcon = Icons.Filled.Home,
         unselectedIcon = Icons.Outlined.Home,
-        label = "本地"
+        labelRes = R.string.tab_local
     ),
     BottomNavItem(
         screen = Screen.Download,
         selectedIcon = Icons.Filled.Download,
         unselectedIcon = Icons.Outlined.Download,
-        label = "下载"
+        labelRes = R.string.tab_download
     ),
     BottomNavItem(
         screen = Screen.Settings,
         selectedIcon = Icons.Filled.Settings,
         unselectedIcon = Icons.Outlined.Settings,
-        label = "设置"
+        labelRes = R.string.tab_settings
     )
 )
 
@@ -182,18 +185,18 @@ fun PureFrameBottomBar(
                         ) {
                             Icon(
                                 imageVector = if (selected) item.selectedIcon else item.unselectedIcon,
-                                contentDescription = item.label
+                                contentDescription = stringResource(item.labelRes)
                             )
                         }
                     } else {
                         Icon(
                             imageVector = if (selected) item.selectedIcon else item.unselectedIcon,
-                            contentDescription = item.label
+                            contentDescription = stringResource(item.labelRes)
                         )
                     }
                 },
                 label = {
-                    Text(text = item.label)
+                    Text(text = stringResource(item.labelRes))
                 }
             )
         }

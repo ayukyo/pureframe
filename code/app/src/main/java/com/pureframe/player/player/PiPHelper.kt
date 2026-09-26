@@ -9,6 +9,7 @@ import android.os.Build
 import android.util.Rational
 import androidx.media3.common.Player
 import com.pureframe.player.R
+import com.pureframe.player.i18n.LocaleManager
 
 /**
  * 画中画（PiP）参数构建工具
@@ -63,20 +64,22 @@ object PiPHelper {
     private fun buildActions(context: Context, isPlaying: Boolean): List<android.app.RemoteAction> {
         val playPause = android.app.RemoteAction(
             Icon.createWithResource(context, if (isPlaying) R.drawable.ic_pip_pause else R.drawable.ic_pip_play),
-            if (isPlaying) "暂停" else "播放",
-            if (isPlaying) "暂停" else "播放",
+            if (isPlaying) LocaleManager.getString(context, R.string.pip_pause)
+            else LocaleManager.getString(context, R.string.pip_play),
+            if (isPlaying) LocaleManager.getString(context, R.string.pip_pause)
+            else LocaleManager.getString(context, R.string.pip_play),
             pendingIntent(context, PiPActionReceiver.ACTION_PLAY_PAUSE, 1)
         )
         val rewind = android.app.RemoteAction(
             Icon.createWithResource(context, R.drawable.ic_pip_rewind),
-            "快退 10 秒",
-            "快退 10 秒",
+            LocaleManager.getString(context, R.string.pip_rewind),
+            LocaleManager.getString(context, R.string.pip_rewind),
             pendingIntent(context, PiPActionReceiver.ACTION_REWIND, 2)
         )
         val forward = android.app.RemoteAction(
             Icon.createWithResource(context, R.drawable.ic_pip_forward),
-            "快进 10 秒",
-            "快进 10 秒",
+            LocaleManager.getString(context, R.string.pip_forward),
+            LocaleManager.getString(context, R.string.pip_forward),
             pendingIntent(context, PiPActionReceiver.ACTION_FORWARD, 3)
         )
         return listOf(rewind, playPause, forward)

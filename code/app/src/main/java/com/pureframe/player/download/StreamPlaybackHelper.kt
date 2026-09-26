@@ -10,6 +10,8 @@ import kotlinx.coroutines.flow.*
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.pureframe.player.R
+import com.pureframe.player.i18n.LocaleManager
 
 /**
  * 边下边播助手
@@ -133,7 +135,10 @@ class StreamPlaybackHelper @Inject constructor(
             if (file == null || !file.exists()) {
                 return Result.failure(
                     IllegalArgumentException(
-                        "找不到已下载的媒体文件: ${downloadTask.savePath}/${downloadTask.fileName}"
+                        context.getString(
+                            R.string.error_missing_file,
+                            "${downloadTask.savePath}/${downloadTask.fileName}"
+                        )
                     )
                 )
             }
@@ -146,20 +151,28 @@ class StreamPlaybackHelper @Inject constructor(
 
         // 检查下载进度是否足够
         if (downloadTask.progress < MIN_PLAYBACK_PROGRESS) {
-            return Result.failure(IllegalArgumentException("下载进度不足，需要至少 ${MIN_PLAYBACK_PROGRESS}%"))
+            return Result.failure(
+                IllegalArgumentException(
+                    LocaleManager.getString(context, R.string.error_progress_insufficient, MIN_PLAYBACK_PROGRESS)
+                )
+            )
         }
         
         // 检查下载状态
         if (downloadTask.status != DownloadStatus.DOWNLOADING && 
             downloadTask.status != DownloadStatus.PAUSED) {
-            return Result.failure(IllegalArgumentException("下载任务状态异常: ${downloadTask.status}"))
+            return Result.failure(
+                IllegalArgumentException(
+                    LocaleManager.getString(context, R.string.error_task_status_invalid, downloadTask.status.toString())
+                )
+            )
         }
         
         // 启动代理服务器
         if (!streamProxyServer.isRunning()) {
             val portResult = streamProxyServer.start()
             if (portResult.isFailure) {
-                return Result.failure(portResult.exceptionOrNull() ?: Exception("代理服务器启动失败"))
+                return Result.failure(portResult.exceptionOrNull() ?: Exception(LocaleManager.getString(context, R.string.error_proxy_start_failed)))
             }
         }
         
@@ -168,7 +181,7 @@ class StreamPlaybackHelper @Inject constructor(
         val streamUrl = streamProxyServer.getStreamUrl(taskId, 0)
         
         if (streamUrl == null) {
-            return Result.failure(Exception("无法获取流播放 URL"))
+            return Result.failure(Exception(LocaleManager.getString(context, R.string.error_no_stream_url)))
         }
         
         // 记录当前播放任务
@@ -252,7 +265,7 @@ class StreamPlaybackHelper @Inject constructor(
             _playbackState.value = StreamPlaybackState.DownloadCompleted
             Timber.i("StreamPlaybackHelper: 下载完成")
         } else if (progress.state == TorrentState.ERROR) {
-            _playbackState.value = StreamPlaybackState.Error("下载错误")
+            _playbackState.value = StreamPlaybackState.Error(LocaleManager.getString(context, R.string.error_download))
             Timber.e("StreamPlaybackHelper: 下载错误")
         }
     }
@@ -295,7 +308,7 @@ class StreamPlaybackHelper @Inject constructor(
         val maxSeek = _maxSeekPositionMs.value
         
         if (positionMs > maxSeek) {
-            return Result.failure(IllegalArgumentException("尚未下载到该位置，请等待"))
+            return Result.failure(IllegalArgumentException(LocaleManager.getString(context, R.string.error_wait_for_download)))
         }
         
         playerManager.seekTo(positionMs)

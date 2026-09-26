@@ -46,6 +46,7 @@ class UserPreferencesRepository @Inject constructor(
             themeMode = preferences[PreferencesKeys.THEME_MODE]?.let { 
                 ThemeMode.valueOf(it) 
             } ?: ThemeMode.SYSTEM,
+            appLanguage = AppLanguage.fromName(preferences[PreferencesKeys.APP_LANGUAGE]),
             fullScreenMode = preferences[PreferencesKeys.FULL_SCREEN_MODE] ?: false,
             showThumbnail = preferences[PreferencesKeys.SHOW_THUMBNAIL] ?: true,
             sortBy = preferences[PreferencesKeys.SORT_BY]?.let { 
@@ -157,6 +158,17 @@ class UserPreferencesRepository @Inject constructor(
             preferences[PreferencesKeys.THEME_MODE] = mode.name
         }
     }
+
+    /**
+     * 更新应用语言
+     *
+     * [AppLanguage.SYSTEM] 表示跟随系统语言。
+     */
+    suspend fun updateAppLanguage(language: AppLanguage) {
+        dataStore.edit { preferences ->
+            preferences[PreferencesKeys.APP_LANGUAGE] = language.name
+        }
+    }
     
     /**
      * 更新全屏模式
@@ -233,6 +245,7 @@ class UserPreferencesRepository @Inject constructor(
             
             // 界面设置
             prefs[PreferencesKeys.THEME_MODE] = preferences.themeMode.name
+            prefs[PreferencesKeys.APP_LANGUAGE] = preferences.appLanguage.name
             prefs[PreferencesKeys.FULL_SCREEN_MODE] = preferences.fullScreenMode
             prefs[PreferencesKeys.SHOW_THUMBNAIL] = preferences.showThumbnail
             prefs[PreferencesKeys.SORT_BY] = preferences.sortBy.name

@@ -35,6 +35,8 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
 import java.io.File
 import javax.inject.Inject
+import com.pureframe.player.R
+import com.pureframe.player.i18n.LocaleManager
 
 /**
  * 下载页面 ViewModel
@@ -265,7 +267,7 @@ class DownloadViewModel @Inject constructor(
                 Timber.e("DownloadViewModel: metadata 获取超时 - taskId=$taskId, magnetLink=$magnetLink")
                 _uiState.update {
                     it.copy(
-                        errorMessage = "无法获取资源信息，请检查磁力链接是否有效",
+                        errorMessage = LocaleManager.getString(appContext, R.string.error_invalid_magnet),
                         isAddingTask = false
                     )
                 }
@@ -533,7 +535,7 @@ class DownloadViewModel @Inject constructor(
      */
     private fun extractTitleFromMagnet(magnetLink: String): String {
         val dnParam = magnetLink.findParameter("dn")
-        return dnParam ?: "未知资源"
+        return dnParam ?: LocaleManager.getString(appContext, R.string.error_unknown_resource)
     }
 
     /**

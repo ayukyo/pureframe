@@ -19,6 +19,8 @@ import timber.log.Timber
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.pureframe.player.R
+import com.pureframe.player.i18n.LocaleManager
 
 /**
  * 本地视频扫描器
@@ -119,7 +121,7 @@ class LocalVideoScanner @Inject constructor(
 
                 while (it.moveToNext()) {
                     val id = it.getLong(idColumn)
-                    val name = it.getString(nameColumn) ?: "未知视频"
+                    val name = it.getString(nameColumn) ?: LocaleManager.getString(context, R.string.error_unknown_video)
                     val path = it.getString(pathColumn) ?: continue
                     val size = it.getLong(sizeColumn)
                     val duration = it.getLong(durationColumn)

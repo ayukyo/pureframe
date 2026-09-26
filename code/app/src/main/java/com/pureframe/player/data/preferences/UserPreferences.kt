@@ -6,7 +6,7 @@ package com.pureframe.player.data.preferences
  * 存储用户的个性化设置，包括：
  * - 播放器设置（自动播放、循环播放、播放速度）
  * - 下载设置（并行下载数、下载路径）
- * - 界面设置（主题、全屏模式）
+ * - 界面设置（主题、语言、全屏模式）
  */
 data class UserPreferences(
     // 播放器设置
@@ -25,6 +25,7 @@ data class UserPreferences(
 
     // 界面设置
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
+    val appLanguage: AppLanguage = AppLanguage.SYSTEM,
     val fullScreenMode: Boolean = false,
     val showThumbnail: Boolean = true,
     val sortBy: SortBy = SortBy.DATE_DESC,

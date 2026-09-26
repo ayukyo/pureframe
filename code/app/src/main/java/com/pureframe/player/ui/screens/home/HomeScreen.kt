@@ -41,6 +41,11 @@ import coil.request.ImageRequest
 import com.pureframe.player.data.preferences.SortBy
 import com.pureframe.player.domain.model.Video
 import com.pureframe.player.ui.navigation.NavigationState
+import androidx.compose.ui.res.stringResource
+import com.pureframe.player.R
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 
 /**
  * 首页滚动位置持有者
@@ -205,7 +210,7 @@ fun HomeScreen(
                                 searchQuery = it
                                 viewModel.searchVideos(it)
                             },
-                            placeholder = { Text("搜索视频...") },
+                            placeholder = { Text(stringResource(R.string.home_search_hint)) },
                             singleLine = true,
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = Color.Transparent,
@@ -215,7 +220,7 @@ fun HomeScreen(
                         )
                     } else {
                         Text(
-                            text = "本地视频",
+                            text = stringResource(R.string.home_title),
                             color = MaterialTheme.colorScheme.onSurface
                         )
                     }
@@ -234,7 +239,7 @@ fun HomeScreen(
                     }) {
                         Icon(
                             imageVector = if (showSearch) Icons.Filled.Close else Icons.Filled.Search,
-                            contentDescription = if (showSearch) "关闭搜索" else "搜索",
+                            contentDescription = if (showSearch) stringResource(R.string.home_close_search) else stringResource(R.string.home_search),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -254,10 +259,10 @@ fun HomeScreen(
                     else -> Icons.Filled.Event
                 }
                 val sortLabel = when (currentSort) {
-                    SortBy.DATE_ASC, SortBy.DATE_DESC -> "日期"
-                    SortBy.SIZE_ASC, SortBy.SIZE_DESC -> "大小"
-                    SortBy.DURATION_ASC, SortBy.DURATION_DESC -> "时长"
-                    else -> "日期"
+                    SortBy.DATE_ASC, SortBy.DATE_DESC -> stringResource(R.string.sort_date)
+                    SortBy.SIZE_ASC, SortBy.SIZE_DESC -> stringResource(R.string.sort_size)
+                    SortBy.DURATION_ASC, SortBy.DURATION_DESC -> stringResource(R.string.sort_duration)
+                    else -> stringResource(R.string.sort_date)
                 }
 
                 FloatingActionButton(
@@ -271,7 +276,7 @@ fun HomeScreen(
                     ) {
                         Icon(
                             imageVector = sortIcon,
-                            contentDescription = "排序",
+                            contentDescription = stringResource(R.string.home_sort),
                             modifier = Modifier.size(20.dp)
                         )
                         Text(
@@ -329,7 +334,7 @@ fun HomeScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Filled.Refresh,
-                            contentDescription = "刷新扫描",
+                            contentDescription = stringResource(R.string.home_rescan),
                             modifier = Modifier.size(24.dp)
                         )
                     }
@@ -431,21 +436,22 @@ private fun FilterTabs(
     Row(
         modifier = modifier
             .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
             .padding(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         FilterTab(
-            text = "全部 ($allCount)",
+            text = stringResource(R.string.home_filter_all, allCount),
             selected = currentType == HomeViewModel.ListType.ALL,
             onClick = { onTypeChange(HomeViewModel.ListType.ALL) }
         )
         FilterTab(
-            text = "收藏 ($favoriteCount)",
+            text = stringResource(R.string.home_filter_favorite, favoriteCount),
             selected = currentType == HomeViewModel.ListType.FAVORITE,
             onClick = { onTypeChange(HomeViewModel.ListType.FAVORITE) }
         )
         FilterTab(
-            text = "最近 ($recentCount)",
+            text = stringResource(R.string.home_filter_recent, recentCount),
             selected = currentType == HomeViewModel.ListType.RECENT,
             onClick = { onTypeChange(HomeViewModel.ListType.RECENT) }
         )
@@ -471,6 +477,9 @@ private fun FilterTab(
             text = text,
             style = MaterialTheme.typography.labelMedium,
             color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            softWrap = false,
+            overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
         )
     }
@@ -588,7 +597,7 @@ fun VideoGridItem(
                 ) {
                     Icon(
                         imageVector = if (video.isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                        contentDescription = if (video.isFavorite) "取消收藏" else "收藏",
+                        contentDescription = if (video.isFavorite) stringResource(R.string.home_favorite_remove) else stringResource(R.string.home_favorite_add),
                         tint = if (video.isFavorite) Color(0xFFFF6B6B) else MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(18.dp)
                     )
@@ -603,7 +612,7 @@ fun VideoGridItem(
         onDismissRequest = { showMenu = false }
     ) {
         DropdownMenuItem(
-            text = { Text("播放") },
+            text = { Text(stringResource(R.string.home_menu_play)) },
             onClick = {
                 showMenu = false
                 onClick()
@@ -611,7 +620,7 @@ fun VideoGridItem(
             leadingIcon = { Icon(Icons.Filled.PlayArrow, null, modifier = Modifier.size(20.dp)) }
         )
         DropdownMenuItem(
-            text = { Text(if (video.isFavorite) "取消收藏" else "收藏") },
+            text = { Text(if (video.isFavorite) stringResource(R.string.home_favorite_remove) else stringResource(R.string.home_favorite_add)) },
             onClick = {
                 showMenu = false
                 onFavoriteClick()
@@ -625,7 +634,7 @@ fun VideoGridItem(
             }
         )
         DropdownMenuItem(
-            text = { Text("详情") },
+            text = { Text(stringResource(R.string.home_menu_detail)) },
             onClick = {
                 showMenu = false
                 showDetailDialog = true
@@ -633,7 +642,7 @@ fun VideoGridItem(
             leadingIcon = { Icon(Icons.Filled.Info, null, modifier = Modifier.size(20.dp)) }
         )
         DropdownMenuItem(
-            text = { Text("删除", color = MaterialTheme.colorScheme.error) },
+            text = { Text(stringResource(R.string.home_menu_delete), color = MaterialTheme.colorScheme.error) },
             onClick = {
                 showMenu = false
                 showDeleteDialog = true
@@ -658,20 +667,20 @@ fun VideoGridItem(
             },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    DetailRow("大小", video.formattedSize)
-                    DetailRow("时长", video.formattedDuration)
-                    if (video.resolution.isNotEmpty()) DetailRow("分辨率", video.resolution)
-                    if (video.format.isNotEmpty()) DetailRow("格式", video.format)
-                    if (video.playCount > 0) DetailRow("播放次数", "${video.playCount} 次")
+                    DetailRow(stringResource(R.string.detail_size), video.formattedSize)
+                    DetailRow(stringResource(R.string.detail_duration), video.formattedDuration)
+                    if (video.resolution.isNotEmpty()) DetailRow(stringResource(R.string.detail_resolution), video.resolution)
+                    if (video.format.isNotEmpty()) DetailRow(stringResource(R.string.detail_format), video.format)
+                    if (video.playCount > 0) DetailRow(stringResource(R.string.detail_play_count), pluralStringResource(R.plurals.play_count_times, video.playCount, video.playCount))
                     video.lastPlayedAt?.let {
-                        DetailRow("最近播放", java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault()).format(it))
+                        DetailRow(stringResource(R.string.detail_last_played), java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault()).format(it))
                     }
-                    DetailRow("路径", video.filePath)
+                    DetailRow(stringResource(R.string.detail_path), video.filePath)
                 }
             },
             confirmButton = {
                 TextButton(onClick = { showDetailDialog = false }) {
-                    Text("关闭")
+                    Text(stringResource(R.string.action_close))
                 }
             }
         )
@@ -681,8 +690,8 @@ fun VideoGridItem(
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
-            title = { Text("删除视频") },
-            text = { Text("确定要删除「${video.title}」吗？") },
+            title = { Text(stringResource(R.string.home_delete_title)) },
+            text = { Text(stringResource(R.string.home_delete_message, video.title)) },
             confirmButton = {
                 Button(
                     onClick = {
@@ -693,7 +702,7 @@ fun VideoGridItem(
                         containerColor = MaterialTheme.colorScheme.error
                     )
                 ) {
-                    Text("删除")
+                    Text(stringResource(R.string.home_delete_file))
                 }
             },
             dismissButton = {
@@ -704,10 +713,10 @@ fun VideoGridItem(
                             onDeleteClick(false)
                         }
                     ) {
-                        Text("仅移除记录")
+                        Text(stringResource(R.string.home_remove_record_only))
                     }
                     TextButton(onClick = { showDeleteDialog = false }) {
-                        Text("取消")
+                        Text(stringResource(R.string.action_cancel))
                     }
                 }
             }
@@ -747,11 +756,27 @@ private fun EmptyVideosState(
     onGrantPermission: (() -> Unit)? = null
 ) {
     val (message, subMessage, icon) = when {
-        isSearching -> Triple("未找到视频", "尝试其他关键词搜索", Icons.Filled.Search)
-        listType == HomeViewModel.ListType.ALL -> Triple("暂无本地视频", "授权后自动扫描全盘视频", Icons.Filled.VideoLibrary)
-        listType == HomeViewModel.ListType.FAVORITE -> Triple("暂无收藏", "点击视频右侧的心形图标收藏", Icons.Filled.FavoriteBorder)
-        listType == HomeViewModel.ListType.RECENT -> Triple("暂无最近播放", "播放过的视频会显示在这里", Icons.Filled.History)
-        else -> Triple("暂无视频", "", Icons.Filled.VideoLibrary)
+        isSearching -> Triple(
+            stringResource(R.string.home_empty_search_title),
+            stringResource(R.string.home_empty_search_desc),
+            Icons.Filled.Search
+        )
+        listType == HomeViewModel.ListType.ALL -> Triple(
+            stringResource(R.string.home_empty_local_title),
+            stringResource(R.string.home_empty_local_desc),
+            Icons.Filled.VideoLibrary
+        )
+        listType == HomeViewModel.ListType.FAVORITE -> Triple(
+            stringResource(R.string.home_empty_favorite_title),
+            stringResource(R.string.home_empty_favorite_desc),
+            Icons.Filled.FavoriteBorder
+        )
+        listType == HomeViewModel.ListType.RECENT -> Triple(
+            stringResource(R.string.home_empty_recent_title),
+            stringResource(R.string.home_empty_recent_desc),
+            Icons.Filled.History
+        )
+        else -> Triple(stringResource(R.string.home_empty_generic_title), "", Icons.Filled.VideoLibrary)
     }
 
     // 全部视频为空且未在搜索时，显示"去授权"引导按钮
@@ -794,7 +819,7 @@ private fun EmptyVideosState(
             if (showGrantButton && onGrantPermission != null) {
                 Spacer(modifier = Modifier.height(20.dp))
                 Button(onClick = onGrantPermission) {
-                    Text("去授权")
+                    Text(stringResource(R.string.home_grant_permission))
                 }
             }
         }

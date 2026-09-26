@@ -6,6 +6,7 @@ import android.net.Network
 import android.net.NetworkCapabilities
 import com.pureframe.player.data.preferences.UserPreferencesRepository
 import com.pureframe.player.data.repository.DownloadRepository
+import com.pureframe.player.domain.model.DownloadError
 import com.pureframe.player.domain.model.DownloadTask
 import com.pureframe.player.domain.model.DownloadStatus
 import com.pureframe.player.domain.model.DownloadType
@@ -20,6 +21,8 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.pureframe.player.R
+import com.pureframe.player.i18n.LocaleManager
 
 /**
  * HTTP 下载管理器
@@ -223,7 +226,8 @@ class HttpDownloadManager @Inject constructor(
                 Timber.d("HttpDownloadManager: 下载任务取消 - taskId=$taskId")
             } catch (e: Exception) {
                 Timber.e(e, "HttpDownloadManager: 下载异常 - taskId=$taskId")
-                onDownloadError(taskId, e.message ?: "未知错误")
+                // 落库语言无关的错误码，文案在 UI 层按当前语言解析（见 DownloadError）
+                onDownloadError(taskId, DownloadError.fromException(e))
             } finally {
                 activeHttpDownloads.remove(taskId)
                 // 任务结束，尝试启动队列中的下一个任务
@@ -374,7 +378,7 @@ class HttpDownloadManager @Inject constructor(
     suspend fun resumeDownload(taskId: Long): Result<Unit> {
         return try {
             val task = downloadRepository.getTaskById(taskId) ?: return Result.failure(
-                Exception("任务不存在")
+                Exception(LocaleManager.getString(context, R.string.error_task_not_found))
             )
 
             val resumePosition = pausedPositions.remove(taskId) ?: 0

@@ -37,6 +37,8 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.PlayerView
 import com.pureframe.player.player.PlayerState
 import kotlinx.coroutines.launch
+import androidx.compose.ui.res.stringResource
+import com.pureframe.player.R
 
 /**
  * 播放器页面 - 增强版
@@ -297,7 +299,8 @@ fun PlayerScreen(
             exit = fadeOut(animationSpec = tween(200))
         ) {
             EnhancedPlayerControls(
-                title = uiState.video?.title ?: uiState.title,
+                title = uiState.video?.title
+                    ?: uiState.title.ifEmpty { stringResource(R.string.player_title) },
                 isPlaying = isPlaying,
                 currentPosition = currentPosition,
                 duration = duration,
@@ -347,7 +350,7 @@ fun PlayerScreen(
         // 错误显示
         if (playerError != null || uiState.errorMessage != null) {
             ErrorOverlay(
-                message = playerError ?: uiState.errorMessage ?: "未知错误",
+                message = playerError ?: uiState.errorMessage ?: stringResource(R.string.player_error_unknown),
                 onRetry = { viewModel.clearError() },
                 onBack = onBack,
                 modifier = Modifier.align(Alignment.Center)
@@ -451,8 +454,8 @@ fun GestureIndicatorOverlay(
     modifier: Modifier = Modifier
 ) {
     val (icon, value, label) = when (indicator) {
-        is GestureIndicator.Volume -> Triple(Icons.Filled.VolumeUp, indicator.value, "音量")
-        is GestureIndicator.Brightness -> Triple(Icons.Filled.Brightness6, indicator.value, "亮度")
+        is GestureIndicator.Volume -> Triple(Icons.Filled.VolumeUp, indicator.value, stringResource(R.string.gesture_volume))
+        is GestureIndicator.Brightness -> Triple(Icons.Filled.Brightness6, indicator.value, stringResource(R.string.gesture_brightness))
         is GestureIndicator.Seek -> {
             val seekText = if (indicator.deltaMs > 0) "+${indicator.deltaMs / 1000}s" 
                            else "-${Math.abs(indicator.deltaMs) / 1000}s"
@@ -552,7 +555,7 @@ fun SeekGestureOverlay(
                     Icon(
                         imageVector = if (accumulatedDelta > 0) Icons.Filled.FastForward 
                                       else Icons.Filled.FastRewind,
-                        contentDescription = "跳转",
+                        contentDescription = stringResource(R.string.player_jump),
                         tint = Color.White,
                         modifier = Modifier.size(24.dp)
                     )
@@ -590,12 +593,12 @@ fun StreamPlaybackIndicator(
         ) {
             Icon(
                 imageVector = Icons.Filled.Downloading,
-                contentDescription = "下载中",
+                contentDescription = stringResource(R.string.player_downloading),
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(16.dp)
             )
             Text(
-                text = "已下载 ${(progress * 100).toInt()}%",
+                text = stringResource(R.string.player_downloaded_percent, (progress * 100).toInt()),
                 color = Color.White,
                 style = MaterialTheme.typography.bodySmall
             )
@@ -626,7 +629,7 @@ fun ErrorOverlay(
         ) {
             Icon(
                 imageVector = Icons.Filled.Error,
-                contentDescription = "错误",
+                contentDescription = stringResource(R.string.player_error),
                 tint = MaterialTheme.colorScheme.error,
                 modifier = Modifier.size(48.dp)
             )
@@ -638,8 +641,8 @@ fun ErrorOverlay(
             )
             Spacer(modifier = Modifier.height(24.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                Button(onClick = onBack) { Text("返回") }
-                Button(onClick = onRetry) { Text("重试") }
+                Button(onClick = onBack) { Text(stringResource(R.string.action_go_back)) }
+                Button(onClick = onRetry) { Text(stringResource(R.string.action_retry)) }
             }
         }
     }

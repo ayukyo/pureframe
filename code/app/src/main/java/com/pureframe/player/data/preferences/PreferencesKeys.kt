@@ -27,6 +27,7 @@ object PreferencesKeys {
     
     // 界面设置
     val THEME_MODE = stringPreferencesKey("theme_mode")
+    val APP_LANGUAGE = stringPreferencesKey("app_language")
     val FULL_SCREEN_MODE = booleanPreferencesKey("full_screen_mode")
     val SHOW_THUMBNAIL = booleanPreferencesKey("show_thumbnail")
     val SORT_BY = stringPreferencesKey("sort_by")

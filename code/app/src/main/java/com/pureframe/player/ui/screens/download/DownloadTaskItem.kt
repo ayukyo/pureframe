@@ -48,6 +48,8 @@ import androidx.compose.ui.unit.dp
 import com.pureframe.player.domain.model.DownloadStatus
 import com.pureframe.player.domain.model.DownloadTask
 import com.pureframe.player.ui.theme.AppTheme
+import androidx.compose.ui.res.stringResource
+import com.pureframe.player.R
 
 /**
  * 下载任务列表项
@@ -81,17 +83,19 @@ fun DownloadTaskItem(
     }
 
     // 状态文字
-    val statusText = when (task.status) {
-        DownloadStatus.DOWNLOADING -> "下载中"
-        DownloadStatus.PAUSED -> "已暂停"
-        DownloadStatus.COMPLETED -> "已完成"
-        DownloadStatus.FAILED -> "失败"
-        DownloadStatus.ERROR -> "错误"
-        DownloadStatus.PENDING -> "等待中"
-        DownloadStatus.WAITING -> "DHT查找"
-        DownloadStatus.CANCELLED -> "已取消"
-        DownloadStatus.PENDING_SELECTION -> "选择文件"
-    }
+    val statusText = stringResource(
+        when (task.status) {
+            DownloadStatus.DOWNLOADING -> R.string.download_status_downloading
+            DownloadStatus.PAUSED -> R.string.download_status_paused
+            DownloadStatus.COMPLETED -> R.string.download_status_completed
+            DownloadStatus.FAILED -> R.string.download_status_failed
+            DownloadStatus.ERROR -> R.string.download_status_error
+            DownloadStatus.PENDING -> R.string.download_status_pending
+            DownloadStatus.WAITING -> R.string.download_status_waiting
+            DownloadStatus.CANCELLED -> R.string.download_status_cancelled
+            DownloadStatus.PENDING_SELECTION -> R.string.download_status_selecting
+        }
+    )
     
     Box(
         modifier = modifier
@@ -142,7 +146,7 @@ fun DownloadTaskItem(
                     ) {
                         Icon(
                             imageVector = Icons.Filled.MoreVert,
-                            contentDescription = "更多选项",
+                            contentDescription = stringResource(R.string.download_more_options),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(20.dp)
                         )
@@ -156,7 +160,7 @@ fun DownloadTaskItem(
                         // 边下边播（仅当可播放时）
                         if (task.canStream || task.isCompleted) {
                             DropdownMenuItem(
-                                text = { Text("边下边播") },
+                                text = { Text(stringResource(R.string.download_stream_play)) },
                                 onClick = {
                                     showMenu = false
                                     onPlayClick()
@@ -173,7 +177,7 @@ fun DownloadTaskItem(
 
                         // 删除选项
                         DropdownMenuItem(
-                            text = { Text("删除任务") },
+                            text = { Text(stringResource(R.string.download_delete_task)) },
                             onClick = {
                                 showMenu = false
                                 showDeleteDialog = true
@@ -240,7 +244,7 @@ fun DownloadTaskItem(
             ) {
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = "失败原因：${task.errorCode}",
+                    text = stringResource(R.string.download_failure_reason, downloadErrorText(task.errorCode)),
                     style = MaterialTheme.typography.bodySmall,
                     color = ext.downloadError,
                     maxLines = 2,
@@ -253,7 +257,7 @@ fun DownloadTaskItem(
                 Spacer(modifier = Modifier.height(8.dp))
                 
                 Text(
-                    text = "✓ 可边下边播",
+                    text = stringResource(R.string.download_streamable_badge),
                     style = MaterialTheme.typography.labelSmall,
                     color = ext.downloadActive
                 )
@@ -283,7 +287,7 @@ fun DownloadTaskItem(
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = if (task.isCompleted) "播放" else "边下边播",
+                            text = if (task.isCompleted) stringResource(R.string.download_playing) else stringResource(R.string.download_streaming),
                             style = MaterialTheme.typography.labelMedium
                         )
                     }
@@ -301,7 +305,7 @@ fun DownloadTaskItem(
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("暂停")
+                        Text(stringResource(R.string.action_pause))
                     }
                 } else if (task.status == DownloadStatus.PAUSED) {
                     OutlinedButton(
@@ -314,7 +318,7 @@ fun DownloadTaskItem(
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("恢复")
+                        Text(stringResource(R.string.action_resume))
                     }
                 }
 
@@ -330,7 +334,7 @@ fun DownloadTaskItem(
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("重试")
+                        Text(stringResource(R.string.action_retry))
                     }
                 }
             }
@@ -341,8 +345,8 @@ fun DownloadTaskItem(
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
-            title = { Text("删除下载任务") },
-            text = { Text("是否同时删除已下载的文件？") },
+            title = { Text(stringResource(R.string.download_delete_title)) },
+            text = { Text(stringResource(R.string.download_delete_message)) },
             confirmButton = {
                 Button(
                     onClick = {
@@ -350,7 +354,7 @@ fun DownloadTaskItem(
                         onDeleteClick(true)
                     }
                 ) {
-                    Text("删除任务和文件")
+                    Text(stringResource(R.string.download_delete_task_and_files))
                 }
             },
             dismissButton = {
@@ -361,12 +365,12 @@ fun DownloadTaskItem(
                             onDeleteClick(false)
                         }
                     ) {
-                        Text("仅删除任务")
+                        Text(stringResource(R.string.download_delete_task_only))
                     }
                     TextButton(
                         onClick = { showDeleteDialog = false }
                     ) {
-                        Text("取消")
+                        Text(stringResource(R.string.action_cancel))
                     }
                 }
             }

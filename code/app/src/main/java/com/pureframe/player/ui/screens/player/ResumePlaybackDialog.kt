@@ -12,6 +12,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pureframe.player.ui.theme.AppDialogColors
 import com.pureframe.player.ui.theme.appDialogColors
+import androidx.compose.ui.res.stringResource
+import com.pureframe.player.R
 
 /**
  * 续播提示对话框
@@ -48,7 +50,7 @@ fun ResumePlaybackDialog(
         textContentColor = dialogColors.onContainer,
         title = {
             Text(
-                text = "续播提示",
+                text = stringResource(R.string.resume_title),
                 fontWeight = FontWeight.Medium,
                 fontSize = 18.sp
             )
@@ -78,7 +80,7 @@ fun ResumePlaybackDialog(
                     )
                     
                     Text(
-                        text = "上次观看至 ${formatTime(lastPosition)}",
+                        text = stringResource(R.string.resume_last_at, formatTime(lastPosition)),
                         color = dialogColors.onContainer,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Medium
@@ -86,7 +88,7 @@ fun ResumePlaybackDialog(
                 } else {
                     // 已看完
                     Text(
-                        text = "上次已看完此视频",
+                        text = stringResource(R.string.resume_finished),
                         color = dialogColors.onContainerMuted,
                         fontSize = 16.sp,
                         modifier = Modifier.padding(vertical = 16.dp)
@@ -105,7 +107,7 @@ fun ResumePlaybackDialog(
                         contentColor = dialogColors.onContainerMuted
                     )
                 ) {
-                    Text("从头播放")
+                    Text(stringResource(R.string.resume_from_start))
                 }
                 
                 // 续播（如果没看完）
@@ -119,7 +121,7 @@ fun ResumePlaybackDialog(
                         shape = RoundedCornerShape(8.dp)
                     ) {
                         Text(
-                            text = "续播",
+                            text = stringResource(R.string.resume_continue),
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -134,7 +136,7 @@ fun ResumePlaybackDialog(
                         shape = RoundedCornerShape(8.dp)
                     ) {
                         Text(
-                            text = "重播",
+                            text = stringResource(R.string.resume_replay),
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -174,14 +176,14 @@ fun LastPlaybackInfo(
         
         // 进度百分比
         Text(
-            text = "已观看 ${progressPercent}%",
+            text = stringResource(R.string.resume_watched, progressPercent),
             color = colors.onContainerMuted,
             fontSize = 12.sp
         )
         
         // 剩余时间
         Text(
-            text = "剩余 ${formatTime(remainingTime)}",
+            text = stringResource(R.string.resume_remaining, formatTime(remainingTime)),
             color = colors.onContainerMuted,
             fontSize = 12.sp
         )

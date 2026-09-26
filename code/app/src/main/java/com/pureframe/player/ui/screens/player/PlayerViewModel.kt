@@ -33,6 +33,10 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
+import android.content.Context
+import dagger.hilt.android.qualifiers.ApplicationContext
+import com.pureframe.player.R
+import com.pureframe.player.i18n.LocaleManager
 
 /**
  * 播放器页面 ViewModel
@@ -59,7 +63,8 @@ class PlayerViewModel @Inject constructor(
     private val getDownloadByIdUseCase: GetDownloadByIdUseCase,
     private val playerManager: PlayerManager,
     private val streamPlaybackHelper: StreamPlaybackHelper,
-    private val userPreferencesRepository: com.pureframe.player.data.preferences.UserPreferencesRepository
+    private val userPreferencesRepository: com.pureframe.player.data.preferences.UserPreferencesRepository,
+    @ApplicationContext private val appContext: Context
 ) : ViewModel() {
 
     // 播放类型
@@ -170,7 +175,7 @@ class PlayerViewModel @Inject constructor(
                 // 获取视频信息
                 val video = getVideoByIdUseCase(videoId)
                 if (video == null) {
-                    _uiState.update { it.copy(errorMessage = "视频不存在", isLoading = false) }
+                    _uiState.update { it.copy(errorMessage = LocaleManager.getString(appContext, R.string.player_video_not_found), isLoading = false) }
                     return@launch
                 }
                 
@@ -254,7 +259,7 @@ class PlayerViewModel @Inject constructor(
                 onFailure = { error ->
                     _uiState.update { 
                         it.copy(
-                            errorMessage = error.message ?: "边下边播启动失败",
+                            errorMessage = error.message ?: LocaleManager.getString(appContext, R.string.player_stream_start_failed),
                             isLoading = false
                         )
                     }
@@ -284,7 +289,7 @@ class PlayerViewModel @Inject constructor(
             } else {
                 _uiState.update { 
                     it.copy(
-                        errorMessage = "下载任务不存在",
+                        errorMessage = LocaleManager.getString(appContext, R.string.player_task_not_found),
                         isLoading = false
                     )
                 }
@@ -363,7 +368,7 @@ class PlayerViewModel @Inject constructor(
         if (type == PlaybackType.STREAM) {
             val maxPos = _maxSeekPosition.value
             if (position > maxPos) {
-                _uiState.update { it.copy(errorMessage = "尚未下载到该位置") }
+                _uiState.update { it.copy(errorMessage = LocaleManager.getString(appContext, R.string.player_not_downloaded_yet)) }
                 return
             }
         }
@@ -628,7 +633,7 @@ data class PlayerUiState(
     val errorMessage: String? = null,
     val streamProgress: Float = 0f,      // 下载进度 (0-1)
     val maxSeekPosition: Long = 0L,      // 最大可跳转位置
-    val title: String = "播放器"         // 视频标题
+    val title: String = ""               // 视频标题（为空时由 UI 层回退到通用标题）
 )
 
 /**

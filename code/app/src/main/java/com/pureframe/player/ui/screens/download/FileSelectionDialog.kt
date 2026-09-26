@@ -23,6 +23,8 @@ import com.pureframe.player.download.TorrentMetadataInfo
 import com.pureframe.player.ui.theme.AppTheme
 import com.pureframe.player.ui.theme.onSurfaceMuted
 import com.pureframe.player.ui.theme.surfaceHigh
+import androidx.compose.ui.res.stringResource
+import com.pureframe.player.R
 
 /**
  * 文件选择对话框
@@ -70,7 +72,7 @@ fun FileSelectionDialog(
                     title = {
                         Column {
                             Text(
-                                text = "选择下载文件",
+                                text = stringResource(R.string.file_select_title),
                                 style = MaterialTheme.typography.titleLarge
                             )
                             Text(
@@ -86,7 +88,7 @@ fun FileSelectionDialog(
                         IconButton(onClick = onDismiss) {
                             Icon(
                                 imageVector = Icons.Filled.Close,
-                                contentDescription = "关闭"
+                                contentDescription = stringResource(R.string.action_close)
                             )
                         }
                     },
@@ -105,7 +107,7 @@ fun FileSelectionDialog(
                 ) {
                     Column {
                         Text(
-                            text = "已选 ${selectedIndices.size} 个文件",
+                            text = stringResource(R.string.file_selected_count, selectedIndices.size),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurface
                         )
@@ -123,7 +125,7 @@ fun FileSelectionDialog(
                                 selectedIndices = metadata.files.map { it.index }.toSet()
                             }
                         ) {
-                            Text("全选")
+                            Text(stringResource(R.string.action_select_all))
                         }
                         // 取消全选
                         TextButton(
@@ -131,7 +133,7 @@ fun FileSelectionDialog(
                                 selectedIndices = emptySet()
                             }
                         ) {
-                            Text("取消全选")
+                            Text(stringResource(R.string.action_deselect_all))
                         }
                     }
                 }
@@ -173,7 +175,7 @@ fun FileSelectionDialog(
                         onClick = onDismiss,
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text("取消")
+                        Text(stringResource(R.string.action_cancel))
                     }
 
                     Button(
@@ -187,7 +189,7 @@ fun FileSelectionDialog(
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("开始下载")
+                        Text(stringResource(R.string.action_start_download))
                     }
                 }
             }

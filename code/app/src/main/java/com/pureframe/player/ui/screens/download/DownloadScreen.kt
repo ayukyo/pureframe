@@ -57,6 +57,11 @@ import com.pureframe.player.domain.model.DownloadTask
 import com.pureframe.player.domain.model.DownloadStatus
 import com.pureframe.player.ui.navigation.NavigationState
 import timber.log.Timber
+import androidx.compose.ui.res.stringResource
+import com.pureframe.player.R
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.ui.text.style.TextOverflow
 
 /**
  * 下载页面
@@ -140,7 +145,7 @@ fun DownloadScreen(
             TopAppBar(
                 title = { 
                     Text(
-                        text = "下载任务",
+                        text = stringResource(R.string.download_title),
                         color = MaterialTheme.colorScheme.onSurface
                     )
                 },
@@ -152,7 +157,7 @@ fun DownloadScreen(
                     IconButton(onClick = { openTorrentFilePicker() }) {
                         Icon(
                             imageVector = Icons.Filled.AttachFile,
-                            contentDescription = "选择 Torrent 文件",
+                            contentDescription = stringResource(R.string.download_select_torrent),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -161,7 +166,7 @@ fun DownloadScreen(
                         IconButton(onClick = { showClearCompletedDialog = true }) {
                             Icon(
                                 imageVector = Icons.Filled.ClearAll,
-                                contentDescription = "清除已完成",
+                                contentDescription = stringResource(R.string.download_clear_completed),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
@@ -177,7 +182,7 @@ fun DownloadScreen(
             ) {
                 Icon(
                     imageVector = Icons.Filled.Add,
-                    contentDescription = "添加下载",
+                    contentDescription = stringResource(R.string.download_add),
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -247,8 +252,8 @@ fun DownloadScreen(
     if (showClearCompletedDialog) {
         AlertDialog(
             onDismissRequest = { showClearCompletedDialog = false },
-            title = { Text("清除已完成任务") },
-            text = { Text("将移除全部 ${completedDownloads.size} 个已完成任务的记录（不删除已下载的文件），此操作不可撤销。") },
+            title = { Text(stringResource(R.string.download_clear_completed_title)) },
+            text = { Text(stringResource(R.string.download_clear_completed_message, completedDownloads.size)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -256,12 +261,12 @@ fun DownloadScreen(
                         viewModel.clearCompletedDownloads()
                     }
                 ) {
-                    Text("清除", color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.download_clear_confirm), color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showClearCompletedDialog = false }) {
-                    Text("取消")
+                    Text(stringResource(R.string.action_cancel))
                 }
             }
         )
@@ -282,7 +287,7 @@ fun DownloadScreen(
     // 加载对话框（获取 metadata 时显示）
     if (uiState.isAddingTask) {
         LoadingDialog(
-            message = "正在获取文件列表...",
+            message = stringResource(R.string.download_loading_files),
             onDismiss = {
                 // 取消操作
                 viewModel.cancelFileSelection()
@@ -323,7 +328,7 @@ private fun LoadingDialog(
         confirmButton = {},
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("取消")
+                Text(stringResource(R.string.action_cancel))
             }
         },
         text = {
@@ -354,27 +359,28 @@ private fun FilterTabs(
     Row(
         modifier = modifier
             .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
             .padding(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         FilterTab(
-            text = "全部 ($allCount)",
+            text = stringResource(R.string.download_filter_all, allCount),
             selected = currentType == DownloadViewModel.ListType.ALL,
             onClick = { onTypeChange(DownloadViewModel.ListType.ALL) }
         )
         FilterTab(
-            text = "活跃 ($activeCount)",
+            text = stringResource(R.string.download_filter_active, activeCount),
             selected = currentType == DownloadViewModel.ListType.ACTIVE,
             onClick = { onTypeChange(DownloadViewModel.ListType.ACTIVE) }
         )
         FilterTab(
-            text = "已完成 ($completedCount)",
+            text = stringResource(R.string.download_filter_completed, completedCount),
             selected = currentType == DownloadViewModel.ListType.COMPLETED,
             onClick = { onTypeChange(DownloadViewModel.ListType.COMPLETED) }
         )
         if (failedCount > 0) {
             FilterTab(
-                text = "失败 ($failedCount)",
+                text = stringResource(R.string.download_filter_failed, failedCount),
                 selected = currentType == DownloadViewModel.ListType.FAILED,
                 onClick = { onTypeChange(DownloadViewModel.ListType.FAILED) }
             )
@@ -401,6 +407,9 @@ private fun FilterTab(
             text = text,
             style = MaterialTheme.typography.labelMedium,
             color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            softWrap = false,
+            overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
         )
     }
@@ -415,17 +424,17 @@ private fun EmptyDownloadsState(
     modifier: Modifier = Modifier
 ) {
     val message = when (listType) {
-        DownloadViewModel.ListType.ALL -> "暂无下载任务"
-        DownloadViewModel.ListType.ACTIVE -> "没有正在下载的任务"
-        DownloadViewModel.ListType.COMPLETED -> "没有已完成的任务"
-        DownloadViewModel.ListType.FAILED -> "没有失败的任务"
+        DownloadViewModel.ListType.ALL -> stringResource(R.string.download_empty_all)
+        DownloadViewModel.ListType.ACTIVE -> stringResource(R.string.download_empty_active)
+        DownloadViewModel.ListType.COMPLETED -> stringResource(R.string.download_empty_completed)
+        DownloadViewModel.ListType.FAILED -> stringResource(R.string.download_empty_failed)
     }
     
     val subMessage = when (listType) {
-        DownloadViewModel.ListType.ALL -> "点击右下角按钮添加下载"
-        DownloadViewModel.ListType.ACTIVE -> "添加新任务开始下载"
-        DownloadViewModel.ListType.COMPLETED -> "下载完成的任务会显示在这里"
-        DownloadViewModel.ListType.FAILED -> "出错的任务会显示在这里"
+        DownloadViewModel.ListType.ALL -> stringResource(R.string.download_empty_all_desc)
+        DownloadViewModel.ListType.ACTIVE -> stringResource(R.string.download_empty_active_desc)
+        DownloadViewModel.ListType.COMPLETED -> stringResource(R.string.download_empty_completed_desc)
+        DownloadViewModel.ListType.FAILED -> stringResource(R.string.download_empty_failed_desc)
     }
     
     Box(

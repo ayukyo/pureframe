@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 13+ (API 33) 系统级「应用语言」支持。
+  声明本 App 支持的语言，系统设置 → 应用 → 本应用 → 语言 里即可直接切换。
+
+  注意：这里只声明支持哪些语言。实际切换到哪种语言由 App 内设置（DataStore 偏好）
+  决定，因此不使用 android:defaultLocale（该属性需要 API 35，且与 App 内偏好会冲突）。
+-->
+<locale-config xmlns:android="http://schemas.android.com/apk/res/android">
+    <locale android:name="en" />
+    <locale android:name="zh-CN" />
+</locale-config>

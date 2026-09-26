@@ -15,6 +15,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pureframe.player.ui.theme.AppDialogColors
 import com.pureframe.player.ui.theme.appDialogColors
+import androidx.compose.ui.res.stringResource
+import com.pureframe.player.R
 
 /**
  * 画面比例选择对话框
@@ -38,7 +40,7 @@ fun AspectRatioDialog(
         textContentColor = dialogColors.onContainer,
         title = {
             Text(
-                text = "画面比例",
+                text = stringResource(R.string.aspect_title),
                 fontWeight = FontWeight.Medium,
                 fontSize = 18.sp
             )
@@ -49,8 +51,8 @@ fun AspectRatioDialog(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 RatioOption(
-                    name = "自动",
-                    description = "保持原始比例，不裁切",
+                    name = stringResource(R.string.aspect_auto),
+                    description = stringResource(R.string.aspect_auto_desc),
                     isSelected = currentRatio == "AUTO",
                     colors = dialogColors,
                     onClick = {
@@ -59,8 +61,8 @@ fun AspectRatioDialog(
                     }
                 )
                 RatioOption(
-                    name = "填充",
-                    description = "填满屏幕，可能裁切画面",
+                    name = stringResource(R.string.aspect_fill),
+                    description = stringResource(R.string.aspect_fill_desc),
                     isSelected = currentRatio == "FILL",
                     colors = dialogColors,
                     onClick = {

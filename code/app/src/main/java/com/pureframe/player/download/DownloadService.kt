@@ -22,6 +22,8 @@ import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.io.File
 import javax.inject.Inject
+import com.pureframe.player.i18n.LocaleManager
+import com.pureframe.player.R
 
 /**
  * 下载服务
@@ -101,7 +103,8 @@ class DownloadService : Service() {
         when (intent?.action) {
             ACTION_START_DOWNLOAD -> {
                 val url = intent.getStringExtra(EXTRA_URL) ?: return START_NOT_STICKY
-                val title = intent.getStringExtra(EXTRA_TITLE) ?: "下载中"
+                val title = intent.getStringExtra(EXTRA_TITLE)
+                    ?: LocaleManager.getString(this@DownloadService, R.string.download_status_downloading)
                 val savePath = intent.getStringExtra(EXTRA_SAVE_PATH) 
                     ?: File(filesDir, "downloads").absolutePath
                 
@@ -145,10 +148,10 @@ class DownloadService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "下载服务",
+                LocaleManager.getString(this@DownloadService, R.string.notif_download_service),
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "视频下载进度通知"
+                description = LocaleManager.getString(this@DownloadService, R.string.notif_download_channel_desc)
                 setShowBadge(false)
             }
             
@@ -169,7 +172,10 @@ class DownloadService : Service() {
         
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(title)
-            .setContentText(if (progress > 0) "下载进度: $progress% $speedText" else "准备下载...")
+            .setContentText(
+                if (progress > 0) LocaleManager.getString(this@DownloadService, R.string.notif_download_progress, progress, speedText)
+                else LocaleManager.getString(this@DownloadService, R.string.notif_preparing)
+            )
             .setSmallIcon(android.R.drawable.stat_sys_download)
             .setProgress(100, progress, progress == 0)
             .setOngoing(true)
@@ -212,7 +218,7 @@ class DownloadService : Service() {
                     torrentManager.createDownloadTaskFromFile(torrentFile, savePath, title)
                 } else {
                     // 不支持的链接类型
-                    Result.failure(IllegalArgumentException("不支持的链接类型"))
+                    Result.failure(IllegalArgumentException(LocaleManager.getString(this@DownloadService, R.string.error_unsupported_link)))
                 }
                 
                 result.fold(
@@ -257,7 +263,7 @@ class DownloadService : Service() {
     private fun pauseDownload(taskId: Long) {
         serviceScope.launch {
             torrentManager.pauseDownload(taskId)
-            updateNotification(0, 0, "已暂停")
+            updateNotification(0, 0, LocaleManager.getString(this@DownloadService, R.string.notif_paused))
             Timber.d("DownloadService: 暂停下载 - $taskId")
         }
     }
@@ -268,7 +274,7 @@ class DownloadService : Service() {
     private fun resumeDownload(taskId: Long) {
         serviceScope.launch {
             torrentManager.resumeDownload(taskId)
-            updateNotification(0, 0, "恢复中...")
+            updateNotification(0, 0, LocaleManager.getString(this@DownloadService, R.string.notif_resuming))
             Timber.d("DownloadService: 恢复下载 - $taskId")
         }
     }
@@ -304,7 +310,7 @@ class DownloadService : Service() {
             // 发送完成通知
             val completeNotification = NotificationCompat.Builder(this@DownloadService, CHANNEL_ID)
                 .setContentTitle(currentTitle)
-                .setContentText("下载完成")
+                .setContentText(LocaleManager.getString(this@DownloadService, R.string.notif_completed))
                 .setSmallIcon(android.R.drawable.stat_sys_download_done)
                 .setProgress(0, 0, false)
                 .setOngoing(false)

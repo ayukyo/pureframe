@@ -13,6 +13,7 @@ import java.net.URL
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.pureframe.player.domain.model.DownloadError
 
 private const val USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
 /** 并行分片数 */
@@ -23,29 +24,6 @@ private const val MIN_PARALLEL_FILE_SIZE = 2L * 1024 * 1024
 private const val BUFFER_SIZE = 64 * 1024
 /** 进度 emit 节流间隔 */
 private const val EMIT_INTERVAL_MS = 200L
-
-/**
- * 把下载异常转换为用户能看懂的失败原因。
- * 直接展示原始异常 message 对普通用户毫无意义（如 "failed to connect to /1.2.3.4 (port 80)"）。
- */
-private fun Exception.toUserFriendlyMessage(): String {
-    val msg = message ?: return "下载失败"
-    return when (this) {
-        is java.net.SocketTimeoutException ->
-            if (msg.contains("connect", ignoreCase = true)) "连接超时：服务器无法访问，请检查网络或稍后重试"
-            else "响应超时：网络不稳定，请稍后重试"
-        is java.net.UnknownHostException -> "无法解析服务器地址：请检查链接是否有效"
-        is java.net.ConnectException -> "无法连接服务器：服务器拒绝或网络不可用"
-        is java.io.IOException ->
-            when {
-                msg.contains("ENOSPC", ignoreCase = true) -> "存储空间不足"
-                msg.contains("EACCES", ignoreCase = true) || msg.contains("Permission denied", ignoreCase = true) -> "没有写入权限：保存目录不可用"
-                msg.contains("No space", ignoreCase = true) -> "存储空间不足"
-                else -> "网络错误：$msg"
-            }
-        else -> "下载失败：${msg.take(80)}"
-    }
-}
 
 /**
  * HTTP 下载器
@@ -221,7 +199,7 @@ class HttpDownloader @Inject constructor() {
                         totalBytes = jobState.totalBytes,
                         speed = 0,
                         state = DownloadState.ERROR,
-                        errorMessage = e.toUserFriendlyMessage()
+                        errorMessage = DownloadError.fromException(e)
                     )
                 )
             }
@@ -322,12 +300,12 @@ class HttpDownloader @Inject constructor() {
         if (total != contentLength) {
             // 非完整：若是暂停/停止导致，抛出以走统一的收尾分支
             if (jobState.isPaused || jobState.state == DownloadState.PAUSED) {
-                throw InterruptedException("下载已暂停")
+                throw InterruptedException("download paused")
             }
             if (jobState.state == DownloadState.ERROR) {
-                throw InterruptedException("下载已停止")
+                throw InterruptedException("download stopped")
             }
-            throw IllegalStateException("分片下载不完整: $total/$contentLength")
+            throw IllegalStateException("incomplete chunk download: $total/$contentLength")
         }
 
         jobState.downloadedBytes = contentLength
@@ -385,7 +363,7 @@ class HttpDownloader @Inject constructor() {
                 return
             }
             if (code != 206 && code != 200) {
-                throw java.io.IOException("服务器返回 HTTP $code（分片 ${chunk.index}）")
+                throw java.io.IOException("server returned HTTP $code (chunk ${chunk.index})")
             }
 
             val input = BufferedInputStream(conn.inputStream, BUFFER_SIZE)
@@ -403,7 +381,7 @@ class HttpDownloader @Inject constructor() {
             while (chunk.downloaded < chunk.total) {
                 // 暂停/停止：立即退出本分片，由上层 flow 收尾（进度已随 parts 文件持久化）
                 if (jobState.isPaused || jobState.state == DownloadState.ERROR) {
-                    throw InterruptedException("分片下载中断")
+                    throw InterruptedException("chunk download interrupted")
                 }
                 val remaining = (chunk.total - chunk.downloaded).toInt().coerceAtMost(buffer.size)
                 val n = input.read(buffer, 0, remaining)
@@ -455,7 +433,7 @@ class HttpDownloader @Inject constructor() {
         // HTTP 错误码（403/404/500 等）：连接上但拿到的是错误页，
         // 必须在此明确失败，否则会把错误页当内容读、最后抛出令人困惑的 FileNotFoundException
         if (responseCode !in 200..299) {
-            throw java.io.IOException("服务器返回 HTTP $responseCode（无法下载该地址）")
+            throw java.io.IOException("server returned HTTP $responseCode (cannot download this URL)")
         }
 
         var actualStartPosition = resumePosition
@@ -499,7 +477,7 @@ class HttpDownloader @Inject constructor() {
             while (inputStream.read(buffer).also { bytesRead = it } != -1) {
                 // 暂停/停止：立即退出，进度已按 downloadedBytes 落库，恢复时走 Range 续传
                 if (jobState.isPaused || jobState.state == DownloadState.ERROR) {
-                    throw InterruptedException("下载已中断")
+                    throw InterruptedException("download interrupted")
                 }
 
                 randomAccessFile.write(buffer, 0, bytesRead)

@@ -1,12 +1,15 @@
 package com.pureframe.player.ui.navigation
 
+import androidx.annotation.StringRes
+import com.pureframe.player.R
+
 /**
  * 导航目的地定义
  */
-sealed class Screen(val route: String, val title: String) {
-    object Home : Screen("home", "本地视频")
-    object Download : Screen("download", "下载")
-    object Settings : Screen("settings", "设置")
+sealed class Screen(val route: String, @StringRes val titleRes: Int) {
+    object Home : Screen("home", R.string.tab_local)
+    object Download : Screen("download", R.string.tab_download)
+    object Settings : Screen("settings", R.string.tab_settings)
     
     // 嵌套路由
     //
@@ -14,11 +17,11 @@ sealed class Screen(val route: String, val title: String) {
     // 如果本地播放写成 "player/{videoId}"，它会把 "player/stream/5" 整体
     // 当成 videoId 吃掉，导致边下边播路由永远匹配不到。
     // 因此两条路由必须使用互不包含的前缀。
-    object Player : Screen("player/local/{videoId}", "播放器") {
+    object Player : Screen("player/local/{videoId}", R.string.player_title) {
         fun createRoute(videoId: String) = "player/local/$videoId"
     }
 
-    object StreamPlayer : Screen("player/stream/{downloadId}", "边下边播") {
+    object StreamPlayer : Screen("player/stream/{downloadId}", R.string.download_stream_play) {
         fun createRoute(downloadId: String) = "player/stream/$downloadId"
     }
 }

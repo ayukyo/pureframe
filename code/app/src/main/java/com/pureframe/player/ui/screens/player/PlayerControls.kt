@@ -29,6 +29,8 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pureframe.player.player.PlayerState
+import androidx.compose.ui.res.stringResource
+import com.pureframe.player.R
 
 /**
  * 播放器控制栏 - 完整版
@@ -176,7 +178,7 @@ fun TopControlBar(
             ) {
                 Icon(
                     imageVector = if (isFullscreen) Icons.Filled.Close else Icons.Filled.ArrowBack,
-                    contentDescription = "返回",
+                    contentDescription = stringResource(R.string.player_back),
                     tint = Color.White,
                     modifier = Modifier.size(28.dp)
                 )
@@ -205,7 +207,7 @@ fun TopControlBar(
                 ) {
                     Icon(
                         imageVector = Icons.Filled.PictureInPictureAlt,
-                        contentDescription = "画中画",
+                        contentDescription = stringResource(R.string.player_pip),
                         tint = Color.White,
                         modifier = Modifier.size(24.dp)
                     )
@@ -219,7 +221,7 @@ fun TopControlBar(
             ) {
                 Icon(
                     imageVector = Icons.Filled.MoreVert,
-                    contentDescription = "更多选项",
+                    contentDescription = stringResource(R.string.player_more),
                     tint = Color.White,
                     modifier = Modifier.size(24.dp)
                 )
@@ -288,7 +290,7 @@ fun CenterControlArea(
         // 快退 10 秒
         SeekButton(
             icon = Icons.Filled.Replay10,
-            contentDescription = "快退 10 秒",
+            contentDescription = stringResource(R.string.player_rewind),
             onClick = {
                 onUserInteraction()
                 onSeekBackward()
@@ -308,7 +310,7 @@ fun CenterControlArea(
         // 快进 10 秒
         SeekButton(
             icon = Icons.Filled.Forward10,
-            contentDescription = "快进 10 秒",
+            contentDescription = stringResource(R.string.player_forward),
             onClick = {
                 onUserInteraction()
                 onSeekForward()
@@ -343,7 +345,7 @@ fun PlayPauseButton(
     ) {
         Icon(
             imageVector = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-            contentDescription = if (isPlaying) "暂停" else "播放",
+            contentDescription = if (isPlaying) stringResource(R.string.player_pause) else stringResource(R.string.player_play),
             tint = Color.White,
             modifier = Modifier.size(iconSize)
         )
@@ -495,7 +497,7 @@ fun BottomControlBar(
                     Icon(
                         imageVector = if (isFullscreen) Icons.Filled.FullscreenExit
                                       else Icons.Filled.Fullscreen,
-                        contentDescription = "全屏",
+                        contentDescription = stringResource(R.string.player_fullscreen),
                         tint = Color.White,
                         modifier = Modifier.size(24.dp)
                     )
@@ -644,7 +646,7 @@ fun StreamProgressBadge(
         ) {
             Icon(
                 imageVector = Icons.Filled.Downloading,
-                contentDescription = "下载中",
+                contentDescription = stringResource(R.string.player_downloading),
                 tint = Color.White,
                 modifier = Modifier.size(12.dp)
             )
@@ -676,7 +678,7 @@ fun LockButton(
     ) {
         Icon(
             imageVector = if (isLocked) Icons.Filled.Lock else Icons.Outlined.LockOpen,
-            contentDescription = if (isLocked) "解锁" else "锁定",
+            contentDescription = if (isLocked) stringResource(R.string.player_unlock) else stringResource(R.string.player_lock),
             tint = Color.White,
             modifier = Modifier.size(28.dp)
         )
@@ -714,13 +716,13 @@ fun LockedOverlayHint(
             ) {
                 Icon(
                     imageVector = Icons.Filled.Lock,
-                    contentDescription = "已锁定",
+                    contentDescription = stringResource(R.string.player_locked),
                     tint = Color.White,
                     modifier = Modifier.size(20.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "点击解锁按钮退出锁屏模式",
+                    text = stringResource(R.string.player_unlock_hint),
                     color = Color.White,
                     fontSize = 14.sp
                 )

@@ -1,5 +1,7 @@
 package com.pureframe.player.ui
 
+import android.content.Context
+import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -7,13 +9,19 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.media3.common.util.UnstableApi
 import com.pureframe.player.data.preferences.ThemeMode
 import com.pureframe.player.data.preferences.UserPreferencesRepository
+import com.pureframe.player.i18n.LocaleManager
 import com.pureframe.player.player.PlayerManager
 import com.pureframe.player.ui.navigation.NavigationState
 import com.pureframe.player.ui.theme.PureFrameTheme
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
+import timber.log.Timber
 import javax.inject.Inject
 
 /**
@@ -38,6 +46,22 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var playerManager: dagger.Lazy<PlayerManager>
 
+    /**
+     * 应用语言在这里落地（而不是在 setContent 里包装 LocalContext）：
+     *
+     * - [LocaleManager.wrapContext] 返回的是 createConfigurationContext 的产物，
+     *   属于 ContextImpl。若用它去覆盖 Compose 的 LocalContext，Hilt 的
+     *   hiltViewModel() 会因为拿不到 Activity Context 而直接崩溃
+     *   （"Expected an activity context for creating a HiltViewModelFactory"）。
+     * - 在 attachBaseContext 阶段替换 base Context 是官方支持的做法
+     *   （AppCompatDelegate 也是这么做的）：Activity 本身仍是 Activity Context，
+     *   Compose 的 LocalContext 依旧指向 Activity，stringResource() 会解析到目标语言。
+     * - 跟随系统时 wrapContext 原样返回，per-app locale / 系统语言自然生效。
+     */
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(LocaleManager.wrapContext(newBase))
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         // edge-to-edge：内容绘制到系统栏后面，由 Compose 统一消费 insets。
         // 避免播放页控制栏在全屏/非全屏切换时与系统导航条重复避让（全屏按钮被压扁的问题）
@@ -55,8 +79,23 @@ class MainActivity : ComponentActivity() {
                 ThemeMode.SYSTEM, null -> androidx.compose.foundation.isSystemInDarkTheme()
                 else -> true
             }
+
             PureFrameTheme(darkTheme = darkTheme) {
                 MainScreen(navigationState = navigationState)
+            }
+        }
+
+        // 语言偏好变化 → 重建 Activity，让 base Context 换成新语言的资源。
+        // 触发入口只有设置页的语言选择（此时不在播放），重建是安全的。
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                userPreferencesRepository.userPreferencesFlow.collect { prefs ->
+                    if (prefs.appLanguage != LocaleManager.currentLanguage) {
+                        LocaleManager.update(prefs.appLanguage)
+                        Timber.i("MainActivity: language changed -> %s, recreating", prefs.appLanguage)
+                        recreate()
+                    }
+                }
             }
         }
     }
@@ -80,7 +119,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: android.content.res.Configuration) {
+    override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: Configuration) {
         super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
         // 同步到 Compose 层：PlayerScreen 据此隐藏控制栏与手势
         navigationState.setPipMode(isInPictureInPictureMode)

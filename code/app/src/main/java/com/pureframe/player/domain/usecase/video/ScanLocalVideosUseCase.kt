@@ -8,6 +8,10 @@ import kotlinx.coroutines.flow.first
 import timber.log.Timber
 import java.util.Date
 import javax.inject.Inject
+import android.content.Context
+import dagger.hilt.android.qualifiers.ApplicationContext
+import com.pureframe.player.R
+import com.pureframe.player.i18n.LocaleManager
 
 /**
  * 扫描本地视频 UseCase
@@ -19,7 +23,8 @@ import javax.inject.Inject
  */
 class ScanLocalVideosUseCase @Inject constructor(
     private val videoRepository: VideoRepository,
-    private val localVideoScanner: LocalVideoScanner
+    private val localVideoScanner: LocalVideoScanner,
+    @ApplicationContext private val context: Context
 ) {
     /**
      * 执行扫描
@@ -104,7 +109,11 @@ class ScanLocalVideosUseCase @Inject constructor(
         return try {
             val directory = java.io.File(directoryPath)
             if (!directory.exists() || !directory.isDirectory) {
-                return Result.failure(IllegalArgumentException("目录不存在: $directoryPath"))
+                return Result.failure(
+                    IllegalArgumentException(
+                        LocaleManager.getString(context, R.string.error_directory_not_found, directoryPath)
+                    )
+                )
             }
 
             val localVideos = localVideoScanner.scanDirectory(directory)

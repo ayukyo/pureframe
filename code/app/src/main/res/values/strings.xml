@@ -1,35 +1,308 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Default (English) strings.
+  Chinese is provided in values-zh-rCN/strings.xml.
+  Any other system language falls back to this file.
+-->
 <resources>
-    <string name="app_name">纯帧</string>
-    
-    <!-- 底部导航 -->
-    <string name="tab_home">首页</string>
-    <string name="tab_download">下载</string>
-    <string name="tab_mine">我的</string>
-    
-    <!-- 首页 -->
-    <string name="home_local_videos">本地视频</string>
-    <string name="home_recent">最近播放</string>
-    <string name="home_favorites">收藏</string>
-    
-    <!-- 下载 -->
-    <string name="download_input">磁链输入</string>
-    <string name="download_ing">下载中</string>
-    <string name="download_completed">已完成</string>
-    
-    <!-- 播放 -->
-    <string name="player_cached">已缓存 %d%%</string>
-    
-    <!-- 我的 -->
-    <string name="mine_settings">设置</string>
-    <string name="mine_clear_cache">清理缓存</string>
-    <string name="mine_about">关于</string>
-    
-    <!-- 通用 -->
-    <string name="ok">确定</string>
-    <string name="cancel">取消</string>
-    <string name="delete">删除</string>
-    <string name="rename">重命名</string>
-    <string name="pause">暂停</string>
-    <string name="resume">继续</string>
+    <string name="app_name">PureFrame</string>
+
+    <!-- ============ Common actions ============ -->
+    <string name="action_ok">OK</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_confirm">Confirm</string>
+    <string name="action_close">Close</string>
+    <string name="action_retry">Retry</string>
+    <string name="action_play">Play</string>
+    <string name="action_pause">Pause</string>
+    <string name="action_resume">Resume</string>
+    <string name="action_rename">Rename</string>
+    <string name="action_paste">Paste</string>
+    <string name="action_select_all">Select all</string>
+    <string name="action_deselect_all">Deselect all</string>
+    <string name="action_start_download">Start download</string>
+    <string name="action_go_back">Back</string>
+
+    <!-- ============ Bottom navigation ============ -->
+    <string name="tab_local">Local</string>
+    <string name="tab_download">Downloads</string>
+    <string name="tab_settings">Settings</string>
+
+    <!-- ============ Home / local videos ============ -->
+    <string name="home_title">Local videos</string>
+    <string name="home_search_hint">Search videos…</string>
+    <string name="home_search">Search</string>
+    <string name="home_close_search">Close search</string>
+    <string name="home_sort">Sort</string>
+    <string name="home_rescan">Rescan</string>
+    <string name="sort_date">Date</string>
+    <string name="sort_size">Size</string>
+    <string name="sort_duration">Duration</string>
+
+    <string name="home_filter_all">All (%1$d)</string>
+    <string name="home_filter_favorite">Favorites (%1$d)</string>
+    <string name="home_filter_recent">Recent (%1$d)</string>
+
+    <string name="home_favorite_add">Add to favorites</string>
+    <string name="home_favorite_remove">Remove from favorites</string>
+
+    <string name="home_menu_play">Play</string>
+    <string name="home_menu_detail">Details</string>
+    <string name="home_menu_delete">Delete</string>
+
+    <string name="detail_size">Size</string>
+    <string name="detail_duration">Duration</string>
+    <string name="detail_resolution">Resolution</string>
+    <string name="detail_format">Format</string>
+    <string name="detail_play_count">Play count</string>
+    <string name="detail_last_played">Last played</string>
+    <string name="detail_path">Path</string>
+
+    <!-- plural: number of times a video was played -->
+    <plurals name="play_count_times">
+        <item quantity="one">%d time</item>
+        <item quantity="other">%d times</item>
+    </plurals>
+
+    <string name="home_delete_title">Delete video</string>
+    <string name="home_delete_message">Delete \"%1$s\"?</string>
+    <string name="home_delete_file">Delete</string>
+    <string name="home_remove_record_only">Remove record only</string>
+
+    <string name="home_empty_search_title">No videos found</string>
+    <string name="home_empty_search_desc">Try a different keyword</string>
+    <string name="home_empty_local_title">No local videos</string>
+    <string name="home_empty_local_desc">Videos are scanned automatically once access is granted</string>
+    <string name="home_empty_favorite_title">No favorites</string>
+    <string name="home_empty_favorite_desc">Tap the heart icon on a video to add it here</string>
+    <string name="home_empty_recent_title">Nothing played yet</string>
+    <string name="home_empty_recent_desc">Videos you play will show up here</string>
+    <string name="home_empty_generic_title">No videos</string>
+    <string name="home_grant_permission">Grant access</string>
+    <string name="scan_failed">Scan failed</string>
+
+    <!-- ============ Downloads ============ -->
+    <string name="download_title">Downloads</string>
+    <string name="download_filter_all">All (%1$d)</string>
+    <string name="download_filter_active">Active (%1$d)</string>
+    <string name="download_filter_completed">Completed (%1$d)</string>
+    <string name="download_filter_failed">Failed (%1$d)</string>
+
+    <string name="download_empty_all">No download tasks</string>
+    <string name="download_empty_active">No active downloads</string>
+    <string name="download_empty_completed">No completed downloads</string>
+    <string name="download_empty_failed">No failed downloads</string>
+    <string name="download_empty_all_desc">Tap the button in the bottom right to add one</string>
+    <string name="download_empty_active_desc">Add a task to start downloading</string>
+    <string name="download_empty_completed_desc">Completed downloads appear here</string>
+    <string name="download_empty_failed_desc">Tasks that failed appear here</string>
+
+    <string name="download_status_downloading">Downloading</string>
+    <string name="download_status_paused">Paused</string>
+    <string name="download_status_completed">Completed</string>
+    <string name="download_status_failed">Failed</string>
+    <string name="download_status_error">Error</string>
+    <string name="download_status_pending">Queued</string>
+    <string name="download_status_waiting">Finding peers (DHT)</string>
+    <string name="download_status_cancelled">Cancelled</string>
+    <string name="download_status_selecting">Select files</string>
+
+    <string name="download_more_options">More options</string>
+    <string name="download_stream_play">Stream</string>
+    <string name="download_delete_task">Delete task</string>
+    <string name="download_failure_reason">Reason: %1$s</string>
+    <string name="download_streamable_badge">✓ Ready to stream</string>
+    <string name="download_playing">Play</string>
+    <string name="download_streaming">Stream</string>
+    <string name="download_retry">Retry</string>
+
+    <string name="download_delete_title">Delete download</string>
+    <string name="download_delete_message">Delete the downloaded files as well?</string>
+    <string name="download_delete_task_and_files">Delete task and files</string>
+    <string name="download_delete_task_only">Delete task only</string>
+
+    <string name="download_select_torrent">Choose a .torrent file</string>
+    <string name="download_clear_completed">Clear completed</string>
+    <string name="download_add">Add download</string>
+    <string name="download_clear_completed_title">Clear completed tasks</string>
+    <string name="download_clear_completed_message">This will remove the records of %1$d completed task(s). Downloaded files are kept. This cannot be undone.</string>
+    <string name="download_clear_confirm">Clear</string>
+    <string name="download_loading_files">Fetching file list…</string>
+
+    <!-- Add download dialog -->
+    <string name="add_magnet_label">Magnet link</string>
+    <string name="add_link_label">Download link</string>
+    <string name="add_magnet_title">Add magnet link</string>
+    <string name="add_link_title">Add download link</string>
+    <string name="add_task_title_label">Task title (optional)</string>
+    <string name="add_task_title_placeholder">Extracted automatically</string>
+    <string name="add_hint_magnet">Tip: magnet links are supported, and can be streamed after adding</string>
+    <string name="add_hint_http">Tip: direct links download faster</string>
+    <string name="add_hint_any">Tip: both magnet links and direct links are supported</string>
+    <string name="add_error_empty">Enter a download link</string>
+    <string name="add_error_unsupported">Unsupported link type</string>
+    <string name="add_error_magnet_invalid">Invalid magnet link</string>
+    <string name="add_error_link_invalid">Invalid direct link</string>
+
+    <!-- File selection -->
+    <string name="file_select_title">Choose files to download</string>
+    <string name="file_selected_count">%1$d file(s) selected</string>
+
+    <!-- ============ Player ============ -->
+    <string name="player_title">Player</string>
+    <string name="player_play">Play</string>
+    <string name="player_pause">Pause</string>
+    <string name="player_back">Back</string>
+    <string name="player_pip">Picture-in-picture</string>
+    <string name="player_more">More options</string>
+    <string name="player_rewind">Rewind 10 seconds</string>
+    <string name="player_forward">Forward 10 seconds</string>
+    <string name="player_fullscreen">Fullscreen</string>
+    <string name="player_downloading">Downloading</string>
+    <string name="player_lock">Lock</string>
+    <string name="player_unlock">Unlock</string>
+    <string name="player_locked">Locked</string>
+    <string name="player_unlock_hint">Tap the unlock button to exit lock mode</string>
+    <string name="player_error">Error</string>
+    <string name="player_jump">Seek</string>
+    <string name="player_downloaded_percent">%1$d%% downloaded</string>
+    <string name="player_error_unknown">Unknown error</string>
+    <string name="player_video_not_found">Video not found</string>
+    <string name="player_stream_start_failed">Failed to start streaming</string>
+    <string name="player_task_not_found">Download task not found</string>
+    <string name="player_not_downloaded_yet">That part has not been downloaded yet</string>
+    <string name="player_playback_error">Playback error</string>
+    <string name="gesture_volume">Volume</string>
+    <string name="gesture_brightness">Brightness</string>
+
+    <!-- Aspect ratio dialog -->
+    <string name="aspect_title">Aspect ratio</string>
+    <string name="aspect_auto">Auto</string>
+    <string name="aspect_auto_desc">Keep the original ratio, no cropping</string>
+    <string name="aspect_fill">Fill</string>
+    <string name="aspect_fill_desc">Fill the screen, may crop the picture</string>
+
+    <!-- Playback speed dialog -->
+    <string name="speed_title">Playback speed</string>
+    <string name="speed_050">Slow</string>
+    <string name="speed_075">Slightly slow</string>
+    <string name="speed_100">Normal</string>
+    <string name="speed_125">Slightly fast</string>
+    <string name="speed_150">Fast</string>
+    <string name="speed_200">Very fast</string>
+    <string name="speed_300">Maximum</string>
+    <string name="speed_custom">Custom speed</string>
+
+    <!-- Resume playback dialog -->
+    <string name="resume_title">Resume playback</string>
+    <string name="resume_last_at">Last watched at %1$s</string>
+    <string name="resume_finished">You finished this video</string>
+    <string name="resume_from_start">Play from start</string>
+    <string name="resume_continue">Resume</string>
+    <string name="resume_replay">Replay</string>
+    <string name="resume_watched">%1$d%% watched</string>
+    <string name="resume_remaining">%1$s left</string>
+
+    <!-- ============ Settings ============ -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_section_player">Player</string>
+    <string name="settings_section_download">Downloads</string>
+    <string name="settings_section_interface">Interface</string>
+    <string name="settings_section_about">About</string>
+
+    <string name="settings_loop_play">Loop playback</string>
+    <string name="settings_loop_play_desc">Replay automatically when the video ends</string>
+    <string name="settings_show_subtitle">Show subtitles</string>
+    <string name="settings_show_subtitle_desc">Show downloaded subtitles automatically</string>
+    <string name="settings_decoder">Decoder</string>
+    <string name="settings_decoder_hardware">Hardware</string>
+    <string name="settings_decoder_software">Software</string>
+    <string name="settings_decoder_auto">Auto</string>
+    <string name="settings_decoder_hardware_full">Hardware (GPU accelerated)</string>
+    <string name="settings_decoder_software_full">Software (CPU decoding)</string>
+    <string name="settings_decoder_auto_full">Auto (hardware preferred)</string>
+    <string name="settings_decoder_hardware_desc">GPU accelerated, saves battery and resources</string>
+    <string name="settings_decoder_software_desc">CPU decoding, better compatibility</string>
+    <string name="settings_decoder_auto_desc">Prefers hardware, falls back to software</string>
+    <string name="settings_keep_screen_on">Keep screen on while playing</string>
+    <string name="settings_keep_screen_on_desc">Prevent the screen from sleeping during playback</string>
+    <string name="settings_brightness_gesture">Brightness gesture</string>
+    <string name="settings_brightness_gesture_desc">Swipe up or down on the left side to adjust brightness</string>
+    <string name="settings_volume_gesture">Volume gesture</string>
+    <string name="settings_volume_gesture_desc">Swipe up or down on the right side to adjust volume</string>
+
+    <string name="settings_download_path">Download location</string>
+    <string name="settings_default_location">Default location</string>
+    <string name="settings_max_concurrent">Max concurrent downloads</string>
+    <string name="settings_concurrent_desc">%1$d task(s) at a time</string>
+    <string name="settings_wifi_only">Wi-Fi only</string>
+    <string name="settings_wifi_only_desc">Pause automatic downloads on mobile data</string>
+
+    <string name="settings_theme">Theme</string>
+    <string name="settings_theme_light">Light</string>
+    <string name="settings_theme_dark">Dark</string>
+    <string name="settings_theme_system">Follow system</string>
+
+    <string name="settings_language">Language</string>
+    <string name="settings_language_system">Follow system</string>
+    <string name="settings_language_chinese">简体中文</string>
+    <string name="settings_language_english">English</string>
+
+    <string name="settings_version">Version</string>
+    <string name="settings_current_path">Current: %1$s</string>
+    <string name="settings_browse_folder">Browse folders</string>
+    <string name="settings_manual_path">Or enter a path manually</string>
+    <string name="settings_path_label">Path</string>
+
+    <!-- plural: how many concurrent download slots -->
+    <plurals name="settings_concurrent_count">
+        <item quantity="one">%d task</item>
+        <item quantity="other">%d tasks</item>
+    </plurals>
+
+    <!-- ============ Picture-in-picture actions ============ -->
+    <string name="pip_play">Play</string>
+    <string name="pip_pause">Pause</string>
+    <string name="pip_rewind">Rewind 10 seconds</string>
+    <string name="pip_forward">Forward 10 seconds</string>
+
+    <!-- ============ Download service / errors ============ -->
+    <string name="notif_download_service">Download service</string>
+    <string name="notif_download_channel_desc">Video download progress</string>
+    <string name="notif_download_progress">Downloading: %1$d%% %2$s</string>
+    <string name="notif_preparing">Preparing…</string>
+    <string name="notif_paused">Paused</string>
+    <string name="notif_resuming">Resuming…</string>
+    <string name="notif_completed">Download complete</string>
+
+    <string name="error_unknown">Unknown error</string>
+    <string name="error_unknown_video">Unknown video</string>
+    <string name="error_unknown_resource">Unknown resource</string>
+    <string name="error_unsupported_link">Unsupported link type</string>
+    <string name="error_task_not_found">Task not found</string>
+    <string name="error_download_failed">Download failed</string>
+    <string name="error_download">Download error</string>
+    <string name="error_connect_timeout">Connection timed out: the server is unreachable. Check your network or try again later.</string>
+    <string name="error_response_timeout">Response timed out: the network is unstable. Please try again later.</string>
+    <string name="error_unknown_host">Cannot resolve the server address. Check that the link is valid.</string>
+    <string name="error_connect_failed">Cannot reach the server: it refused the connection or the network is unavailable.</string>
+    <string name="error_no_space">Not enough storage space.</string>
+    <string name="error_no_permission">No write permission: the save location is not accessible.</string>
+    <string name="error_network_detail">Network error: %1$s</string>
+    <string name="error_http_status">The server returned HTTP %1$s, so this file cannot be downloaded.</string>
+    <string name="error_download_failed_detail">Download failed: %1$s</string>
+    <string name="error_add_to_engine_failed">Failed to add to the download engine</string>
+    <string name="error_invalid_magnet">Could not fetch resource info. Check that the magnet link is valid.</string>
+    <string name="error_missing_file">Downloaded media file not found: %1$s</string>
+    <string name="error_progress_insufficient">Download progress is too low; at least %1$d%% is required</string>
+    <string name="error_task_status_invalid">Download task is in an invalid state: %1$s</string>
+    <string name="error_task_status_cannot_play">This task cannot be played in its current state (%1$s)</string>
+    <string name="error_progress_not_enough">Progress is too low (needs ≥ %1$d%%)</string>
+    <string name="error_progress_or_status">Progress too low or state not allowed</string>
+    <string name="error_seek_beyond_cached">Beyond the cached range, you can seek at most to %1%%</string>
+    <string name="error_proxy_start_failed">Failed to start the proxy server</string>
+    <string name="error_no_stream_url">Could not obtain a streaming URL</string>
+    <string name="error_wait_for_download">That part has not been downloaded yet. Please wait.</string>
+    <string name="error_directory_not_found">Directory not found: %1$s</string>
 </resources>

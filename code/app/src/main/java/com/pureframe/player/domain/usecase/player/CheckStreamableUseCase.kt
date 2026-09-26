@@ -6,6 +6,10 @@ import com.pureframe.player.domain.usecase.ParamSuspendUseCase
 import com.pureframe.player.data.repository.DownloadRepository
 import javax.inject.Inject
 import javax.inject.Singleton
+import android.content.Context
+import dagger.hilt.android.qualifiers.ApplicationContext
+import com.pureframe.player.R
+import com.pureframe.player.i18n.LocaleManager
 
 /**
  * 检查边下边播可用性 UseCase
@@ -19,7 +23,8 @@ import javax.inject.Singleton
  */
 @Singleton
 class CheckStreamableUseCase @Inject constructor(
-    private val downloadRepository: DownloadRepository
+    private val downloadRepository: DownloadRepository,
+    @ApplicationContext private val context: Context
 ) : ParamSuspendUseCase<Long, CheckStreamableUseCase.Result>() {
     
     data class Result(
@@ -39,7 +44,7 @@ class CheckStreamableUseCase @Inject constructor(
             return Result(
                 isStreamable = false,
                 progress = 0f,
-                reason = "下载任务不存在"
+                reason = LocaleManager.getString(context, R.string.error_task_not_found)
             )
         }
         
@@ -49,7 +54,7 @@ class CheckStreamableUseCase @Inject constructor(
             return Result(
                 isStreamable = false,
                 progress = task.progress,
-                reason = "任务状态不允许播放（${task.status})"
+                reason = LocaleManager.getString(context, R.string.error_task_status_cannot_play, task.status.toString())
             )
         }
         
@@ -59,7 +64,7 @@ class CheckStreamableUseCase @Inject constructor(
             return Result(
                 isStreamable = false,
                 progress = task.progress,
-                reason = "进度不足（需要 >= ${thresholdProgress.toInt()}%）"
+                reason = LocaleManager.getString(context, R.string.error_progress_not_enough, thresholdProgress.toInt())
             )
         }
         
@@ -81,7 +86,7 @@ class CheckStreamableUseCase @Inject constructor(
         val task = downloadRepository.getTaskById(taskId)
         
         if (task == null) {
-            return Result(false, 0f, reason = "下载任务不存在")
+            return Result(false, 0f, reason = LocaleManager.getString(context, R.string.error_task_not_found))
         }
         
         val thresholdProgress = threshold * 100
@@ -97,7 +102,7 @@ class CheckStreamableUseCase @Inject constructor(
             isStreamable = isStreamable,
             progress = task.progress,
             maxSeekPosition = maxSeekPosition,
-            reason = if (!isStreamable) "进度不足或状态不允许" else null
+            reason = if (!isStreamable) LocaleManager.getString(context, R.string.error_progress_or_status) else null
         )
     }
 }

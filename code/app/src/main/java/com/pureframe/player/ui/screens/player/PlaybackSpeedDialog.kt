@@ -19,6 +19,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pureframe.player.ui.theme.AppDialogColors
 import com.pureframe.player.ui.theme.appDialogColors
+import androidx.compose.ui.res.stringResource
+import com.pureframe.player.R
 
 /**
  * 播放速度选择对话框
@@ -53,7 +55,7 @@ fun PlaybackSpeedDialog(
         textContentColor = dialogColors.onContainer,
         title = {
             Text(
-                text = "播放速度",
+                text = stringResource(R.string.speed_title),
                 fontWeight = FontWeight.Medium,
                 fontSize = 18.sp
             )
@@ -84,7 +86,7 @@ fun PlaybackSpeedDialog(
         confirmButton = {
             TextButton(onClick = onDismiss) {
                 Text(
-                    text = "确定",
+                    text = stringResource(R.string.action_ok),
                     color = dialogColors.onContainer
                 )
             }
@@ -197,15 +199,18 @@ fun SpeedOptionButton(
 /**
  * 获取速度描述
  */
+@Composable
 fun getSpeedDescription(speed: Float): String {
-    return when (speed) {
-        0.5f -> "慢速播放"
-        0.75f -> "较慢播放"
-        1.0f -> "正常速度"
-        1.25f -> "较快播放"
-        1.5f -> "快速播放"
-        2.0f -> "超快播放"
-        3.0f -> "极速播放"
-        else -> "自定义速度"
-    }
+    return stringResource(
+        when (speed) {
+            0.5f -> R.string.speed_050
+            0.75f -> R.string.speed_075
+            1.0f -> R.string.speed_100
+            1.25f -> R.string.speed_125
+            1.5f -> R.string.speed_150
+            2.0f -> R.string.speed_200
+            3.0f -> R.string.speed_300
+            else -> R.string.speed_custom
+        }
+    )
 }

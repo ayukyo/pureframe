@@ -25,6 +25,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import com.pureframe.player.R
 
 /**
  * 链接类型
@@ -107,9 +109,14 @@ fun AddDownloadDialog(
     }
 
     val currentLinkType = detectLinkType(urlInput.text)
-    val inputLabel = if (currentLinkType == LinkType.MAGNET) "磁力链接" else "下载链接"
+    val inputLabel = if (currentLinkType == LinkType.MAGNET) stringResource(R.string.add_magnet_label) else stringResource(R.string.add_link_label)
     val inputPlaceholder = if (currentLinkType == LinkType.MAGNET) "magnet:?xt=urn:btih:..." else "https://example.com/file.mp4"
-    val dialogTitle = if (currentLinkType == LinkType.MAGNET) "添加磁力链接" else "添加下载链接"
+    val dialogTitle = if (currentLinkType == LinkType.MAGNET) stringResource(R.string.add_magnet_title) else stringResource(R.string.add_link_title)
+    // 校验用文案：Button 的 onClick 不是 @Composable 作用域，需提前解析
+    val errorEmpty = stringResource(R.string.add_error_empty)
+    val errorUnsupported = stringResource(R.string.add_error_unsupported)
+    val errorMagnetInvalid = stringResource(R.string.add_error_magnet_invalid)
+    val errorLinkInvalid = stringResource(R.string.add_error_link_invalid)
 
     // 剪贴板内容：Android 10/11+ 对剪贴板读取有时机限制（窗口焦点、剪贴板更新延迟等），
     // 组合期一次性读取经常拿到 null。改为 LaunchedEffect 轮询重试（对话框打开后 4 秒内
@@ -206,7 +213,7 @@ fun AddDownloadDialog(
                         onClick = { applyPastedLink(clipTextState) },
                         modifier = Modifier.padding(start = 4.dp)
                     ) {
-                        Text("粘贴")
+                        Text(stringResource(R.string.action_paste))
                     }
                 }
             }
@@ -221,8 +228,8 @@ fun AddDownloadDialog(
                     // 用户手动编辑过标题，之后不再自动覆盖
                     titleAutoFilled = false
                 },
-                label = { Text("任务标题（可选）") },
-                placeholder = { Text("将自动提取") },
+                label = { Text(stringResource(R.string.add_task_title_label)) },
+                placeholder = { Text(stringResource(R.string.add_task_title_placeholder)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -231,9 +238,9 @@ fun AddDownloadDialog(
 
             // 提示文字
             val hintText = when (currentLinkType) {
-                LinkType.MAGNET -> "提示：支持磁力链接下载，下载后可边下边播"
-                LinkType.HTTP -> "提示：直链下载，速度更快"
-                else -> "提示：支持磁力链接和直链下载"
+                LinkType.MAGNET -> stringResource(R.string.add_hint_magnet)
+                LinkType.HTTP -> stringResource(R.string.add_hint_http)
+                else -> stringResource(R.string.add_hint_any)
             }
             Text(
                 text = hintText,
@@ -254,19 +261,19 @@ fun AddDownloadDialog(
                         val linkType = detectLinkType(link)
                         when {
                             link.isEmpty() -> {
-                                errorMessage = "请输入下载链接"
+                                errorMessage = errorEmpty
                                 return@Button
                             }
                             linkType == LinkType.UNKNOWN -> {
-                                errorMessage = "不支持的链接类型"
+                                errorMessage = errorUnsupported
                                 return@Button
                             }
                             linkType == LinkType.MAGNET && !isValidMagnetLink(link) -> {
-                                errorMessage = "磁力链接格式不正确"
+                                errorMessage = errorMagnetInvalid
                                 return@Button
                             }
                             linkType == LinkType.HTTP && !isValidHttpUrl(link) -> {
-                                errorMessage = "直链格式不正确"
+                                errorMessage = errorLinkInvalid
                                 return@Button
                             }
                         }
@@ -274,7 +281,7 @@ fun AddDownloadDialog(
                     },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("开始下载")
+                    Text(stringResource(R.string.action_start_download))
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -284,7 +291,7 @@ fun AddDownloadDialog(
                     onClick = onDismiss,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("取消")
+                    Text(stringResource(R.string.action_cancel))
                 }
             }
         }

@@ -13,6 +13,8 @@ import java.io.File
 import java.util.Date
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.pureframe.player.R
+import com.pureframe.player.i18n.LocaleManager
 
 /**
  * Torrent 下载管理器
@@ -276,7 +278,7 @@ class TorrentManager @Inject constructor(
             if (!added) {
                 Timber.e("TorrentManager: 添加到引擎失败 - taskId=$taskId")
                 downloadRepository.deleteTaskByLongId(taskId)
-                return Result.failure(Exception("添加到下载引擎失败"))
+                return Result.failure(Exception(LocaleManager.getString(context, R.string.error_add_to_engine_failed)))
             }
 
             Timber.i("TorrentManager: 磁力链接已添加到引擎，等待 metadata - taskId=$taskId")
@@ -388,7 +390,7 @@ class TorrentManager @Inject constructor(
                 Result.success(taskId)
             } else {
                 downloadRepository.deleteTaskByLongId(taskId)
-                Result.failure(Exception("添加到下载引擎失败"))
+                Result.failure(Exception(LocaleManager.getString(context, R.string.error_add_to_engine_failed)))
             }
             
         } catch (e: Exception) {

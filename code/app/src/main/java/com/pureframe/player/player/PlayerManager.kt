@@ -27,6 +27,8 @@ import kotlinx.coroutines.runBlocking
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.pureframe.player.R
+import com.pureframe.player.i18n.LocaleManager
 
 /**
  * 播放器管理器
@@ -163,7 +165,7 @@ class PlayerManager @Inject constructor(
         
         override fun onPlayerError(error: PlaybackException) {
             _playbackState.value = PlayerState.ERROR
-            _errorMessage.value = error.message ?: "播放错误"
+            _errorMessage.value = error.message ?: LocaleManager.getString(context, R.string.player_playback_error)
             _isPlaying.value = false
         }
     }

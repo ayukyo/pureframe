@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pureframe.player.data.preferences.UserPreferences
 import com.pureframe.player.data.preferences.UserPreferencesRepository
+import com.pureframe.player.data.preferences.AppLanguage
 import com.pureframe.player.data.preferences.DownloadQuality
 import com.pureframe.player.data.preferences.DecoderType
 import com.pureframe.player.data.preferences.ThemeMode
@@ -125,6 +126,15 @@ class SettingsViewModel @Inject constructor(
     fun setThemeMode(mode: ThemeMode) {
         viewModelScope.launch {
             userPreferencesRepository.updateThemeMode(mode)
+        }
+    }
+
+    /**
+     * 更新应用语言
+     */
+    fun setAppLanguage(language: AppLanguage) {
+        viewModelScope.launch {
+            userPreferencesRepository.updateAppLanguage(language)
         }
     }
 

@@ -22,8 +22,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import timber.log.Timber
+import com.pureframe.player.data.preferences.AppLanguage
 import com.pureframe.player.data.preferences.DecoderType
 import com.pureframe.player.data.preferences.ThemeMode
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import com.pureframe.player.R
 
 /**
  * 设置页面
@@ -47,6 +51,7 @@ fun SettingsScreen(
     var showDecoderDialog by remember { mutableStateOf(false) }
     var showFolderPickerDialog by remember { mutableStateOf(false) }
     var showConcurrencyDialog by remember { mutableStateOf(false) }
+    var showLanguageDialog by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
 
@@ -87,7 +92,7 @@ fun SettingsScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "设置",
+                        text = stringResource(R.string.settings_title),
                         color = MaterialTheme.colorScheme.onSurface
                     )
                 },
@@ -106,12 +111,12 @@ fun SettingsScreen(
         ) {
             // 播放器设置
             item {
-                SettingsSection(title = "播放器") {
+                SettingsSection(title = stringResource(R.string.settings_section_player)) {
                     // 循环播放
                     SwitchSettingsItem(
                         icon = Icons.Filled.Repeat,
-                        title = "循环播放",
-                        subtitle = "播放结束时自动重播",
+                        title = stringResource(R.string.settings_loop_play),
+                        subtitle = stringResource(R.string.settings_loop_play_desc),
                         checked = userPreferences.loopPlay,
                         onCheckedChange = { viewModel.setLoopPlay(it) }
                     )
@@ -121,8 +126,8 @@ fun SettingsScreen(
                     // 字幕显示
                     SwitchSettingsItem(
                         icon = Icons.Filled.Subtitles,
-                        title = "显示字幕",
-                        subtitle = "自动显示已下载的字幕",
+                        title = stringResource(R.string.settings_show_subtitle),
+                        subtitle = stringResource(R.string.settings_show_subtitle_desc),
                         checked = userPreferences.showSubtitle,
                         onCheckedChange = { viewModel.setShowSubtitle(it) }
                     )
@@ -132,11 +137,11 @@ fun SettingsScreen(
                     // 解码器类型
                     ClickableSettingsItem(
                         icon = Icons.Filled.Memory,
-                        title = "解码方式",
+                        title = stringResource(R.string.settings_decoder),
                         subtitle = when (userPreferences.decoderType) {
-                            DecoderType.HARDWARE -> "硬解（硬件加速）"
-                            DecoderType.SOFTWARE -> "软解（软件解码）"
-                            DecoderType.AUTO -> "自动（优先硬解）"
+                            DecoderType.HARDWARE -> stringResource(R.string.settings_decoder_hardware_full)
+                            DecoderType.SOFTWARE -> stringResource(R.string.settings_decoder_software_full)
+                            DecoderType.AUTO -> stringResource(R.string.settings_decoder_auto_full)
                         },
                         onClick = { showDecoderDialog = true }
                     )
@@ -146,8 +151,8 @@ fun SettingsScreen(
                     // 保持屏幕常亮
                     SwitchSettingsItem(
                         icon = Icons.Filled.BrightnessHigh,
-                        title = "播放时保持常亮",
-                        subtitle = "播放视频时防止屏幕熄灭",
+                        title = stringResource(R.string.settings_keep_screen_on),
+                        subtitle = stringResource(R.string.settings_keep_screen_on_desc),
                         checked = userPreferences.keepScreenOn,
                         onCheckedChange = { viewModel.setKeepScreenOn(it) }
                     )
@@ -157,8 +162,8 @@ fun SettingsScreen(
                     // 手势控制
                     SwitchSettingsItem(
                         icon = Icons.Filled.TouchApp,
-                        title = "亮度手势",
-                        subtitle = "在屏幕左侧上下滑动调节亮度",
+                        title = stringResource(R.string.settings_brightness_gesture),
+                        subtitle = stringResource(R.string.settings_brightness_gesture_desc),
                         checked = userPreferences.brightnessGesture,
                         onCheckedChange = { viewModel.setBrightnessGesture(it) }
                     )
@@ -167,8 +172,8 @@ fun SettingsScreen(
 
                     SwitchSettingsItem(
                         icon = Icons.Filled.TouchApp,
-                        title = "音量手势",
-                        subtitle = "在屏幕右侧上下滑动调节音量",
+                        title = stringResource(R.string.settings_volume_gesture),
+                        subtitle = stringResource(R.string.settings_volume_gesture_desc),
                         checked = userPreferences.volumeGesture,
                         onCheckedChange = { viewModel.setVolumeGesture(it) }
                     )
@@ -177,12 +182,14 @@ fun SettingsScreen(
 
             // 下载设置
             item {
-                SettingsSection(title = "下载") {
+                SettingsSection(title = stringResource(R.string.settings_section_download)) {
                     // 下载路径
                     ClickableSettingsItem(
                         icon = Icons.Filled.FolderOpen,
-                        title = "下载保存位置",
-                        subtitle = userPreferences.downloadPath.ifEmpty { "默认位置" },
+                        title = stringResource(R.string.settings_download_path),
+                        subtitle = userPreferences.downloadPath.ifEmpty {
+                            stringResource(R.string.settings_default_location)
+                        },
                         onClick = { showFolderPickerDialog = true }
                     )
 
@@ -191,8 +198,11 @@ fun SettingsScreen(
                     // 最大并行下载数
                     ClickableSettingsItem(
                         icon = Icons.Filled.Download,
-                        title = "最大并行下载数",
-                        subtitle = "${userPreferences.maxConcurrentDownloads} 个任务同时下载",
+                        title = stringResource(R.string.settings_max_concurrent),
+                        subtitle = stringResource(
+                            R.string.settings_concurrent_desc,
+                            userPreferences.maxConcurrentDownloads
+                        ),
                         onClick = { showConcurrencyDialog = true }
                     )
 
@@ -201,8 +211,8 @@ fun SettingsScreen(
                     // WiFi 自动下载
                     SwitchSettingsItem(
                         icon = Icons.Filled.Wifi,
-                        title = "仅 Wi-Fi 下载",
-                        subtitle = "移动网络下暂停自动下载",
+                        title = stringResource(R.string.settings_wifi_only),
+                        subtitle = stringResource(R.string.settings_wifi_only_desc),
                         checked = userPreferences.autoDownloadOnWifi,
                         onCheckedChange = { viewModel.setAutoDownloadOnWifi(it) }
                     )
@@ -213,17 +223,23 @@ fun SettingsScreen(
 
             // 界面设置
             item {
-                SettingsSection(title = "界面") {
+                SettingsSection(title = stringResource(R.string.settings_section_interface)) {
                     // 主题模式
                     ClickableSettingsItem(
                         icon = Icons.Filled.DarkMode,
-                        title = "主题模式",
-                        subtitle = when (userPreferences.themeMode) {
-                            ThemeMode.LIGHT -> "浅色"
-                            ThemeMode.DARK -> "深色"
-                            ThemeMode.SYSTEM -> "跟随系统"
-                        },
+                        title = stringResource(R.string.settings_theme),
+                        subtitle = themeModeLabel(userPreferences.themeMode),
                         onClick = { showThemeDialog = true }
+                    )
+
+                    Divider(color = MaterialTheme.colorScheme.outlineVariant, modifier = Modifier.padding(vertical = 8.dp))
+
+                    // 应用语言
+                    ClickableSettingsItem(
+                        icon = Icons.Filled.Translate,
+                        title = stringResource(R.string.settings_language),
+                        subtitle = languageLabel(userPreferences.appLanguage),
+                        onClick = { showLanguageDialog = true }
                     )
 
                 }
@@ -231,7 +247,7 @@ fun SettingsScreen(
 
             // 关于
             item {
-                SettingsSection(title = "关于") {
+                SettingsSection(title = stringResource(R.string.settings_section_about)) {
                     // 版本信息（仅展示，无箭头）
                     Row(
                         modifier = Modifier
@@ -250,7 +266,7 @@ fun SettingsScreen(
 
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "版本信息",
+                                text = stringResource(R.string.settings_version),
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
@@ -295,6 +311,18 @@ fun SettingsScreen(
         )
     }
 
+    // 语言选择对话框
+    if (showLanguageDialog) {
+        LanguageDialog(
+            currentLanguage = userPreferences.appLanguage,
+            onLanguageSelected = {
+                viewModel.setAppLanguage(it)
+                showLanguageDialog = false
+            },
+            onDismiss = { showLanguageDialog = false }
+        )
+    }
+
     // 解码器类型对话框
     if (showDecoderDialog) {
         DecoderTypeDialog(
@@ -334,6 +362,30 @@ fun SettingsScreen(
         )
     }
 }
+
+/**
+ * 主题模式的展示文案
+ */
+@Composable
+private fun themeModeLabel(mode: ThemeMode): String = stringResource(
+    when (mode) {
+        ThemeMode.LIGHT -> R.string.settings_theme_light
+        ThemeMode.DARK -> R.string.settings_theme_dark
+        ThemeMode.SYSTEM -> R.string.settings_theme_system
+    }
+)
+
+/**
+ * 应用语言的展示文案
+ */
+@Composable
+private fun languageLabel(language: AppLanguage): String = stringResource(
+    when (language) {
+        AppLanguage.SYSTEM -> R.string.settings_language_system
+        AppLanguage.CHINESE -> R.string.settings_language_chinese
+        AppLanguage.ENGLISH -> R.string.settings_language_english
+    }
+)
 
 /**
  * 把 ACTION_OPEN_DOCUMENT_TREE 返回的树 URI 转成可读路径
@@ -491,7 +543,7 @@ private fun PlaybackSpeedDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("播放速度") },
+        title = { Text(stringResource(R.string.speed_title)) },
         text = {
             Column {
                 speeds.forEach { speed ->
@@ -514,7 +566,7 @@ private fun PlaybackSpeedDialog(
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("取消")
+                Text(stringResource(R.string.action_cancel))
             }
         }
     )
@@ -531,7 +583,7 @@ private fun ThemeModeDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("主题模式") },
+        title = { Text(stringResource(R.string.settings_theme)) },
         text = {
             Column {
                 ThemeMode.entries.forEach { mode ->
@@ -547,20 +599,57 @@ private fun ThemeModeDialog(
                             onClick = { onModeSelected(mode) }
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            when (mode) {
-                                ThemeMode.LIGHT -> "浅色"
-                                ThemeMode.DARK -> "深色"
-                                ThemeMode.SYSTEM -> "跟随系统"
-                            }
-                        )
+                        Text(themeModeLabel(mode))
                     }
                 }
             }
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("取消")
+                Text(stringResource(R.string.action_cancel))
+            }
+        }
+    )
+}
+
+/**
+ * 语言选择对话框
+ */
+@Composable
+private fun LanguageDialog(
+    currentLanguage: AppLanguage,
+    onLanguageSelected: (AppLanguage) -> Unit,
+    onDismiss: () -> Unit
+) {
+    // 顺序：跟随系统 / 简体中文 / English
+    val options = listOf(AppLanguage.SYSTEM, AppLanguage.CHINESE, AppLanguage.ENGLISH)
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.settings_language)) },
+        text = {
+            Column {
+                options.forEach { language ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onLanguageSelected(language) }
+                            .padding(vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = language == currentLanguage,
+                            onClick = { onLanguageSelected(language) }
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(languageLabel(language))
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.action_cancel))
             }
         }
     )
@@ -579,7 +668,7 @@ private fun ConcurrencyDialog(
     val options = listOf(1, 2, 3, 4, 5)
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("最大并行下载数") },
+        title = { Text(stringResource(R.string.settings_max_concurrent)) },
         text = {
             Column {
                 options.forEach { count ->
@@ -595,14 +684,14 @@ private fun ConcurrencyDialog(
                             onClick = { onCountSelected(count) }
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("$count 个")
+                        Text(pluralStringResource(R.plurals.settings_concurrent_count, count, count))
                     }
                 }
             }
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("取消")
+                Text(stringResource(R.string.action_cancel))
             }
         }
     )
@@ -622,7 +711,7 @@ private fun DecoderTypeDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("解码方式") },
+        title = { Text(stringResource(R.string.settings_decoder)) },
         text = {
             Column {
                 sortedTypes.forEach { type ->
@@ -646,19 +735,23 @@ private fun DecoderTypeDialog(
                         Spacer(modifier = Modifier.width(8.dp))
                         Column {
                             Text(
-                                text = when (type) {
-                                    DecoderType.HARDWARE -> "硬解"
-                                    DecoderType.SOFTWARE -> "软解"
-                                    DecoderType.AUTO -> "自动"
-                                },
+                                text = stringResource(
+                                    when (type) {
+                                        DecoderType.HARDWARE -> R.string.settings_decoder_hardware
+                                        DecoderType.SOFTWARE -> R.string.settings_decoder_software
+                                        DecoderType.AUTO -> R.string.settings_decoder_auto
+                                    }
+                                ),
                                 style = MaterialTheme.typography.bodyLarge
                             )
                             Text(
-                                text = when (type) {
-                                    DecoderType.HARDWARE -> "硬件加速，省电省资源"
-                                    DecoderType.SOFTWARE -> "软件解码，兼容性更好"
-                                    DecoderType.AUTO -> "优先硬解，失败后自动切换软解"
-                                },
+                                text = stringResource(
+                                    when (type) {
+                                        DecoderType.HARDWARE -> R.string.settings_decoder_hardware_desc
+                                        DecoderType.SOFTWARE -> R.string.settings_decoder_software_desc
+                                        DecoderType.AUTO -> R.string.settings_decoder_auto_desc
+                                    }
+                                ),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -685,7 +778,7 @@ private fun FolderPickerDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("下载保存位置") },
+        title = { Text(stringResource(R.string.settings_download_path)) },
         text = {
             Column(
                 modifier = Modifier.fillMaxWidth()
@@ -693,7 +786,7 @@ private fun FolderPickerDialog(
                 // 当前路径
                 if (currentPath.isNotEmpty()) {
                     Text(
-                        text = "当前: $currentPath",
+                        text = stringResource(R.string.settings_current_path, currentPath),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -711,7 +804,7 @@ private fun FolderPickerDialog(
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("浏览文件夹")
+                    Text(stringResource(R.string.settings_browse_folder))
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -722,7 +815,7 @@ private fun FolderPickerDialog(
 
                 // 手动输入路径
                 Text(
-                    text = "或手动输入路径",
+                    text = stringResource(R.string.settings_manual_path),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -732,7 +825,7 @@ private fun FolderPickerDialog(
                 OutlinedTextField(
                     value = manualPath,
                     onValueChange = { manualPath = it },
-                    label = { Text("路径") },
+                    label = { Text(stringResource(R.string.settings_path_label)) },
                     placeholder = { Text("/storage/emulated/0/PureFrame/downloads") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
@@ -744,12 +837,12 @@ private fun FolderPickerDialog(
                 onClick = { onPathSelected(manualPath) },
                 enabled = manualPath.isNotBlank()
             ) {
-                Text("确定")
+                Text(stringResource(R.string.action_ok))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("取消")
+                Text(stringResource(R.string.action_cancel))
             }
         }
     )
