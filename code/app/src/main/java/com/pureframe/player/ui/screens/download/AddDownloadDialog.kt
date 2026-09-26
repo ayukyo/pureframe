@@ -2,10 +2,12 @@ package com.pureframe.player.ui.screens.download
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -15,6 +17,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -108,6 +111,43 @@ fun AddDownloadDialog(
     val inputPlaceholder = if (currentLinkType == LinkType.MAGNET) "magnet:?xt=urn:btih:..." else "https://example.com/file.mp4"
     val dialogTitle = if (currentLinkType == LinkType.MAGNET) "添加磁力链接" else "添加下载链接"
 
+    // 剪贴板内容：Android 10/11+ 对剪贴板读取有时机限制（窗口焦点、剪贴板更新延迟等），
+    // 组合期一次性读取经常拿到 null。改为 LaunchedEffect 轮询重试（对话框打开后 4 秒内
+    // 每 400ms 读一次，读到非空即停），保证"先复制链接再打开 App"的主流程可靠。
+    val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
+    var clipLooksLikeLink by remember { mutableStateOf(false) }
+    var clipTextState by remember { mutableStateOf("") }
+    LaunchedEffect(Unit) {
+        for (attempt in 0 until 10) {
+            val text = clipboard.getText()?.text?.trim() ?: ""
+            timber.log.Timber.d("AddDownloadDialog clipboard poll#$attempt text=$text")
+            if (text.isNotEmpty()) {
+                clipTextState = text
+                clipLooksLikeLink = text.startsWith("http://") ||
+                    text.startsWith("https://") ||
+                    text.startsWith("magnet:")
+                break
+            }
+            kotlinx.coroutines.delay(400)
+        }
+    }
+
+    // 粘贴动作：填入 URL 并按与手动输入相同的逻辑自动提取标题
+    fun applyPastedLink(text: String) {
+        urlInput = TextFieldValue(text)
+        errorMessage = null
+        val linkType = detectLinkType(text)
+        val extracted = when (linkType) {
+            LinkType.MAGNET -> extractTitleFromMagnet(text)
+            LinkType.HTTP -> extractTitleFromUrl(text)
+            else -> null
+        }
+        if (extracted != null && (title.text.isEmpty() || titleAutoFilled)) {
+            title = TextFieldValue(extracted)
+            titleAutoFilled = true
+        }
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         modifier = modifier
@@ -130,33 +170,46 @@ fun AddDownloadDialog(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 链接输入
-            OutlinedTextField(
-                value = urlInput,
-                onValueChange = {
-                    urlInput = it
-                    errorMessage = null
-                    // 自动提取标题
-                    val linkType = detectLinkType(it.text)
-                    val extracted = when (linkType) {
-                        LinkType.MAGNET -> extractTitleFromMagnet(it.text)
-                        LinkType.HTTP -> extractTitleFromUrl(it.text)
-                        else -> null
+            // 链接输入行（带粘贴按钮：用户通常先复制链接再打开应用）
+            Row(
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+            ) {
+                OutlinedTextField(
+                    value = urlInput,
+                    onValueChange = {
+                        urlInput = it
+                        errorMessage = null
+                        // 自动提取标题
+                        val linkType = detectLinkType(it.text)
+                        val extracted = when (linkType) {
+                            LinkType.MAGNET -> extractTitleFromMagnet(it.text)
+                            LinkType.HTTP -> extractTitleFromUrl(it.text)
+                            else -> null
+                        }
+                        // 仅在用户没有手动改过标题时自动跟随，持续刷新为完整文件名
+                        if (extracted != null && (title.text.isEmpty() || titleAutoFilled)) {
+                            title = TextFieldValue(extracted)
+                            titleAutoFilled = true
+                        }
+                    },
+                    label = { Text(inputLabel) },
+                    placeholder = { Text(inputPlaceholder) },
+                    isError = errorMessage != null,
+                    supportingText = errorMessage?.let { { Text(it) } },
+                    singleLine = false,
+                    maxLines = 3,
+                    modifier = Modifier.weight(1f)
+                )
+
+                if (clipLooksLikeLink) {
+                    TextButton(
+                        onClick = { applyPastedLink(clipTextState) },
+                        modifier = Modifier.padding(start = 4.dp)
+                    ) {
+                        Text("粘贴")
                     }
-                    // 仅在用户没有手动改过标题时自动跟随，持续刷新为完整文件名
-                    if (extracted != null && (title.text.isEmpty() || titleAutoFilled)) {
-                        title = TextFieldValue(extracted)
-                        titleAutoFilled = true
-                    }
-                },
-                label = { Text(inputLabel) },
-                placeholder = { Text(inputPlaceholder) },
-                isError = errorMessage != null,
-                supportingText = errorMessage?.let { { Text(it) } },
-                singleLine = false,
-                maxLines = 3,
-                modifier = Modifier.fillMaxWidth()
-            )
+                }
+            }
 
             Spacer(modifier = Modifier.height(12.dp))
 

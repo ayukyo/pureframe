@@ -10,12 +10,15 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -65,12 +68,17 @@ val bottomNavItems = listOf(
 /**
  * 主界面 - 包含底部导航栏和页面内容
  */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @UnstableApi
 @Composable
 fun MainScreen(
     navController: NavHostController = rememberNavController(),
-    navigationState: NavigationState
+    navigationState: NavigationState,
+    mainViewModel: MainViewModel = androidx.hilt.navigation.compose.hiltViewModel()
 ) {
+    // 活跃下载数（用于"下载"Tab 角标）
+    val activeDownloadCount by mainViewModel.activeDownloadCount.collectAsState()
+
     // 主题由 MainActivity 的 PureFrameTheme 统一提供（跟随设置页偏好），这里不再嵌套包装
     Scaffold(
             bottomBar = {
@@ -90,6 +98,7 @@ fun MainScreen(
                         navController = navController,
                         items = bottomNavItems,
                         currentRoute = currentRoute ?: Screen.Home.route,
+                        activeDownloadCount = activeDownloadCount,
                         onNavigationClick = { screen ->
                             if (currentRoute == screen.route) {
                                 // 已经在目标页面，触发滚动
@@ -120,11 +129,13 @@ fun MainScreen(
 /**
  * 底部导航栏
  */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun PureFrameBottomBar(
     navController: NavHostController,
     items: List<BottomNavItem>,
     currentRoute: String,
+    activeDownloadCount: Int = 0,
     onNavigationClick: (Screen) -> Unit = {}
 ) {
     NavigationBar {
@@ -152,10 +163,28 @@ fun PureFrameBottomBar(
                     }
                 },
                 icon = {
-                    Icon(
-                        imageVector = if (selected) item.selectedIcon else item.unselectedIcon,
-                        contentDescription = item.label
-                    )
+                    // "下载"Tab 显示活跃任务数角标
+                    if (item.screen == Screen.Download && activeDownloadCount > 0) {
+                        BadgedBox(
+                            badge = {
+                                Badge {
+                                    Text(
+                                        text = if (activeDownloadCount > 99) "99+" else activeDownloadCount.toString()
+                                    )
+                                }
+                            }
+                        ) {
+                            Icon(
+                                imageVector = if (selected) item.selectedIcon else item.unselectedIcon,
+                                contentDescription = item.label
+                            )
+                        }
+                    } else {
+                        Icon(
+                            imageVector = if (selected) item.selectedIcon else item.unselectedIcon,
+                            contentDescription = item.label
+                        )
+                    }
                 },
                 label = {
                     Text(text = item.label)

@@ -25,6 +25,29 @@ private const val BUFFER_SIZE = 64 * 1024
 private const val EMIT_INTERVAL_MS = 200L
 
 /**
+ * 把下载异常转换为用户能看懂的失败原因。
+ * 直接展示原始异常 message 对普通用户毫无意义（如 "failed to connect to /1.2.3.4 (port 80)"）。
+ */
+private fun Exception.toUserFriendlyMessage(): String {
+    val msg = message ?: return "下载失败"
+    return when (this) {
+        is java.net.SocketTimeoutException ->
+            if (msg.contains("connect", ignoreCase = true)) "连接超时：服务器无法访问，请检查网络或稍后重试"
+            else "响应超时：网络不稳定，请稍后重试"
+        is java.net.UnknownHostException -> "无法解析服务器地址：请检查链接是否有效"
+        is java.net.ConnectException -> "无法连接服务器：服务器拒绝或网络不可用"
+        is java.io.IOException ->
+            when {
+                msg.contains("ENOSPC", ignoreCase = true) -> "存储空间不足"
+                msg.contains("EACCES", ignoreCase = true) || msg.contains("Permission denied", ignoreCase = true) -> "没有写入权限：保存目录不可用"
+                msg.contains("No space", ignoreCase = true) -> "存储空间不足"
+                else -> "网络错误：$msg"
+            }
+        else -> "下载失败：${msg.take(80)}"
+    }
+}
+
+/**
  * HTTP 下载器
  *
  * 使用 HttpURLConnection 实现 HTTP 下载，支持：
@@ -96,7 +119,9 @@ class HttpDownloader @Inject constructor() {
         val downloadedBytes: Long,
         val totalBytes: Long,
         val speed: Long,
-        val state: DownloadState
+        val state: DownloadState,
+        /** 错误描述（仅 state=ERROR 时有值），用于在 UI 上展示失败原因 */
+        val errorMessage: String? = null
     )
 
     /**
@@ -195,7 +220,8 @@ class HttpDownloader @Inject constructor() {
                         downloadedBytes = jobState.downloadedBytes,
                         totalBytes = jobState.totalBytes,
                         speed = 0,
-                        state = DownloadState.ERROR
+                        state = DownloadState.ERROR,
+                        errorMessage = e.toUserFriendlyMessage()
                     )
                 )
             }

@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -218,14 +219,14 @@ fun DownloadTaskItem(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                
+
                 // 中间：进度百分比
                 Text(
                     text = "${task.progressPercent}%",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                
+
                 // 右侧：下载速度（下载中时显示）
                 if (task.status == DownloadStatus.DOWNLOADING) {
                     Text(
@@ -234,6 +235,20 @@ fun DownloadTaskItem(
                         color = DownloadActive
                     )
                 }
+            }
+
+            // 失败原因（失败/错误状态且有原因时显示）
+            if ((task.status == DownloadStatus.FAILED || task.status == DownloadStatus.ERROR) &&
+                !task.errorCode.isNullOrBlank()
+            ) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = "失败原因：${task.errorCode}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = DownloadError,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
             
             // 边下边播提示（当可播放时）
@@ -302,6 +317,22 @@ fun DownloadTaskItem(
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("恢复")
+                    }
+                }
+
+                // 重试按钮（失败/错误状态）
+                if (task.status == DownloadStatus.FAILED || task.status == DownloadStatus.ERROR) {
+                    OutlinedButton(
+                        onClick = onResumeClick,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Refresh,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("重试")
                     }
                 }
             }

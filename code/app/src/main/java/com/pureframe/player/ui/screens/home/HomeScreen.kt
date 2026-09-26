@@ -11,6 +11,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
@@ -197,21 +198,15 @@ fun HomeScreen(
             ) {
                 // 排序按钮（56.dp，与刷新按钮一样大，上图标下标签）
                 val sortIcon = when (currentSort) {
-                    SortBy.DATE_ASC -> Icons.Filled.CalendarToday
-                    SortBy.DATE_DESC -> Icons.Filled.Event
-                    SortBy.SIZE_ASC -> Icons.Filled.Folder
-                    SortBy.SIZE_DESC -> Icons.Filled.FolderOpen
-                    SortBy.DURATION_ASC -> Icons.Filled.Timer
-                    SortBy.DURATION_DESC -> Icons.Filled.Schedule
+                    SortBy.DATE_ASC, SortBy.DATE_DESC -> Icons.Filled.Event
+                    SortBy.SIZE_ASC, SortBy.SIZE_DESC -> Icons.Filled.Storage
+                    SortBy.DURATION_ASC, SortBy.DURATION_DESC -> Icons.Filled.Schedule
                     else -> Icons.Filled.Event
                 }
                 val sortLabel = when (currentSort) {
-                    SortBy.DATE_ASC -> "日期"
-                    SortBy.DATE_DESC -> "日期"
-                    SortBy.SIZE_ASC -> "大小"
-                    SortBy.SIZE_DESC -> "大小"
-                    SortBy.DURATION_ASC -> "时长"
-                    SortBy.DURATION_DESC -> "时长"
+                    SortBy.DATE_ASC, SortBy.DATE_DESC -> "日期"
+                    SortBy.SIZE_ASC, SortBy.SIZE_DESC -> "大小"
+                    SortBy.DURATION_ASC, SortBy.DURATION_DESC -> "时长"
                     else -> "日期"
                 }
 
@@ -313,7 +308,31 @@ fun HomeScreen(
             if (currentVideos.isEmpty()) {
                 EmptyVideosState(
                     listType = uiState.listType,
-                    isSearching = showSearch && searchQuery.isNotEmpty()
+                    isSearching = showSearch && searchQuery.isNotEmpty(),
+                    onGrantPermission = {
+                        // 空状态里的"去授权"按钮：与刷新 FAB 相同的权限引导流程
+                        if (needManageStorage) {
+                            try {
+                                val intent = Intent(
+                                    Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                                    "package:${context.packageName}".toUri()
+                                )
+                                manageStorageLauncher.launch(intent)
+                            } catch (e: Exception) {
+                                manageStorageLauncher.launch(
+                                    Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                        "package:${context.packageName}".toUri())
+                                )
+                            }
+                        } else {
+                            permissionLauncher.launch(
+                                arrayOf(
+                                    Manifest.permission.READ_EXTERNAL_STORAGE,
+                                    Manifest.permission.WRITE_EXTERNAL_STORAGE
+                                )
+                            )
+                        }
+                    }
                 )
             } else {
                 LazyVerticalStaggeredGrid(
@@ -335,6 +354,9 @@ fun HomeScreen(
                             onClick = { onVideoClick(video.id.toString()) },
                             onFavoriteClick = {
                                 viewModel.toggleFavorite(video.id, video.isFavorite)
+                            },
+                            onDeleteClick = { deleteFile ->
+                                viewModel.deleteVideo(video.id, deleteFile)
                             }
                         )
                     }
@@ -406,14 +428,22 @@ private fun FilterTab(
 
 /**
  * 视频网格项（瀑布流两列布局）
+ *
+ * 单击播放；长按弹出操作菜单（播放/收藏/详情/删除）
  */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun VideoGridItem(
     video: Video,
     onClick: () -> Unit,
     onFavoriteClick: () -> Unit,
+    onDeleteClick: (deleteFile: Boolean) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    var showMenu by remember { mutableStateOf(false) }
+    var showDetailDialog by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
     // 根据分辨率决定显示方式
     val isPortrait = video.resolution.isNotEmpty() &&
         video.resolution.contains("x") &&
@@ -423,7 +453,10 @@ fun VideoGridItem(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = { showMenu = true }
+            ),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         ),
@@ -513,6 +546,144 @@ fun VideoGridItem(
             }
         }
     }
+
+    // 长按操作菜单（锚定在卡片上）
+    DropdownMenu(
+        expanded = showMenu,
+        onDismissRequest = { showMenu = false }
+    ) {
+        DropdownMenuItem(
+            text = { Text("播放") },
+            onClick = {
+                showMenu = false
+                onClick()
+            },
+            leadingIcon = { Icon(Icons.Filled.PlayArrow, null, modifier = Modifier.size(20.dp)) }
+        )
+        DropdownMenuItem(
+            text = { Text(if (video.isFavorite) "取消收藏" else "收藏") },
+            onClick = {
+                showMenu = false
+                onFavoriteClick()
+            },
+            leadingIcon = {
+                Icon(
+                    if (video.isFavorite) Icons.Filled.FavoriteBorder else Icons.Filled.Favorite,
+                    null,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        )
+        DropdownMenuItem(
+            text = { Text("详情") },
+            onClick = {
+                showMenu = false
+                showDetailDialog = true
+            },
+            leadingIcon = { Icon(Icons.Filled.Info, null, modifier = Modifier.size(20.dp)) }
+        )
+        DropdownMenuItem(
+            text = { Text("删除", color = MaterialTheme.colorScheme.error) },
+            onClick = {
+                showMenu = false
+                showDeleteDialog = true
+            },
+            leadingIcon = {
+                Icon(
+                    Icons.Filled.Delete,
+                    null,
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        )
+    }
+
+    // 视频详情对话框
+    if (showDetailDialog) {
+        AlertDialog(
+            onDismissRequest = { showDetailDialog = false },
+            title = {
+                Text(video.title, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    DetailRow("大小", video.formattedSize)
+                    DetailRow("时长", video.formattedDuration)
+                    if (video.resolution.isNotEmpty()) DetailRow("分辨率", video.resolution)
+                    if (video.format.isNotEmpty()) DetailRow("格式", video.format)
+                    if (video.playCount > 0) DetailRow("播放次数", "${video.playCount} 次")
+                    video.lastPlayedAt?.let {
+                        DetailRow("最近播放", java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault()).format(it))
+                    }
+                    DetailRow("路径", video.filePath)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showDetailDialog = false }) {
+                    Text("关闭")
+                }
+            }
+        )
+    }
+
+    // 删除确认对话框
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("删除视频") },
+            text = { Text("确定要删除「${video.title}」吗？") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showDeleteDialog = false
+                        onDeleteClick(true)
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("删除")
+                }
+            },
+            dismissButton = {
+                Row {
+                    TextButton(
+                        onClick = {
+                            showDeleteDialog = false
+                            onDeleteClick(false)
+                        }
+                    ) {
+                        Text("仅移除记录")
+                    }
+                    TextButton(onClick = { showDeleteDialog = false }) {
+                        Text("取消")
+                    }
+                }
+            }
+        )
+    }
+}
+
+/**
+ * 详情对话框内的键值对行
+ */
+@Composable
+private fun DetailRow(label: String, value: String) {
+    Row {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.width(64.dp)
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f)
+        )
+    }
 }
 
 /**
@@ -522,15 +693,21 @@ fun VideoGridItem(
 private fun EmptyVideosState(
     listType: HomeViewModel.ListType,
     isSearching: Boolean,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onGrantPermission: (() -> Unit)? = null
 ) {
     val (message, subMessage, icon) = when {
         isSearching -> Triple("未找到视频", "尝试其他关键词搜索", Icons.Filled.Search)
-        listType == HomeViewModel.ListType.ALL -> Triple("暂无本地视频", "需授权\"所有文件访问\"后，点击右下角刷新扫描", Icons.Filled.VideoLibrary)
+        listType == HomeViewModel.ListType.ALL -> Triple("暂无本地视频", "授权后自动扫描全盘视频", Icons.Filled.VideoLibrary)
         listType == HomeViewModel.ListType.FAVORITE -> Triple("暂无收藏", "点击视频右侧的心形图标收藏", Icons.Filled.FavoriteBorder)
         listType == HomeViewModel.ListType.RECENT -> Triple("暂无最近播放", "播放过的视频会显示在这里", Icons.Filled.History)
         else -> Triple("暂无视频", "", Icons.Filled.VideoLibrary)
     }
+
+    // 全部视频为空且未在搜索时，显示"去授权"引导按钮
+    val showGrantButton = !isSearching &&
+        listType == HomeViewModel.ListType.ALL &&
+        onGrantPermission != null
 
     Box(
         modifier = modifier.fillMaxSize(),
@@ -562,6 +739,13 @@ private fun EmptyVideosState(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                 )
+            }
+
+            if (showGrantButton && onGrantPermission != null) {
+                Spacer(modifier = Modifier.height(20.dp))
+                Button(onClick = onGrantPermission) {
+                    Text("去授权")
+                }
             }
         }
     }

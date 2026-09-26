@@ -83,6 +83,8 @@ fun DownloadScreen(
     val pendingMetadata by viewModel.pendingMetadata.collectAsState()
 
     var showAddDialog by remember { mutableStateOf(false) }
+    // 清除已完成确认对话框（一键清除不可撤销，需二次确认）
+    var showClearCompletedDialog by remember { mutableStateOf(false) }
 
     // 列表滚动状态
     val listState = rememberLazyListState()
@@ -156,7 +158,7 @@ fun DownloadScreen(
                     }
                     // 清除已完成按钮
                     if (completedDownloads.isNotEmpty()) {
-                        IconButton(onClick = { viewModel.clearCompletedDownloads() }) {
+                        IconButton(onClick = { showClearCompletedDialog = true }) {
                             Icon(
                                 imageVector = Icons.Filled.ClearAll,
                                 contentDescription = "清除已完成",
@@ -239,6 +241,30 @@ fun DownloadScreen(
                 }
             }
         }
+    }
+
+    // 清除已完成确认对话框
+    if (showClearCompletedDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearCompletedDialog = false },
+            title = { Text("清除已完成任务") },
+            text = { Text("将移除全部 ${completedDownloads.size} 个已完成任务的记录（不删除已下载的文件），此操作不可撤销。") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showClearCompletedDialog = false
+                        viewModel.clearCompletedDownloads()
+                    }
+                ) {
+                    Text("清除", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearCompletedDialog = false }) {
+                    Text("取消")
+                }
+            }
+        )
     }
 
     // 添加下载对话框

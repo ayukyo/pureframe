@@ -207,16 +207,37 @@ class HomeViewModel @Inject constructor(
     
     /**
      * 删除视频
+     *
+     * @param videoId 视频 ID
+     * @param deleteFile 是否同时删除磁盘上的视频文件（默认仅移除记录）
      */
-    fun deleteVideo(videoId: Long) {
+    fun deleteVideo(videoId: Long, deleteFile: Boolean = false) {
         viewModelScope.launch {
             _uiState.update { it.copy(isDeleting = true) }
             try {
+                // 需要删文件时先取出路径（删完记录就查不到了）
+                val filePath = if (deleteFile) {
+                    getAllVideosOnce(videoId)?.filePath
+                } else null
                 deleteVideoUseCase(videoId)
+                // 文件删除放 IO 线程，失败不影响记录移除
+                if (filePath != null) {
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                        val f = java.io.File(filePath)
+                        if (f.exists()) f.delete()
+                    }
+                }
             } finally {
                 _uiState.update { it.copy(isDeleting = false) }
             }
         }
+    }
+
+    /** 按 ID 查询单个视频（用于删除前取文件路径） */
+    private suspend fun getAllVideosOnce(videoId: Long): Video? {
+        return allVideos.value.firstOrNull { it.id == videoId }
+            ?: favoriteVideos.value.firstOrNull { it.id == videoId }
+            ?: recentVideos.value.firstOrNull { it.id == videoId }
     }
     
     /**

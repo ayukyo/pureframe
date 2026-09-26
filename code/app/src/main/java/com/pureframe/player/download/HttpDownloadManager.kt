@@ -292,6 +292,8 @@ class HttpDownloadManager @Inject constructor(
                 totalSize = progress.totalBytes,
                 speed = progress.speed,
                 status = status,
+                // 失败时记录用户可读的原因；恢复下载/重新开始时清空
+                errorCode = if (progress.state == HttpDownloader.DownloadState.ERROR) progress.errorMessage else null,
                 updatedAt = Date()
             )
             downloadRepository.updateTask(updatedTask)
