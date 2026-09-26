@@ -20,7 +20,9 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.pureframe.player.download.TorrentFileInfo
 import com.pureframe.player.download.TorrentMetadataInfo
-import com.pureframe.player.ui.theme.SurfaceVariant
+import com.pureframe.player.ui.theme.AppTheme
+import com.pureframe.player.ui.theme.onSurfaceMuted
+import com.pureframe.player.ui.theme.surfaceHigh
 
 /**
  * 文件选择对话框
@@ -41,6 +43,7 @@ fun FileSelectionDialog(
 
     val selectedFiles = metadata.files.filter { it.index in selectedIndices }
     val totalSelectedSize = selectedFiles.sumOf { it.size }
+    val ext = AppTheme.extendedColors
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -55,7 +58,7 @@ fun FileSelectionDialog(
                 .fillMaxWidth(0.95f)
                 .fillMaxHeight(0.8f),
             colors = CardDefaults.cardColors(
-                containerColor = SurfaceVariant
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
             ),
             shape = RoundedCornerShape(16.dp)
         ) {
@@ -88,7 +91,7 @@ fun FileSelectionDialog(
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = SurfaceVariant
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
                     )
                 )
 
@@ -133,7 +136,7 @@ fun FileSelectionDialog(
                     }
                 }
 
-                Divider(color = Color(0xFF2A2A2A))
+                Divider(color = MaterialTheme.colorScheme.outlineVariant)
 
                 // 文件列表
                 LazyColumn(
@@ -157,7 +160,7 @@ fun FileSelectionDialog(
                     }
                 }
 
-                Divider(color = Color(0xFF2A2A2A))
+                Divider(color = MaterialTheme.colorScheme.outlineVariant)
 
                 // 底部按钮
                 Row(
@@ -202,6 +205,7 @@ private fun FileSelectionItem(
     onToggle: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val ext = AppTheme.extendedColors
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -226,13 +230,13 @@ private fun FileSelectionItem(
             modifier = Modifier
                 .size(40.dp)
                 .clip(RoundedCornerShape(8.dp))
-                .background(if (file.isVideo) Color(0xFF2A2A2A) else Color(0xFF1A1A1A)),
+                .background(if (file.isVideo) MaterialTheme.colorScheme.surfaceHigh else MaterialTheme.colorScheme.surface),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = if (file.isVideo) Icons.Filled.VideoFile else Icons.Filled.InsertDriveFile,
                 contentDescription = null,
-                tint = if (file.isVideo) Color(0xFF888888) else Color(0xFF666666),
+                tint = if (file.isVideo) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceMuted,
                 modifier = Modifier.size(24.dp)
             )
         }
@@ -268,7 +272,7 @@ private fun FileSelectionItem(
                     Text(
                         text = file.resolution,
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF4CAF50)
+                        color = ext.success
                     )
                 }
 
@@ -279,7 +283,7 @@ private fun FileSelectionItem(
                         Text(
                             text = extension,
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFF2196F3)
+                            color = ext.info
                         )
                     }
                 }

@@ -47,7 +47,7 @@ val DownloadActive = Color(0xFF4CAF50)    // 下载中（绿色）
 val DownloadPaused = Color(0xFFFF9800)    // 已暂停（橙色）
 val DownloadCompleted = Color(0xFF2196F3) // 已完成（蓝色）
 val DownloadError = Color(0xFFF44336)     // 错误（红色）
-val DownloadWaiting = Color(0xFF666666)   // 等待中（灰色）
+val DownloadWaiting = Color(0xFF8C8C8C)   // 等待中（灰色，深色主题下保证可读）
 
 // ===== 分隔线和边框 =====
 val Divider = Color(0xFF333333)           // 分隔线
@@ -90,10 +90,25 @@ val MaterialOutlineVariant = Divider
 val LightBackground = Color(0xFFFAFAFA)          // 浅灰白背景
 val LightSurface = Color(0xFFF2F2F2)             // 浅灰表面
 val LightSurfaceVariant = Color(0xFFE8E8E8)      // 卡片背景
+val LightSurfaceHigh = Color(0xFFDCDCDC)         // 高亮表面
 val LightOnBackground = Color(0xFF1A1A1A)        // 深色主文字
 val LightOnSurface = Color(0xFF1A1A1A)           // 深色文字
 val LightOnSurfaceVariant = Color(0xFF5C5C5C)    // 中灰次要文字
+val LightOnSurfaceMuted = Color(0xFF9E9E9E)      // 浅灰辅助文字
 val LightPrimary = Color(0xFF1A1A1A)             // 深色主要交互（按钮/开关）
 val LightOnPrimary = Color(0xFFFFFFFF)
 val LightOutline = Color(0xFFD0D0D0)             // 浅边框
 val LightDivider = Color(0xFFDDDDDD)             // 浅分隔线
+
+// 浅色主题状态色（加深饱和度，保证浅色背景上的对比度）
+val LightSuccess = Color(0xFF2E7D32)             // 成功
+val LightWarning = Color(0xFFE65100)             // 警告
+val LightError = Color(0xFFD32F2F)               // 错误
+val LightInfo = Color(0xFF1565C0)                // 信息
+
+// 浅色主题下载状态色
+val LightDownloadActive = Color(0xFF2E7D32)      // 下载中
+val LightDownloadPaused = Color(0xFFE65100)      // 已暂停
+val LightDownloadCompleted = Color(0xFF1565C0)   // 已完成
+val LightDownloadError = Color(0xFFD32F2F)       // 失败
+val LightDownloadWaiting = Color(0xFF757575)     // 等待中

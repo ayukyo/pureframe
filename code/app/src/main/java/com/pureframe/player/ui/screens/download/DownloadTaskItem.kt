@@ -47,11 +47,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.pureframe.player.domain.model.DownloadStatus
 import com.pureframe.player.domain.model.DownloadTask
-import com.pureframe.player.ui.theme.DownloadActive
-import com.pureframe.player.ui.theme.DownloadCompleted
-import com.pureframe.player.ui.theme.DownloadError
-import com.pureframe.player.ui.theme.DownloadPaused
-import com.pureframe.player.ui.theme.DownloadWaiting
+import com.pureframe.player.ui.theme.AppTheme
 
 /**
  * 下载任务列表项
@@ -71,16 +67,17 @@ fun DownloadTaskItem(
 ) {
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
+    val ext = AppTheme.extendedColors
 
     // 状态颜色
     val statusColor = when (task.status) {
-        DownloadStatus.DOWNLOADING -> DownloadActive
-        DownloadStatus.PAUSED -> DownloadPaused
-        DownloadStatus.COMPLETED -> DownloadCompleted
-        DownloadStatus.FAILED, DownloadStatus.ERROR -> DownloadError
-        DownloadStatus.PENDING, DownloadStatus.WAITING -> DownloadWaiting
-        DownloadStatus.CANCELLED -> DownloadWaiting
-        DownloadStatus.PENDING_SELECTION -> DownloadWaiting
+        DownloadStatus.DOWNLOADING -> ext.downloadActive
+        DownloadStatus.PAUSED -> ext.downloadPaused
+        DownloadStatus.COMPLETED -> ext.downloadCompleted
+        DownloadStatus.FAILED, DownloadStatus.ERROR -> ext.downloadError
+        DownloadStatus.PENDING, DownloadStatus.WAITING -> ext.downloadWaiting
+        DownloadStatus.CANCELLED -> ext.downloadWaiting
+        DownloadStatus.PENDING_SELECTION -> ext.downloadWaiting
     }
 
     // 状态文字
@@ -232,7 +229,7 @@ fun DownloadTaskItem(
                     Text(
                         text = task.formattedSpeed,
                         style = MaterialTheme.typography.bodySmall,
-                        color = DownloadActive
+                        color = ext.downloadActive
                     )
                 }
             }
@@ -245,7 +242,7 @@ fun DownloadTaskItem(
                 Text(
                     text = "失败原因：${task.errorCode}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = DownloadError,
+                    color = ext.downloadError,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -258,7 +255,7 @@ fun DownloadTaskItem(
                 Text(
                     text = "✓ 可边下边播",
                     style = MaterialTheme.typography.labelSmall,
-                    color = DownloadActive
+                    color = ext.downloadActive
                 )
             }
             
@@ -274,7 +271,8 @@ fun DownloadTaskItem(
                     Button(
                         onClick = onPlayClick,
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = DownloadActive
+                            containerColor = ext.downloadActive,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
                         ),
                         modifier = Modifier.weight(1f)
                     ) {
