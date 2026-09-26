@@ -156,6 +156,57 @@ val PlayerExtendedColors = DarkExtendedColors  // 播放器固定深色
 private val LocalExtendedColors = staticCompositionLocalOf { DarkExtendedColors }
 
 /**
+ * 当前 App 主题是否为深色。
+ *
+ * 播放页使用 PlayerTheme（固定深色）以保证视频画面上的控制栏可读，
+ * 但对话框属于「应用层 UI」，应当跟随 App 的主题偏好而不是播放器的固定深色。
+ * 通过该 CompositionLocal 把外层 PureFrameTheme 的深浅标志透传进播放页内部，
+ * 使对话框在浅色模式下呈现浅色、深色模式下呈现深色。
+ */
+val LocalAppDarkTheme = staticCompositionLocalOf { true }
+
+/**
+ * 播放页对话框配色（跟随 App 主题，而非播放器固定深色）
+ */
+data class AppDialogColors(
+    val container: Color,          // 对话框底色
+    val onContainer: Color,        // 主文字
+    val onContainerMuted: Color,   // 次要文字
+    val selectedContainer: Color,  // 选中项背景
+    val primaryAction: Color,      // 主按钮底色
+    val onPrimaryAction: Color,    // 主按钮文字
+    val radioSelected: Color,      // 单选选中色
+    val radioUnselected: Color     // 单选未选中色
+)
+
+@Composable
+fun appDialogColors(): AppDialogColors {
+    return if (LocalAppDarkTheme.current) {
+        AppDialogColors(
+            container = Color(0xFF1E1E1E),
+            onContainer = Color.White,
+            onContainerMuted = Color.White.copy(alpha = 0.6f),
+            selectedContainer = Color.White.copy(alpha = 0.15f),
+            primaryAction = Color.White,
+            onPrimaryAction = Color.Black,
+            radioSelected = Color.White,
+            radioUnselected = Color.White.copy(alpha = 0.5f)
+        )
+    } else {
+        AppDialogColors(
+            container = Color.White,
+            onContainer = Color(0xFF1A1A1A),
+            onContainerMuted = Color(0xFF5C5C5C),
+            selectedContainer = Color(0xFF1A1A1A).copy(alpha = 0.07f),
+            primaryAction = Color(0xFF1A1A1A),
+            onPrimaryAction = Color.White,
+            radioSelected = Color(0xFF1A1A1A),
+            radioUnselected = Color(0xFF1A1A1A).copy(alpha = 0.4f)
+        )
+    }
+}
+
+/**
  * 获取当前主题的扩展状态色
  */
 object AppTheme {
@@ -190,7 +241,8 @@ fun PureFrameTheme(
     val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
 
     CompositionLocalProvider(
-        LocalExtendedColors provides if (darkTheme) DarkExtendedColors else LightExtendedColors
+        LocalExtendedColors provides if (darkTheme) DarkExtendedColors else LightExtendedColors,
+        LocalAppDarkTheme provides darkTheme
     ) {
         MaterialTheme(
             colorScheme = colorScheme,

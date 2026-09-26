@@ -147,16 +147,17 @@ class PlayerManager @Inject constructor(
             }
             // 画中画小窗内的播放/暂停按钮图标需要通过更新 PiP 参数来刷新，
             // 否则小窗按钮状态与实际播放状态不同步。
-            // 用反射调用：部分编译变体对 Activity.updatePictureInPictureParams 解析失败
+            // 正确的公开 API 是 Activity.setPictureInPictureParams（API 26），
+            // 之前误用反射找 updatePictureInPictureParams（不存在）导致 NoSuchMethodException。
             runCatching {
                 val activity = PipCurrentActivityHolder.currentActivity
+                android.util.Log.i("PureFramePip", "onIsPlayingChanged=$isPlaying, pipActivity=${activity != null}")
                 if (activity != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    val method = android.app.Activity::class.java.getMethod(
-                        "updatePictureInPictureParams",
-                        android.app.PictureInPictureParams::class.java
-                    )
-                    method.invoke(activity, PiPHelper.buildParams(activity, exoPlayer))
+                    activity.setPictureInPictureParams(PiPHelper.buildParams(activity, exoPlayer))
+                    android.util.Log.i("PureFramePip", "pip params updated (icon refresh)")
                 }
+            }.onFailure {
+                android.util.Log.e("PureFramePip", "pip params update failed", it)
             }
         }
         

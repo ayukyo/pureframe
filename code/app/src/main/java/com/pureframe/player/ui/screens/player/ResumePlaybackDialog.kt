@@ -10,6 +10,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pureframe.player.ui.theme.AppDialogColors
+import com.pureframe.player.ui.theme.appDialogColors
 
 /**
  * 续播提示对话框
@@ -35,13 +37,15 @@ fun ResumePlaybackDialog(
     
     val remainingTime = duration - lastPosition
     val isNearEnd = progressPercent >= 95
-    
+
+    // 对话框跟随 App 主题深浅色，而不是播放器固定的深色
+    val dialogColors = appDialogColors()
     AlertDialog(
         onDismissRequest = onDismiss,
         modifier = modifier,
-        containerColor = Color(0xFF1E1E1E),
-        titleContentColor = Color.White,
-        textContentColor = Color.White,
+        containerColor = dialogColors.container,
+        titleContentColor = dialogColors.onContainer,
+        textContentColor = dialogColors.onContainer,
         title = {
             Text(
                 text = "续播提示",
@@ -57,7 +61,7 @@ fun ResumePlaybackDialog(
                 // 视频标题
                 Text(
                     text = videoTitle,
-                    color = Color.White.copy(alpha = 0.8f),
+                    color = dialogColors.onContainerMuted,
                     fontSize = 14.sp,
                     maxLines = 2,
                     modifier = Modifier.padding(bottom = 16.dp)
@@ -69,12 +73,13 @@ fun ResumePlaybackDialog(
                         lastPosition = lastPosition,
                         remainingTime = remainingTime,
                         progressPercent = progressPercent,
+                        colors = dialogColors,
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
                     
                     Text(
                         text = "上次观看至 ${formatTime(lastPosition)}",
-                        color = Color.White,
+                        color = dialogColors.onContainer,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Medium
                     )
@@ -82,7 +87,7 @@ fun ResumePlaybackDialog(
                     // 已看完
                     Text(
                         text = "上次已看完此视频",
-                        color = Color.White.copy(alpha = 0.8f),
+                        color = dialogColors.onContainerMuted,
                         fontSize = 16.sp,
                         modifier = Modifier.padding(vertical = 16.dp)
                     )
@@ -97,7 +102,7 @@ fun ResumePlaybackDialog(
                 TextButton(
                     onClick = onPlayFromStart,
                     colors = ButtonDefaults.textButtonColors(
-                        contentColor = Color.White.copy(alpha = 0.7f)
+                        contentColor = dialogColors.onContainerMuted
                     )
                 ) {
                     Text("从头播放")
@@ -108,8 +113,8 @@ fun ResumePlaybackDialog(
                     Button(
                         onClick = onResume,
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color.White,
-                            contentColor = Color.Black
+                            containerColor = dialogColors.primaryAction,
+                            contentColor = dialogColors.onPrimaryAction
                         ),
                         shape = RoundedCornerShape(8.dp)
                     ) {
@@ -123,8 +128,8 @@ fun ResumePlaybackDialog(
                     Button(
                         onClick = onPlayFromStart,
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color.White,
-                            contentColor = Color.Black
+                            containerColor = dialogColors.primaryAction,
+                            contentColor = dialogColors.onPrimaryAction
                         ),
                         shape = RoundedCornerShape(8.dp)
                     ) {
@@ -148,6 +153,7 @@ fun LastPlaybackInfo(
     lastPosition: Long,  // 上次播放位置
     remainingTime: Long,
     progressPercent: Int,
+    colors: AppDialogColors,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -160,8 +166,8 @@ fun LastPlaybackInfo(
             modifier = Modifier
                 .fillMaxWidth(0.6f)
                 .height(4.dp),
-            color = Color.White,
-            trackColor = Color.White.copy(alpha = 0.2f)
+            color = colors.primaryAction,
+            trackColor = colors.selectedContainer
         )
         
         Spacer(modifier = Modifier.height(8.dp))
@@ -169,14 +175,14 @@ fun LastPlaybackInfo(
         // 进度百分比
         Text(
             text = "已观看 ${progressPercent}%",
-            color = Color.White.copy(alpha = 0.6f),
+            color = colors.onContainerMuted,
             fontSize = 12.sp
         )
         
         // 剩余时间
         Text(
             text = "剩余 ${formatTime(remainingTime)}",
-            color = Color.White.copy(alpha = 0.6f),
+            color = colors.onContainerMuted,
             fontSize = 12.sp
         )
     }

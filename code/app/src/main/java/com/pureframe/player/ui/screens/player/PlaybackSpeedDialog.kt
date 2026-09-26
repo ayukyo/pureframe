@@ -17,6 +17,8 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pureframe.player.ui.theme.AppDialogColors
+import com.pureframe.player.ui.theme.appDialogColors
 
 /**
  * 播放速度选择对话框
@@ -40,13 +42,15 @@ fun PlaybackSpeedDialog(
     val speedOptions = listOf(
         0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 2.0f, 3.0f
     )
-    
+
+    // 对话框跟随 App 主题深浅色，而不是播放器固定的深色
+    val dialogColors = appDialogColors()
     AlertDialog(
         onDismissRequest = onDismiss,
         modifier = modifier,
-        containerColor = Color(0xFF1E1E1E),
-        titleContentColor = Color.White,
-        textContentColor = Color.White,
+        containerColor = dialogColors.container,
+        titleContentColor = dialogColors.onContainer,
+        textContentColor = dialogColors.onContainer,
         title = {
             Text(
                 text = "播放速度",
@@ -61,6 +65,7 @@ fun PlaybackSpeedDialog(
                 // 当前速度显示
                 SpeedDisplay(
                     currentSpeed = currentSpeed,
+                    colors = dialogColors,
                     modifier = Modifier
                         .align(Alignment.CenterHorizontally)
                         .padding(bottom = 16.dp)
@@ -70,6 +75,7 @@ fun PlaybackSpeedDialog(
                 SpeedOptionsGrid(
                     options = speedOptions,
                     currentSpeed = currentSpeed,
+                    colors = dialogColors,
                     onSpeedChange = onSpeedChange,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -79,7 +85,7 @@ fun PlaybackSpeedDialog(
             TextButton(onClick = onDismiss) {
                 Text(
                     text = "确定",
-                    color = Color.White
+                    color = dialogColors.onContainer
                 )
             }
         }
@@ -92,11 +98,12 @@ fun PlaybackSpeedDialog(
 @Composable
 fun SpeedDisplay(
     currentSpeed: Float,
+    colors: AppDialogColors,
     modifier: Modifier = Modifier
 ) {
     Surface(
         shape = RoundedCornerShape(8.dp),
-        color = Color.White.copy(alpha = 0.2f),
+        color = colors.selectedContainer,
         modifier = modifier
     ) {
         Column(
@@ -105,13 +112,13 @@ fun SpeedDisplay(
         ) {
             Text(
                 text = "${currentSpeed}x",
-                color = Color.White,
+                color = colors.onContainer,
                 fontSize = 32.sp,
                 fontWeight = FontWeight.Bold
             )
             Text(
                 text = getSpeedDescription(currentSpeed),
-                color = Color.White.copy(alpha = 0.7f),
+                color = colors.onContainerMuted,
                 fontSize = 12.sp
             )
         }
@@ -125,6 +132,7 @@ fun SpeedDisplay(
 fun SpeedOptionsGrid(
     options: List<Float>,
     currentSpeed: Float,
+    colors: AppDialogColors,
     onSpeedChange: (Float) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -136,6 +144,7 @@ fun SpeedOptionsGrid(
             SpeedOptionButton(
                 speed = speed,
                 isSelected = speed == currentSpeed,
+                colors = colors,
                 onClick = { onSpeedChange(speed) }
             )
         }
@@ -149,19 +158,20 @@ fun SpeedOptionsGrid(
 fun SpeedOptionButton(
     speed: Float,
     isSelected: Boolean,
+    colors: AppDialogColors,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val backgroundColor = if (isSelected) {
-        Color.White
+        colors.primaryAction
     } else {
-        Color.White.copy(alpha = 0.15f)
+        colors.selectedContainer
     }
-    
+
     val textColor = if (isSelected) {
-        Color.Black
+        colors.onPrimaryAction
     } else {
-        Color.White
+        colors.onContainer
     }
     
     Surface(

@@ -18,12 +18,15 @@ class PiPActionReceiver : BroadcastReceiver() {
     lateinit var playerManager: PlayerManager
 
     override fun onReceive(context: Context, intent: Intent) {
+        android.util.Log.i("PureFramePip", "onReceive action=${intent.action} playing=${playerManager.isPlaying.value}")
         when (intent.action) {
             ACTION_PLAY_PAUSE -> {
                 if (playerManager.isPlaying.value) {
                     playerManager.pause()
+                    android.util.Log.i("PureFramePip", "paused")
                 } else {
                     playerManager.play()
+                    android.util.Log.i("PureFramePip", "played")
                 }
             }
             ACTION_REWIND -> playerManager.seekRelative(-10_000L)

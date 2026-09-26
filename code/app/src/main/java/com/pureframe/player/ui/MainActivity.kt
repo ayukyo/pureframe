@@ -32,8 +32,11 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var userPreferencesRepository: UserPreferencesRepository
 
+    // 延迟初始化：PlayerManager 构造时会同步读取 DataStore（runBlocking）并构建 ExoPlayer，
+    // 若在 onCreate 急切注入会把这条耗时的播放器链路拉进冷启动关键路径。
+    // 用 Lazy 包装后只有真正用到（首次进入播放页 / Home 键触发 PiP）才会创建。
     @Inject
-    lateinit var playerManager: PlayerManager
+    lateinit var playerManager: dagger.Lazy<PlayerManager>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // edge-to-edge：内容绘制到系统栏后面，由 Compose 统一消费 insets。
@@ -61,10 +64,10 @@ class MainActivity : ComponentActivity() {
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
         // 用户按 Home 键离开时：若正在播放视频，自动进入画中画小窗继续播放
-        if (playerManager.isPlaying.value && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        if (playerManager.get().isPlaying.value && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             runCatching {
                 enterPictureInPictureMode(
-                    com.pureframe.player.player.PiPHelper.buildParams(this, playerManager.getPlayer())
+                    com.pureframe.player.player.PiPHelper.buildParams(this, playerManager.get().getPlayer())
                 )
             }
         }

@@ -31,8 +31,19 @@ android {
             )
         }
         debug {
-            isMinifyEnabled = false
+            // debug 包默认不做 R8 裁剪，material-icons-extended 的 1 万多个图标类
+            // 会被全部打进 dex（实测 59MB dex / 20 个 vdex），冷启动时 ART 需要
+            // 解压全部 vdex，主线程被阻塞约 1.9 秒 —— 这就是"打开 APP 很慢"的根因。
+            // 打开代码裁剪后只保留实际引用的图标，dex 大幅缩小、冷启动恢复正常；
+            // 用 -dontobfuscate 保留原始类名，崩溃堆栈仍然可读。
+            isMinifyEnabled = true
+            isShrinkResources = true
             applicationIdSuffix = ".debug"
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+                "proguard-debug.pro"
+            )
         }
     }
 
