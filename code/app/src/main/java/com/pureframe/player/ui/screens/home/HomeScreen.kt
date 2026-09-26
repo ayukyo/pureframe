@@ -23,6 +23,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -40,6 +41,17 @@ import coil.request.ImageRequest
 import com.pureframe.player.data.preferences.SortBy
 import com.pureframe.player.domain.model.Video
 import com.pureframe.player.ui.navigation.NavigationState
+
+/**
+ * 首页滚动位置持有者
+ *
+ * 进程内存级单例：切 Tab 离开首页时记录列表位置，
+ * 切回时恢复。懒加载网格在导航 restoreState 下无法
+ * 自动恢复异步数据的滚动位置，需要手动桥接。
+ */
+object HomeScrollIndexHolder {
+    var index: Int = 0
+}
 
 /**
  * 本地视频页面
@@ -81,9 +93,33 @@ fun HomeScreen(
         }
     }
 
-    // 排序变化时滚动到顶部
+    // 排序变化时滚动到顶部（跳过每次重新组合后的首次执行：
+    // 切 Tab 返回首页时是全新组合，不应被重置到顶部；
+    // 注意不能用 rememberSaveable——切 Tab 返回时标志残留 true 会误触发滚动）
+    var sortEffectInitialized by remember { mutableStateOf(false) }
     LaunchedEffect(currentSort) {
-        listState.animateScrollToItem(0)
+        if (sortEffectInitialized) {
+            listState.animateScrollToItem(0)
+        } else {
+            sortEffectInitialized = true
+        }
+    }
+
+    // 底部导航"本地"按钮：已在首页时再次点击 → 滚动到列表顶部
+    LaunchedEffect(Unit) {
+        navigationState.scrollToHomeTop.collect {
+            if (it) {
+                listState.animateScrollToItem(0)
+                navigationState.resetHomeScrollFlag()
+            }
+        }
+    }
+
+    // 滚动位置跨 Tab 持久化：切走时记录位置（恢复逻辑在 currentVideos 定义后）
+    DisposableEffect(Unit) {
+        onDispose {
+            HomeScrollIndexHolder.index = listState.firstVisibleItemIndex
+        }
     }
 
     // 是否需要"所有文件访问"（Android 11+ 分区存储下扫描全盘视频必需）
@@ -126,8 +162,13 @@ fun HomeScreen(
     }
 
     // 首次进入时自动扫描（清理已删除的视频）
+    // 用 rememberSaveable 标记：仅本次进程会话扫描一次。
+    // 切 Tab 返回首页（restoreState 恢复组合）时不重复扫描——
+    // 否则每次切回都会触发 Scanning 状态，导致列表被强制滚回顶部。
+    var hasAutoScanned by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(Unit) {
-        if (hasStoragePermission) {
+        if (hasStoragePermission && !hasAutoScanned) {
+            hasAutoScanned = true
             kotlinx.coroutines.delay(500) // 等待页面渲染完成
             viewModel.scanVideos()
         }
@@ -140,6 +181,15 @@ fun HomeScreen(
             HomeViewModel.ListType.ALL -> allVideos
             HomeViewModel.ListType.FAVORITE -> favoriteVideos
             HomeViewModel.ListType.RECENT -> recentVideos
+        }
+    }
+
+    // 滚动位置恢复：返回首页且数据已就绪时，恢复到离开前的位置
+    LaunchedEffect(currentVideos.size) {
+        val saved = HomeScrollIndexHolder.index
+        if (saved > 0 && currentVideos.size > saved && listState.firstVisibleItemIndex == 0) {
+            listState.scrollToItem(saved)
+            HomeScrollIndexHolder.index = 0
         }
     }
 
