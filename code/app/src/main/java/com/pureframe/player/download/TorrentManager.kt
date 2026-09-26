@@ -1,6 +1,7 @@
 package com.pureframe.player.download
 
 import android.content.Context
+import android.media.MediaScannerConnection
 import com.pureframe.player.data.repository.DownloadRepository
 import com.pureframe.player.domain.model.DownloadTask
 import com.pureframe.player.domain.model.DownloadStatus
@@ -127,6 +128,33 @@ class TorrentManager @Inject constructor(
     }
     
     /**
+     * 种子完成后触发媒体扫描。
+     * 多文件种子产出整个目录，需要递归找出其中的视频文件逐个扫描。
+     */
+    private fun scanTorrentOutput(task: DownloadTask) {
+        runCatching {
+            val base = File(task.savePath)
+            if (!base.exists()) return
+            val files = if (base.isDirectory) {
+                base.walkTopDown()
+                    .filter { it.isFile && it.extension.lowercase() in LocalVideoScanner.SUPPORTED_FORMATS }
+                    .toList()
+            } else {
+                listOf(base)
+            }
+            if (files.isNotEmpty()) {
+                MediaScannerConnection.scanFile(
+                    context,
+                    files.map { it.absolutePath }.toTypedArray(),
+                    arrayOf("video/*"),
+                    null
+                )
+                Timber.i("TorrentManager: 已触发媒体扫描 - ${files.size} 个文件 @${task.savePath}")
+            }
+        }.onFailure { Timber.w(it, "TorrentManager: 媒体扫描失败 - taskId=${task.id}") }
+    }
+
+    /**
      * 更新任务进度到 Repository
      */
     private suspend fun updateTaskProgress(progress: DownloadProgressInfo) {
@@ -171,6 +199,11 @@ class TorrentManager @Inject constructor(
                 updatedAt = Date()
             )
             downloadRepository.updateTask(updatedTask)
+
+            // 完成时把产出文件交给 MediaStore：「本地」页与文件管理器才能立刻看到
+            if (status == DownloadStatus.COMPLETED) {
+                scanTorrentOutput(existingTask)
+            }
 
             // 更新本地状态流
             refreshDownloadStates()

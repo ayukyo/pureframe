@@ -30,11 +30,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import coil.compose.AsyncImage
 import coil.decode.VideoFrameDecoder
 import coil.request.ImageRequest
@@ -153,6 +156,25 @@ fun HomeScreen(
         if (allGranted) {
             viewModel.scanVideos()
         }
+    }
+
+    // 用户可能绕过 App 直接在系统设置里开/关权限（或从授权页按返回键回来），
+    // 所以每次回到前台都重新读一次真实权限状态
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                hasStoragePermission = if (needManageStorage) {
+                    Environment.isExternalStorageManager()
+                } else {
+                    ContextCompat.checkSelfPermission(
+                        context, Manifest.permission.READ_EXTERNAL_STORAGE
+                    ) == PackageManager.PERMISSION_GRANTED
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     // "所有文件访问"设置页返回 launcher（API 30+）
@@ -364,28 +386,34 @@ fun HomeScreen(
                 EmptyVideosState(
                     listType = uiState.listType,
                     isSearching = showSearch && searchQuery.isNotEmpty(),
-                    onGrantPermission = {
-                        // 空状态里的"去授权"按钮：与刷新 FAB 相同的权限引导流程
-                        if (needManageStorage) {
-                            try {
-                                val intent = Intent(
-                                    Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
-                                    "package:${context.packageName}".toUri()
-                                )
-                                manageStorageLauncher.launch(intent)
-                            } catch (e: Exception) {
-                                manageStorageLauncher.launch(
-                                    Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                                        "package:${context.packageName}".toUri())
+                    hasStoragePermission = hasStoragePermission,
+                    onGrantPermission = if (hasStoragePermission) {
+                        // 已有权限却没视频，引导按钮没有意义，不应再显示"去授权"
+                        null
+                    } else {
+                        {
+                            // 空状态里的"去授权"按钮：与刷新 FAB 相同的权限引导流程
+                            if (needManageStorage) {
+                                try {
+                                    val intent = Intent(
+                                        Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                                        "package:${context.packageName}".toUri()
+                                    )
+                                    manageStorageLauncher.launch(intent)
+                                } catch (e: Exception) {
+                                    manageStorageLauncher.launch(
+                                        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                            "package:${context.packageName}".toUri())
+                                    )
+                                }
+                            } else {
+                                permissionLauncher.launch(
+                                    arrayOf(
+                                        Manifest.permission.READ_EXTERNAL_STORAGE,
+                                        Manifest.permission.WRITE_EXTERNAL_STORAGE
+                                    )
                                 )
                             }
-                        } else {
-                            permissionLauncher.launch(
-                                arrayOf(
-                                    Manifest.permission.READ_EXTERNAL_STORAGE,
-                                    Manifest.permission.WRITE_EXTERNAL_STORAGE
-                                )
-                            )
                         }
                     }
                 )
@@ -753,6 +781,7 @@ private fun EmptyVideosState(
     listType: HomeViewModel.ListType,
     isSearching: Boolean,
     modifier: Modifier = Modifier,
+    hasStoragePermission: Boolean = false,
     onGrantPermission: (() -> Unit)? = null
 ) {
     val (message, subMessage, icon) = when {
@@ -761,9 +790,14 @@ private fun EmptyVideosState(
             stringResource(R.string.home_empty_search_desc),
             Icons.Filled.Search
         )
-        listType == HomeViewModel.ListType.ALL -> Triple(
+        listType == HomeViewModel.ListType.ALL && !hasStoragePermission -> Triple(
             stringResource(R.string.home_empty_local_title),
             stringResource(R.string.home_empty_local_desc),
+            Icons.Filled.VideoLibrary
+        )
+        listType == HomeViewModel.ListType.ALL -> Triple(
+            stringResource(R.string.home_empty_local_title),
+            stringResource(R.string.home_empty_local_desc_ok),
             Icons.Filled.VideoLibrary
         )
         listType == HomeViewModel.ListType.FAVORITE -> Triple(
@@ -779,9 +813,10 @@ private fun EmptyVideosState(
         else -> Triple(stringResource(R.string.home_empty_generic_title), "", Icons.Filled.VideoLibrary)
     }
 
-    // 全部视频为空且未在搜索时，显示"去授权"引导按钮
+    // 只有真正缺权限时才显示"去授权"；已授权但单纯没视频时不显示
     val showGrantButton = !isSearching &&
         listType == HomeViewModel.ListType.ALL &&
+        !hasStoragePermission &&
         onGrantPermission != null
 
     Box(

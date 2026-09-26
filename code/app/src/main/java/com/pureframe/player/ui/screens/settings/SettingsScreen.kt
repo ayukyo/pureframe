@@ -28,6 +28,7 @@ import com.pureframe.player.data.preferences.ThemeMode
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import com.pureframe.player.R
+import com.pureframe.player.download.DownloadDirectories
 
 /**
  * 设置页面
@@ -187,8 +188,9 @@ fun SettingsScreen(
                     ClickableSettingsItem(
                         icon = Icons.Filled.FolderOpen,
                         title = stringResource(R.string.settings_download_path),
+                        // 未配置时直接展示实际生效的目录，而不是含糊的"默认位置"
                         subtitle = userPreferences.downloadPath.ifEmpty {
-                            stringResource(R.string.settings_default_location)
+                            DownloadDirectories.resolve(context, null)
                         },
                         onClick = { showFolderPickerDialog = true }
                     )
@@ -350,7 +352,10 @@ fun SettingsScreen(
     // 下载路径选择对话框
     if (showFolderPickerDialog) {
         FolderPickerDialog(
-            currentPath = userPreferences.downloadPath,
+            // 未配置时展示实际生效的目录，让用户知道文件到底存到了哪
+            currentPath = userPreferences.downloadPath.ifEmpty {
+                DownloadDirectories.resolve(context, null)
+            },
             onPathSelected = { path ->
                 viewModel.setDownloadPath(path)
                 showFolderPickerDialog = false
@@ -790,6 +795,15 @@ private fun FolderPickerDialog(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    // 私有目录用户在文件管理器里看不到，必须明确告知
+                    if (DownloadDirectories.isAppPrivate(currentPath)) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = stringResource(R.string.settings_private_dir_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error.copy(alpha = 0.85f)
+                        )
+                    }
                     Spacer(modifier = Modifier.height(16.dp))
                 }
 

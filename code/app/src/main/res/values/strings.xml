@@ -74,6 +74,7 @@
     <string name="home_empty_search_desc">Try a different keyword</string>
     <string name="home_empty_local_title">No local videos</string>
     <string name="home_empty_local_desc">Videos are scanned automatically once access is granted</string>
+    <string name="home_empty_local_desc_ok">No supported video files found. Tap refresh to scan again</string>
     <string name="home_empty_favorite_title">No favorites</string>
     <string name="home_empty_favorite_desc">Tap the heart icon on a video to add it here</string>
     <string name="home_empty_recent_title">Nothing played yet</string>
@@ -234,6 +235,7 @@
 
     <string name="settings_download_path">Download location</string>
     <string name="settings_default_location">Default location</string>
+    <string name="settings_private_dir_hint">App-private directory: files here are invisible to file managers. Grant storage access or choose another folder.</string>
     <string name="settings_max_concurrent">Max concurrent downloads</string>
     <string name="settings_concurrent_desc">%1$d task(s) at a time</string>
     <string name="settings_wifi_only">Wi-Fi only</string>

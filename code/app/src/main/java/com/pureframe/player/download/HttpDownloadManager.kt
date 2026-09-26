@@ -1,6 +1,7 @@
 package com.pureframe.player.download
 
 import android.content.Context
+import android.media.MediaScannerConnection
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
@@ -316,6 +317,19 @@ class HttpDownloadManager @Inject constructor(
         try {
             downloadRepository.markCompleted(taskId, Date(), totalBytes)
             refreshDownloadStates()
+            // 通知 MediaStore 收录新文件：否则落在私有目录/公共目录的视频
+            // 不会立即出现在「本地」页和文件管理器里
+            downloadRepository.getTaskById(taskId)?.let { task ->
+                runCatching {
+                    val file = File(task.savePath, task.fileName)
+                    if (file.exists()) {
+                        MediaScannerConnection.scanFile(
+                            context, arrayOf(file.absolutePath), arrayOf("video/*"), null
+                        )
+                        Timber.i("HttpDownloadManager: 已触发媒体扫描 - ${file.absolutePath}")
+                    }
+                }
+            }
             Timber.i("HttpDownloadManager: HTTP 下载完成 - taskId=$taskId")
         } catch (e: Exception) {
             Timber.e(e, "HttpDownloadManager: 完成处理失败 - taskId=$taskId")

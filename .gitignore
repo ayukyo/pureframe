@@ -13,6 +13,7 @@ _*.db
 _*.db-wal
 _*.db-shm
 _db_*
+_bak_*
 _*.py
 _testmedia/
 _testsrv/

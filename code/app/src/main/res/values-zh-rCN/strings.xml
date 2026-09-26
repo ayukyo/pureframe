@@ -68,6 +68,7 @@
     <string name="home_empty_search_desc">尝试其他关键词搜索</string>
     <string name="home_empty_local_title">暂无本地视频</string>
     <string name="home_empty_local_desc">授权后自动扫描全盘视频</string>
+    <string name="home_empty_local_desc_ok">没有找到支持的视频文件，试试右下角刷新扫描</string>
     <string name="home_empty_favorite_title">暂无收藏</string>
     <string name="home_empty_favorite_desc">点击视频右侧的心形图标收藏</string>
     <string name="home_empty_recent_title">暂无最近播放</string>
@@ -228,6 +229,7 @@
 
     <string name="settings_download_path">下载保存位置</string>
     <string name="settings_default_location">默认位置</string>
+    <string name="settings_private_dir_hint">应用专属目录：这里的文件在文件管理器中不可见。可授予存储权限或选择其他文件夹。</string>
     <string name="settings_max_concurrent">最大并行下载数</string>
     <string name="settings_concurrent_desc">%1$d 个任务同时下载</string>
     <string name="settings_wifi_only">仅 Wi-Fi 下载</string>

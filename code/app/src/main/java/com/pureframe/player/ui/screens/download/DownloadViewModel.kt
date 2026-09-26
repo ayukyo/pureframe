@@ -1,7 +1,6 @@
 package com.pureframe.player.ui.screens.download
 
 import android.content.Context
-import android.os.Environment
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -21,6 +20,7 @@ import com.pureframe.player.domain.usecase.download.GetActiveDownloadCountUseCas
 import com.pureframe.player.download.TorrentManager
 import com.pureframe.player.download.TorrentMetadataInfo
 import com.pureframe.player.download.HttpDownloadManager
+import com.pureframe.player.download.DownloadDirectories
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -498,36 +498,20 @@ class DownloadViewModel @Inject constructor(
     }
 
     /**
-     * 解析可用的下载保存目录
+     * 解析可用的下载保存目录（实际逻辑见 [DownloadDirectories.resolve]）
      *
-     * 原先硬编码 `/storage/emulated/0/PureFrame/downloads`：
-     * 在 Android 11（targetSdk 30）分区存储下，应用无权在 /storage/emulated/0
-     * 自建顶层目录，mkdirs() 会失败，导致下载必然报错。
-     * 这里改为应用专属外部目录，无需任何存储权限且一定可写。
+     * 优先级：用户配置 > 公共媒体目录 Movies/PureFrame（有存储权限时，
+     * 文件管理器与「本地」页都可见）> 应用专属目录（兜底，一定可写）。
      */
     private suspend fun resolveDownloadDir(): String {
-        // 1) 用户在设置里指定的目录优先（前提是确实可写）
         val configured = runCatching {
             userPreferencesRepository.userPreferencesFlow.first().downloadPath
         }.getOrNull()
-        if (!configured.isNullOrBlank()) {
-            val dir = File(configured)
-            val usable = (dir.exists() && dir.isDirectory && dir.canWrite()) || dir.mkdirs()
-            if (usable) {
-                return dir.absolutePath
-            }
-            Timber.w("DownloadViewModel: 设置的下载目录不可用，回退到应用目录 - $configured")
+        val resolved = DownloadDirectories.resolve(appContext, configured)
+        if (!configured.isNullOrBlank() && resolved != configured) {
+            Timber.w("DownloadViewModel: 设置的下载目录不可用，已回退 - $configured -> $resolved")
         }
-
-        // 2) 回退到应用专属外部目录
-        val base = appContext.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
-            ?: appContext.getExternalFilesDir(null)
-            ?: appContext.filesDir
-        val dir = File(base, "PureFrame/downloads")
-        if (!dir.exists()) {
-            dir.mkdirs()
-        }
-        return dir.absolutePath
+        return resolved
     }
 
     /**
