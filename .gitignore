@@ -15,6 +15,10 @@ _*.db-shm
 _db_*
 _*.py
 _testmedia/
+_testsrv/
+
+# ---- 真机验证截图/日志（体积大，不入库） ----
+shots/
 
 # ---- Gradle / 构建 ----
 .gradle-home/
