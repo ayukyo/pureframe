@@ -43,8 +43,9 @@ object PiPHelper {
 
         val builder = PictureInPictureParams.Builder()
             .setAspectRatio(ratio)
-            // 关闭无缝缩放，避免非标准比例视频进小窗时被拉伸闪烁
-            .setSeamlessResizeEnabled(false)
+            // 注意：不要调用 setSeamlessResizeEnabled —— 部分 MIUI ROM（Android 11）上
+            // 该方法在运行时不存在（NoSuchMethodError），会导致画中画点击静默失败。
+            // 去掉后仅影响非标准比例视频进小窗的缩放平滑度，功能不受影响。
             .setActions(buildActions(context, player.isPlaying))
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {

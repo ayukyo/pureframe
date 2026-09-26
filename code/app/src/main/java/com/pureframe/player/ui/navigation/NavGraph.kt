@@ -12,6 +12,7 @@ import com.pureframe.player.ui.screens.home.HomeScreen
 import com.pureframe.player.ui.screens.download.DownloadScreen
 import com.pureframe.player.ui.screens.settings.SettingsScreen
 import com.pureframe.player.ui.screens.player.PlayerScreen
+import com.pureframe.player.ui.theme.PlayerTheme
 
 /**
  * 主导航图
@@ -63,12 +64,16 @@ fun PureFrameNavGraph(
             )
         ) { backStackEntry ->
             val videoId = backStackEntry.arguments?.getString("videoId") ?: ""
-            PlayerScreen(
-                videoId = videoId,
-                isStreamPlayback = false,
-                onBack = { navController.popBackStack() },
-                navigationState = navigationState
-            )
+            // 播放器使用专用深色主题：控制栏与对话框始终为深色设计，
+            // 避免浅色模式下主主题与硬编码深色 UI 混搭出错
+            PlayerTheme {
+                PlayerScreen(
+                    videoId = videoId,
+                    isStreamPlayback = false,
+                    onBack = { navController.popBackStack() },
+                    navigationState = navigationState
+                )
+            }
         }
         
         // 边下边播播放器
@@ -79,12 +84,14 @@ fun PureFrameNavGraph(
             )
         ) { backStackEntry ->
             val downloadId = backStackEntry.arguments?.getString("downloadId") ?: ""
-            PlayerScreen(
-                downloadId = downloadId,
-                isStreamPlayback = true,
-                onBack = { navController.popBackStack() },
-                navigationState = navigationState
-            )
+            PlayerTheme {
+                PlayerScreen(
+                    downloadId = downloadId,
+                    isStreamPlayback = true,
+                    onBack = { navController.popBackStack() },
+                    navigationState = navigationState
+                )
+            }
         }
     }
 }

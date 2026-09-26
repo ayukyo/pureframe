@@ -40,6 +40,8 @@ class MainActivity : ComponentActivity() {
         // 避免播放页控制栏在全屏/非全屏切换时与系统导航条重复避让（全屏按钮被压扁的问题）
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        // 注册到单例持有者：PiP 小窗按钮状态刷新需要通过它找到当前 Activity
+        com.pureframe.player.player.PipCurrentActivityHolder.currentActivity = this
         setContent {
             // 主题模式跟随设置页偏好：浅色/深色/跟随系统
             val themeMode by userPreferencesRepository.userPreferencesFlow
@@ -65,6 +67,13 @@ class MainActivity : ComponentActivity() {
                     com.pureframe.player.player.PiPHelper.buildParams(this, playerManager.getPlayer())
                 )
             }
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        if (com.pureframe.player.player.PipCurrentActivityHolder.currentActivity === this) {
+            com.pureframe.player.player.PipCurrentActivityHolder.currentActivity = null
         }
     }
 

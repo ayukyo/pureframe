@@ -168,12 +168,15 @@ fun PlayerScreen(
     val enterPip = {
         activity?.let { act ->
             runCatching {
+                android.util.Log.i("PureFramePip", "enterPictureInPictureMode requested")
                 act.enterPictureInPictureMode(
                     com.pureframe.player.player.PiPHelper.buildParams(
                         act,
                         viewModel.getPlayer()
                     )
                 )
+            }.onFailure {
+                android.util.Log.e("PureFramePip", "enterPictureInPictureMode failed", it)
             }
         }
         Unit
@@ -672,12 +675,15 @@ fun setFullscreenMode(activity: Activity, fullscreen: Boolean) {
         controller.hide(WindowInsetsCompat.Type.systemBars())
         controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        // 全屏下让内容延伸到系统栏后面
+        WindowCompat.setDecorFitsSystemWindows(window, false)
     } else {
         // 正常模式：显示系统栏，把方向交还给系统/用户
         controller.show(WindowInsetsCompat.Type.systemBars())
         activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        // 注意：这里不能调用 setDecorFitsSystemWindows(window, true)，
+        // 否则会覆盖 MainActivity 的 enableEdgeToEdge()，导致退出播放页后
+        // 全 App 顶部多出一块状态栏高度的空白（系统栏 inset 被二次叠加）。
+        // 全局始终保持 edge-to-edge，由各页面的 TopAppBar/statusBarsPadding 自行消费 inset。
     }
-    
-    // 设置沉浸式模式
-    WindowCompat.setDecorFitsSystemWindows(window, !fullscreen)
 }

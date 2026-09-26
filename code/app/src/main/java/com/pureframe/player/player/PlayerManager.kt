@@ -2,6 +2,7 @@ package com.pureframe.player.player
 
 import android.content.Context
 import android.net.Uri
+import android.os.Build
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
@@ -143,6 +144,19 @@ class PlayerManager @Inject constructor(
                 startProgressUpdate()
             } else {
                 stopProgressUpdate()
+            }
+            // 画中画小窗内的播放/暂停按钮图标需要通过更新 PiP 参数来刷新，
+            // 否则小窗按钮状态与实际播放状态不同步。
+            // 用反射调用：部分编译变体对 Activity.updatePictureInPictureParams 解析失败
+            runCatching {
+                val activity = PipCurrentActivityHolder.currentActivity
+                if (activity != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    val method = android.app.Activity::class.java.getMethod(
+                        "updatePictureInPictureParams",
+                        android.app.PictureInPictureParams::class.java
+                    )
+                    method.invoke(activity, PiPHelper.buildParams(activity, exoPlayer))
+                }
             }
         }
         
@@ -425,7 +439,7 @@ class PlayerManager @Inject constructor(
      * 获取 ExoPlayer 实例（用于 UI 绑定）
      */
     fun getPlayer(): ExoPlayer = exoPlayer
-    
+
     /**
      * 开始进度更新
      */
