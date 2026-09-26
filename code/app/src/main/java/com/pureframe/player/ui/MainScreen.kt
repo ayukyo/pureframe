@@ -1,6 +1,7 @@
 package com.pureframe.player.ui
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -81,7 +82,12 @@ fun MainScreen(
 
     // 主题由 MainActivity 的 PureFrameTheme 统一提供（跟随设置页偏好），这里不再嵌套包装
     Scaffold(
-            bottomBar = {
+        // contentWindowInsets 清零：顶部状态栏 inset 由内层页面各自处理
+        // （主页面有 TopAppBar 自带避让，播放器有 statusBarsPadding），
+        // 否则外层 Scaffold + 内层 TopAppBar 会叠加两次状态栏高度，顶部空出一块。
+        // 底部 paddingValues 只剩 bottomBar（NavigationBar 自带导航条避让）的高度，行为不变。
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        bottomBar = {
                 // 只在主页面显示底部导航栏
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentRoute = navBackStackEntry?.destination?.route
