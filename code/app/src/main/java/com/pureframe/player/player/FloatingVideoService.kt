@@ -233,22 +233,24 @@ class FloatingVideoService : Service() {
         // 不在按钮上挂 onClickListener：父 setOnTouchListener 必须 return true 才能持续接收
         // MOVE/UP 实现拖动 + 单/双击，但子 view onClick 会消化 DOWN 让外层失去 MOVE/UP。
         // 改为：父 onTouchListener 单击时按 hit-test 决定触发哪个按钮
+        //
+        // 播放/暂停按钮单独放在浮窗中央（不在控制条里），与控制条同一视觉风格但稍大（48dp）。
         val barPx = (56 * density).toInt() // 控制条高度（含上下内边距）
         val btnSizePx = (40 * density).toInt() // 40dp 圆形按钮
+        val btnSizeLargePx = (48 * density).toInt() // ⏸ 稍大一档（48dp）
         val btnMargin = (6 * density).toInt() // 按钮间距
         val btnRightPx = (12 * density).toInt() // 按钮距控制条右缘
 
-        val btnPlayPause = makeControlLabel("⏸", btnSizePx)
+        val btnPlayPause = makeControlLabel("⏸", btnSizeLargePx)
         val btnShrink = makeControlLabel("－", btnSizePx)
         val btnEnlarge = makeControlLabel("＋", btnSizePx)
         val btnClose = makeControlLabel("✕", btnSizePx)
         val controlBar = android.widget.LinearLayout(this).apply {
             orientation = android.widget.LinearLayout.HORIZONTAL
-            setGravity(android.view.Gravity.END) // 子 view 靠右排列（⏸ － ＋ ✕ 在右侧）
+            setGravity(android.view.Gravity.END) // 子 view 靠右排列（－ ＋ ✕ 在右侧）
             setBackgroundColor(0x00000000) // 透明背景，避免遮挡视频；按钮自带圆底
             visibility = android.view.View.GONE // 默认隐藏，单击切换
-            // addView 顺序：⏸ 缩小 放大 关闭；gravity=END → 从左到右：⏸ － ＋ ✕
-            addView(btnPlayPause)
+            // addView 顺序：缩小、放大、关闭；gravity=END → 从左到右：－ ＋ ✕
             addView(btnShrink)
             addView(btnEnlarge)
             addView(btnClose)
@@ -259,7 +261,7 @@ class FloatingVideoService : Service() {
         shrinkButton = btnShrink
         enlargeButton = btnEnlarge
         closeButton = btnClose
-        // 给前三个子 view 加右边距（间距 6dp，让四个按钮不要太近；✕ 是最右的，不加 marginEnd）
+        // 给前两个子 view 加右边距（间距 6dp，让三个按钮不要太近；✕ 是最右的，不加 marginEnd）
         for (i in 0 until controlBar.childCount - 1) {
             val child = controlBar.getChildAt(i)
             (child.layoutParams as android.widget.LinearLayout.LayoutParams).marginEnd = btnMargin
@@ -275,6 +277,17 @@ class FloatingVideoService : Service() {
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 barPx,
                 Gravity.TOP or Gravity.END
+            )
+        )
+        // 播放/暂停按钮单独居中放在浮窗中央（与控制条风格一致但稍大一档 48dp）。
+        // 默认隐藏，与控制条（－/＋/✕）一起在单击视频时同步出现，4s 后同步隐藏。
+        btnPlayPause.visibility = android.view.View.GONE
+        container.addView(
+            btnPlayPause,
+            FrameLayout.LayoutParams(
+                btnSizeLargePx,
+                btnSizeLargePx,
+                Gravity.CENTER
             )
         )
         // 初始档位后刷新边界按钮状态（缩放在最小档时 － 灰，最大档时 ＋ 灰）
@@ -303,6 +316,7 @@ class FloatingVideoService : Service() {
                     if (moved || dx * dx + dy * dy > 100) { // 10px 阈值才算拖动
                         moved = true
                         controlBar.visibility = android.view.View.GONE
+                        showPlayPause(false)
                         // 目标窗口左上角绝对坐标
                         val targetLeft = paramDownX + dx
                         val targetTop = paramDownY + dy
@@ -316,7 +330,6 @@ class FloatingVideoService : Service() {
                 }
                 MotionEvent.ACTION_UP -> {
                     if (!moved) {
-                        val now = System.currentTimeMillis()
                         if (singleTapPending != null) {
                             // 已有等待中的单击 → 本次是双击：取消回全屏，切换播放/暂停
                             singleTapPending?.let { mainHandler.removeCallbacks(it) }
@@ -326,15 +339,21 @@ class FloatingVideoService : Service() {
                             // 第一次 tap：延迟 300ms 等待双击判定，期间再 tap 则切换播放/暂停
                             val r = Runnable {
                                 singleTapPending = null
-                                if (controlBar.visibility == android.view.View.VISIBLE) {
+                                val barVisible = controlBar.visibility == android.view.View.VISIBLE
+                                val hitPP = hitTestPlayPauseButton(touchDownX, touchDownY)
+                                // ⏸/▶ 优先级最高：命中就切播放/暂停（⏸ 默认隐藏也能命中，按距离判断）
+                                if (hitPP) {
+                                    if (player.isPlaying) player.pause() else player.play()
+                                    // 同时显示控制条（让用户看到 ⏸↔▶ 切换 + 可继续操作 －/＋/✕）
+                                    if (!barVisible) {
+                                        controlBar.visibility = android.view.View.VISIBLE
+                                        showPlayPause(true)
+                                    }
+                                    hideControlBarDelayed()
+                                } else if (barVisible) {
                                     // 控制条已显示 → 按 hit-test 决定触发哪个按钮
                                     val btnHit = hitTestControlButton(touchDownX, touchDownY)
                                     when (btnHit) {
-                                        0 -> { // ⏸ / ▶ 切换播放暂停
-                                            if (player.isPlaying) player.pause() else player.play()
-                                            // 不立即 hide：让用户看到图标切换，4s 自动隐藏
-                                            hideControlBarDelayed()
-                                        }
                                         1 -> {
                                             changeScale(-1)
                                             hideControlBarDelayed()
@@ -353,8 +372,9 @@ class FloatingVideoService : Service() {
                                         }
                                     }
                                 } else {
-                                    // 控制条隐藏 → 显示
+                                    // 控制条隐藏 → 显示（控制条与 ⏸ 一起出现）
                                     controlBar.visibility = android.view.View.VISIBLE
+                                    showPlayPause(true)
                                     hideControlBarDelayed()
                                 }
                             }
@@ -406,12 +426,12 @@ class FloatingVideoService : Service() {
     }
 
     /**
-     * 在控制条内对 (x, y) 做 hit-test，返回按钮索引（0=⏸, 1=缩小, 2=放大, 3=关闭）或 -1（未命中）。
-     * 按钮是固定 40dp 圆形，gravity=END 靠右排列。依次从右向左为 ✕、＋、－、⏸。
+     * 在控制条内对 (x, y) 做 hit-test，返回按钮索引（1=缩小, 2=放大, 3=关闭）或 0（未命中）。
+     * 按钮是固定 40dp 圆形，gravity=END 靠右排列。依次从右向左为 ✕、＋、－。
      * 按按钮圆心距离判定：圆心半径 distance < btnSize/2 视为命中。
      */
     private fun hitTestControlButton(rawX: Float, rawY: Float): Int {
-        val root = rootView ?: return -1
+        val root = rootView ?: return 0
         for (i in 0 until root.childCount) {
             val child = root.getChildAt(i)
             if (child !is android.widget.LinearLayout) continue
@@ -423,10 +443,11 @@ class FloatingVideoService : Service() {
             val barBottom = barTop + child.height
             if (rawY < barTop || rawY > barBottom) continue
             if (rawX < barLeft || rawX > barRight) continue
-            // 子顺序：⏸ － ＋ ✕，gravity=END → 从左到右排列：⏸ － ＋ ✕
-            // 即子 idx 0(⏸) 在最左、idx 3(✕) 在最右
+            // 子顺序：－ ＋ ✕，gravity=END → 从左到右排列：－ ＋ ✕
+            // 即子 idx 0(-/缩小) 在最左、idx 2(✕/关闭) 在最右
+            // 取每个子 view 的中心点，看 (rawX, rawY) 离哪个中心最近且 distance < btnSize/2
             val n = child.childCount
-            if (n == 0) return -1
+            if (n == 0) return 0
             val halfBtn = (child.getChildAt(0).width.toFloat() / 2f)
             var bestIdx = -1
             var bestDist = Float.MAX_VALUE
@@ -442,21 +463,46 @@ class FloatingVideoService : Service() {
                     bestIdx = j
                 }
             }
-            if (bestIdx < 0 || bestDist > halfBtn) return -1
-            // 子 idx → 按钮编号：0=⏸, 1=-/缩小, 2=+/放大, 3=✕/关闭
-            return bestIdx
+            if (bestIdx < 0 || bestDist > halfBtn) return 0
+            // 子 idx → 按钮编号：0=-/缩小(1), 1=+/放大(2), 2=✕/关闭(3)
+            return when (bestIdx) {
+                0 -> 1
+                1 -> 2
+                2 -> 3
+                else -> 0
+            }
         }
-        return -1
+        return 0
+    }
+
+    /**
+     * 中央 ⏸/▶ 按钮的 hit-test：返回 true 表示点击落在 ⏸ 上。
+     * ⏸ 是 container 的单独子 view（FrameLayout Gravity.CENTER），按圆心距离判定。
+     */
+    private fun hitTestPlayPauseButton(rawX: Float, rawY: Float): Boolean {
+        val btn = playPauseButton ?: return false
+        val btnLoc = IntArray(2)
+        btn.getLocationOnScreen(btnLoc)
+        val cx = btnLoc[0] + btn.width / 2f
+        val cy = btnLoc[1] + btn.height / 2f
+        val d = kotlin.math.hypot((rawX - cx).toDouble(), (rawY - cy).toDouble()).toFloat()
+        return d < btn.width / 2f
     }
 
     private val hideControlBarRunnable = Runnable {
         rootView?.let { root ->
-            // 找到控制条（LinearLayout）并隐藏
+            // 找到控制条（LinearLayout）并隐藏，同时隐藏中央 ⏸/▶（与控制条同步）
             for (i in 0 until root.childCount) {
                 val child = root.getChildAt(i)
                 if (child is android.widget.LinearLayout) child.visibility = android.view.View.GONE
             }
+            playPauseButton?.visibility = android.view.View.GONE
         }
+    }
+
+    /** ⏸/▶ 显示开关：true=与控制条一起显示，false=一起隐藏 */
+    private fun showPlayPause(visible: Boolean) {
+        playPauseButton?.visibility = if (visible) android.view.View.VISIBLE else android.view.View.GONE
     }
 
     /** 多档缩放：dir=+1 放大 / -1 缩小，到边界不动。缩放后吸附到水平边缘。 */
