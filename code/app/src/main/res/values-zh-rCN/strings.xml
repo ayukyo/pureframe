@@ -260,6 +260,7 @@
     <string name="pip_pause">暂停</string>
     <string name="pip_rewind">快退 10 秒</string>
     <string name="pip_forward">快进 10 秒</string>
+    <string name="pip_resize">调整大小</string>
 
     <!-- ============ 下载服务 / 错误 ============ -->
     <string name="notif_download_service">下载服务</string>

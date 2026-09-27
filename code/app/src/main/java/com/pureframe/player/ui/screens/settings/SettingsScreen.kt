@@ -591,7 +591,8 @@ private fun ThemeModeDialog(
         title = { Text(stringResource(R.string.settings_theme)) },
         text = {
             Column {
-                ThemeMode.entries.forEach { mode ->
+                // 顺序：跟随系统 / 浅色 / 深色
+                listOf(ThemeMode.SYSTEM, ThemeMode.LIGHT, ThemeMode.DARK).forEach { mode ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()

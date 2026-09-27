@@ -25,6 +25,28 @@ object PiPHelper {
     private const val MIN_RATIO = 0.41841f
 
     /**
+     * 小窗缩放档位（Android 12 以下系统不支持拖拽边缘缩放，
+     * 用调整宽高比的方式实现多档大小切换）：
+     * 0 = 正常（视频原始比例）；1 = 放大；2 = 更大。
+     * 档位存这里（进程级），RemoteAction 触发时循环 +1。
+     */
+    @Volatile
+    var scaleLevel: Int = 0
+        private set
+
+    /** 每档的放大系数：宽高比越大，小窗整体越大（系统按比例分配宽度） */
+    private val scaleFactors = floatArrayOf(1.0f, 1.25f, 1.5f)
+
+    val maxScaleLevel: Int
+        get() = scaleFactors.size - 1
+
+    /** 切到下一档，返回新档位（到顶后回到 0） */
+    fun cycleScaleLevel(): Int {
+        scaleLevel = (scaleLevel + 1) % scaleFactors.size
+        return scaleLevel
+    }
+
+    /**
      * 根据播放器当前视频尺寸构建 PiP 参数
      */
     fun buildParams(context: Context, player: Player): PictureInPictureParams {
@@ -34,10 +56,14 @@ object PiPHelper {
 
         // 计算真实比例并夹到系统允许区间
         val rawRatio = w.toFloat() / h.toFloat()
-        val clamped = rawRatio.coerceIn(MIN_RATIO, MAX_RATIO)
-        // Rational 要求整数比：用 100 份近似即可（Rational 内部会约分）
+        // 缩放档位：放大比例（仅对横屏视频有意义；竖屏视频放大反而变小，
+        // 因为 PiP 窗口高度被屏幕约束，比例变"高"窗口反而更窄）
+        val scaled = if (rawRatio >= 1f) rawRatio * scaleFactors[scaleLevel] else rawRatio
+        val clamped = scaled.coerceIn(MIN_RATIO, MAX_RATIO)
+        // Rational 要求整数比：用 100 份近似。注意取整方向：
+        // 分子向下取整、分母向上取整，保证近似比例不超过 clamped（clamp 才真正有效）
         val ratio = if (clamped >= 1f) {
-            Rational(100, (100 / clamped).toInt().coerceAtLeast(1))
+            Rational(100, (100 / clamped + 0.999).toInt().coerceAtLeast(1))
         } else {
             Rational((100 * clamped).toInt().coerceAtLeast(1), 100)
         }
@@ -59,7 +85,9 @@ object PiPHelper {
     }
 
     /**
-     * 小窗内系统控制按钮：快退 10s / 播放暂停 / 快进 10s
+     * 小窗内系统控制按钮：播放暂停 / 调整大小（最右＝右下角）
+     * 注意：MIUI（Android 11）小窗菜单最多渲染 3 个 RemoteAction，
+     * 用户选择只保留 播放暂停 + 调整大小 两个按钮。
      */
     private fun buildActions(context: Context, isPlaying: Boolean): List<android.app.RemoteAction> {
         val playPause = android.app.RemoteAction(
@@ -70,19 +98,14 @@ object PiPHelper {
             else LocaleManager.getString(context, R.string.pip_play),
             pendingIntent(context, PiPActionReceiver.ACTION_PLAY_PAUSE, 1)
         )
-        val rewind = android.app.RemoteAction(
-            Icon.createWithResource(context, R.drawable.ic_pip_rewind),
-            LocaleManager.getString(context, R.string.pip_rewind),
-            LocaleManager.getString(context, R.string.pip_rewind),
-            pendingIntent(context, PiPActionReceiver.ACTION_REWIND, 2)
+        val resize = android.app.RemoteAction(
+            Icon.createWithResource(context, R.drawable.ic_pip_resize),
+            LocaleManager.getString(context, R.string.pip_resize),
+            LocaleManager.getString(context, R.string.pip_resize),
+            pendingIntent(context, PiPActionReceiver.ACTION_RESIZE, 2)
         )
-        val forward = android.app.RemoteAction(
-            Icon.createWithResource(context, R.drawable.ic_pip_forward),
-            LocaleManager.getString(context, R.string.pip_forward),
-            LocaleManager.getString(context, R.string.pip_forward),
-            pendingIntent(context, PiPActionReceiver.ACTION_FORWARD, 3)
-        )
-        return listOf(rewind, playPause, forward)
+        // 顺序：播放暂停 | 调整大小（右下角）
+        return listOf(playPause, resize)
     }
 
     private fun pendingIntent(context: Context, action: String, requestCode: Int): PendingIntent {

@@ -31,6 +31,20 @@ class PiPActionReceiver : BroadcastReceiver() {
             }
             ACTION_REWIND -> playerManager.seekRelative(-10_000L)
             ACTION_FORWARD -> playerManager.seekRelative(10_000L)
+            ACTION_RESIZE -> {
+                // 循环切换小窗大小档位，并立即用新比例更新 PiP 参数
+                val level = PiPHelper.cycleScaleLevel()
+                runCatching {
+                    val activity = PipCurrentActivityHolder.currentActivity
+                    val player = playerManager.getPlayer()
+                    if (activity != null && player != null) {
+                        activity.setPictureInPictureParams(PiPHelper.buildParams(context, player))
+                        android.util.Log.i("PureFramePip", "pip resize -> level=$level")
+                    }
+                }.onFailure {
+                    android.util.Log.e("PureFramePip", "pip resize failed", it)
+                }
+            }
         }
     }
 
@@ -38,5 +52,6 @@ class PiPActionReceiver : BroadcastReceiver() {
         const val ACTION_PLAY_PAUSE = "com.pureframe.player.pip.PLAY_PAUSE"
         const val ACTION_REWIND = "com.pureframe.player.pip.REWIND"
         const val ACTION_FORWARD = "com.pureframe.player.pip.FORWARD"
+        const val ACTION_RESIZE = "com.pureframe.player.pip.RESIZE"
     }
 }
