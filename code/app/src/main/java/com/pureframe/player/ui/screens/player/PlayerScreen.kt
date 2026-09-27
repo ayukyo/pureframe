@@ -159,55 +159,50 @@ fun PlayerScreen(
         }
     }
 
-    // ---- 画中画（PiP）支持 ----
-    // 监听 PiP 模式变化：小窗模式下隐藏全部控制栏，只留画面
-    // activity 1.8.1 没有 PictureInPictureModeChangedInfo API，
-    // 通过 NavigationState 的共享流从 MainActivity 覆写回调桥接过来
-    val isInPipMode by (navigationState?.isInPipMode
+    // ---- 悬浮窗小窗播放 ----
+    // 主动小窗改用悬浮窗方案（系统 PiP 尺寸/位置不可编程：横屏到不了全宽、竖屏只有 30% 屏宽、位置固定吸底）
+    val canDrawOverlays = remember {
+        android.provider.Settings.canDrawOverlays(context)
+    }
+    var showFloatingPermissionTip by remember { mutableStateOf(false) }
+    // 悬浮窗显示时播放页 PlayerView 必须解除 player 绑定（SurfaceView 不能被两个窗口同时消费）
+    val isFloatingMode by (navigationState?.isFloatingMode
         ?: kotlinx.coroutines.flow.MutableStateFlow(false)).collectAsState()
 
-    // 进入画中画：按视频真实宽高比自适应小窗形状 + 小窗内控制按钮
-    val enterPip = {
-        activity?.let { act ->
-            runCatching {
-                android.util.Log.i("PureFramePip", "enterPictureInPictureMode requested")
-                act.enterPictureInPictureMode(
-                    com.pureframe.player.player.PiPHelper.buildParams(
-                        act,
-                        viewModel.getPlayer()
-                    )
-                )
-            }.onFailure {
-                android.util.Log.e("PureFramePip", "enterPictureInPictureMode failed", it)
-            }
+    fun enterFloatingWindow() {
+        val player = viewModel.getPlayer()
+        val vs = player.videoSize
+        val portrait = vs.width > 0 && vs.height > 0 && vs.height > vs.width
+        if (canDrawOverlays) {
+            com.pureframe.player.player.FloatingVideoService.start(context, portrait)
+            // 播放页自身退出前台即可（服务挂同一个 ExoPlayer，播放无缝继续）
+            activity?.moveTaskToBack(true)
+        } else {
+            showFloatingPermissionTip = true
         }
-        Unit
     }
     
     // PiP 小窗模式下控制栏强制隐藏，禁用手势
-    val controlsVisible = showControls && !isInPipMode
+    val controlsVisible = showControls
 
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(Color.Black)
-            .then(
-                if (isInPipMode) Modifier
-                else Modifier.pointerInput(Unit) {
-                    detectTapGestures(
-                        onTap = {
-                            showControls = !showControls
-                            if (showControls) {
-                                // 重置自动隐藏计时器
-                                controlsTrigger++
-                            }
-                        },
-                        onDoubleTap = {
-                            viewModel.togglePlayPause()
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onTap = {
+                        showControls = !showControls
+                        if (showControls) {
+                            // 重置自动隐藏计时器
+                            controlsTrigger++
                         }
-                    )
-                }
-            )
+                    },
+                    onDoubleTap = {
+                        viewModel.togglePlayPause()
+                    }
+                )
+            }
     ) {
         // 视频播放器
         AndroidView(
@@ -232,6 +227,8 @@ fun PlayerScreen(
                 }
             },
             update = { playerView ->
+                // 悬浮窗显示时解除绑定（surface 归悬浮窗所有），回全屏时重新绑定
+                playerView.player = if (isFloatingMode) null else viewModel.getPlayer()
                 // 更新画面比例模式
                 playerView.resizeMode = when (aspectRatio) {
                     "FILL" -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FILL
@@ -241,8 +238,8 @@ fun PlayerScreen(
             modifier = Modifier.fillMaxSize()
         )
         
-        // 水平滑动进度控制区域（中间 40% 宽）—— PiP 模式下不启用手势
-        if (!isInPipMode) {
+        // 水平滑动进度控制区域（中间 40% 宽）—— 悬浮窗方案：播放页手势常开
+        run {
             SeekGestureOverlay(
                 currentPosition = currentPosition,
                 duration = duration,
@@ -292,7 +289,7 @@ fun PlayerScreen(
             }
         }
 
-        // 控制栏（点击显示/隐藏）—— PiP 模式下隐藏
+        // 控制栏（点击显示/隐藏）
         AnimatedVisibility(
             visible = controlsVisible,
             enter = fadeIn(animationSpec = tween(200)),
@@ -327,7 +324,7 @@ fun PlayerScreen(
                 onFullscreenToggle = { viewModel.toggleFullscreen() },
                 onShowSpeedDialog = { viewModel.showSpeedDialog() },
                 onShowAspectRatioDialog = { viewModel.showAspectRatioDialog() },
-                onEnterPip = { enterPip() },
+                onEnterPip = { enterFloatingWindow() },
                 onUserInteraction = {
                     controlsTrigger++
                 },
@@ -336,7 +333,7 @@ fun PlayerScreen(
         }
 
         // 边下边播状态指示（PiP 模式下隐藏）
-        if (isStreamPlayback && uiState.streamProgress > 0 && !isInPipMode) {
+        if (isStreamPlayback && uiState.streamProgress > 0 ) {
             StreamPlaybackIndicator(
                 progress = uiState.streamProgress,
                 maxSeekPosition = uiState.maxSeekPosition,
@@ -385,6 +382,70 @@ fun PlayerScreen(
                 onPlayFromStart = { viewModel.playFromStart() },
                 onDismiss = { viewModel.dismissResumeDialog() }
             )
+        }
+
+        // 悬浮窗权限引导提示条
+        if (showFloatingPermissionTip) {
+            FloatingPermissionTip(
+                onGrant = {
+                    showFloatingPermissionTip = false
+                    // 跳转系统悬浮窗授权页
+                    runCatching {
+                        activity?.startActivity(
+                            android.content.Intent(
+                                android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                android.net.Uri.parse("package:${context.packageName}")
+                            )
+                        )
+                    }
+                },
+                onDismiss = { showFloatingPermissionTip = false },
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(horizontal = 32.dp)
+            )
+        }
+    }
+}
+
+/**
+ * 悬浮窗权限引导提示
+ */
+@Composable
+private fun FloatingPermissionTip(
+    onGrant: () -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    androidx.compose.material3.Surface(
+        modifier = modifier,
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+        color = androidx.compose.material3.MaterialTheme.colorScheme.surfaceVariant,
+        shadowElevation = 8.dp
+    ) {
+        androidx.compose.foundation.layout.Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Text(
+                text = stringResource(R.string.floating_permission_needed),
+                style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
+                color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            androidx.compose.foundation.layout.Row(
+                modifier = Modifier
+                    .align(androidx.compose.ui.Alignment.End)
+                    .padding(top = 8.dp)
+            ) {
+                androidx.compose.material3.TextButton(onClick = onDismiss) {
+                    Text(stringResource(android.R.string.cancel))
+                }
+                androidx.compose.material3.TextButton(onClick = onGrant) {
+                    Text(
+                        stringResource(R.string.floating_permission_grant),
+                        color = androidx.compose.material3.MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
         }
     }
 }

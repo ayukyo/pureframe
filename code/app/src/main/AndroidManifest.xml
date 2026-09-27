@@ -26,6 +26,8 @@
     <!-- 其他 -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <!-- 悬浮窗小窗播放（横屏全宽置顶 / 竖屏半宽右上，系统 PiP 无法满足） -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
     <application
         android:name=".PureFrameApplication"
@@ -69,6 +71,12 @@
         <receiver
             android:name=".player.PiPActionReceiver"
             android:exported="false" />
+
+        <!-- 悬浮窗小窗播放服务 -->
+        <service
+            android:name=".player.FloatingVideoService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
 
         <!-- 下载服务 -->
         <service

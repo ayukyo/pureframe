@@ -266,9 +266,14 @@
     <!-- ============ Picture-in-picture actions ============ -->
     <string name="pip_play">Play</string>
     <string name="pip_pause">Pause</string>
-    <string name="pip_rewind">Rewind 10 seconds</string>
-    <string name="pip_forward">Forward 10 seconds</string>
-    <string name="pip_resize">Resize</string>
+
+    <!-- ============ Floating window mini-player ============ -->
+    <string name="floating_channel_name">Floating player</string>
+    <string name="floating_playing">Playing in floating window</string>
+    <string name="floating_back_full">Back to player</string>
+    <string name="floating_close">Close</string>
+    <string name="floating_permission_needed">Floating window permission is required for mini-player. Enable it in Settings.</string>
+    <string name="floating_permission_grant">Grant</string>
 
     <!-- ============ Download service / errors ============ -->
     <string name="notif_download_service">Download service</string>

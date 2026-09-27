@@ -102,12 +102,24 @@ class MainActivity : ComponentActivity() {
 
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
-        // 用户按 Home 键离开时：若正在播放视频，自动进入画中画小窗继续播放
-        if (playerManager.get().isPlaying.value && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            runCatching {
-                enterPictureInPictureMode(
-                    com.pureframe.player.player.PiPHelper.buildParams(this, playerManager.get().getPlayer())
-                )
+        // 用户按 Home 键离开且正在播放：
+        // 有悬浮窗权限 → 悬浮窗小窗（尺寸/位置可编程，体验优于系统 PiP）
+        // 无权限 → 保留系统 PiP 兜底
+        val playing = playerManager.get().isPlaying.value
+        val overlay = android.provider.Settings.canDrawOverlays(this)
+        Timber.i("MainActivity onUserLeaveHint: playing=%s overlay=%s", playing, overlay)
+        if (playing && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            if (android.provider.Settings.canDrawOverlays(this)) {
+                val player = playerManager.get().getPlayer()
+                val vs = player.videoSize
+                val portrait = vs.width > 0 && vs.height > 0 && vs.height > vs.width
+                com.pureframe.player.player.FloatingVideoService.start(this, portrait)
+            } else {
+                runCatching {
+                    enterPictureInPictureMode(
+                        com.pureframe.player.player.PiPHelper.buildParams(this, playerManager.get().getPlayer())
+                    )
+                }
             }
         }
     }

@@ -49,4 +49,15 @@ class NavigationState @Inject constructor() {
     fun setPipMode(inPip: Boolean) {
         _isInPipMode.value = inPip
     }
+
+    // ---- 悬浮窗小窗播放状态 ----
+    // FloatingVideoService 显示/销毁时写入。
+    // PlayerScreen 订阅：悬浮窗显示时解除播放页 PlayerView 的 player 绑定
+    // （SurfaceView 不能同时被两个窗口消费，否则其中一边黑屏），回全屏时重新绑定。
+    private val _isFloatingMode = MutableStateFlow(false)
+    val isFloatingMode: StateFlow<Boolean> = _isFloatingMode.asStateFlow()
+
+    fun setFloatingMode(inFloating: Boolean) {
+        _isFloatingMode.value = inFloating
+    }
 }
