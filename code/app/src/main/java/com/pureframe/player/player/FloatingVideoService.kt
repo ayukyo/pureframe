@@ -8,7 +8,10 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Path
 import android.graphics.PixelFormat
 import android.graphics.drawable.GradientDrawable
 import android.os.Build
@@ -92,7 +95,7 @@ class FloatingVideoService : Service() {
 
     /** 控制条按钮的引用（用于边界变灰、图标切换；hit-test 按坐标判定） */
     private var playPauseButton: android.view.View? = null
-    private var playPauseLabel: TextView? = null
+    private var playPauseIcon: PlayPauseIconView? = null
     private var shrinkButton: android.view.View? = null
     private var enlargeButton: android.view.View? = null
     private var closeButton: android.view.View? = null
@@ -241,7 +244,14 @@ class FloatingVideoService : Service() {
         val btnMargin = (6 * density).toInt() // 按钮间距
         val btnRightPx = (12 * density).toInt() // 按钮距控制条右缘
 
-        val btnPlayPause = makeControlLabel("⏸", btnSizeLargePx)
+        // ⏸/▶ 用矢量 View（不能用 TextView + Unicode：⏸ 会被渲染成橙色 emoji，setTextColor 无效）
+        val btnPlayPause = PlayPauseIconView(this).apply {
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(0xE6000000.toInt())
+            }
+            elevation = 4 * density
+        }
         val btnShrink = makeControlLabel("－", btnSizePx)
         val btnEnlarge = makeControlLabel("＋", btnSizePx)
         val btnClose = makeControlLabel("✕", btnSizePx)
@@ -257,7 +267,7 @@ class FloatingVideoService : Service() {
             setPadding(0, (8 * density).toInt(), btnRightPx, 0)
         }
         playPauseButton = btnPlayPause
-        playPauseLabel = btnPlayPause as TextView
+        playPauseIcon = btnPlayPause
         shrinkButton = btnShrink
         enlargeButton = btnEnlarge
         closeButton = btnClose
@@ -281,6 +291,8 @@ class FloatingVideoService : Service() {
         )
         // 播放/暂停按钮单独居中放在浮窗中央（与控制条风格一致但稍大一档 48dp）。
         // 默认隐藏，与控制条（－/＋/✕）一起在单击视频时同步出现，4s 后同步隐藏。
+        // 注意：level 0（半宽小窗）时浮窗高度较小，控制条（barPx 高）会与正中央重叠，
+        // updatePlayPausePosition() 会把按钮下移到控制条之下，避免视觉叠压。
         btnPlayPause.visibility = android.view.View.GONE
         container.addView(
             btnPlayPause,
@@ -290,6 +302,7 @@ class FloatingVideoService : Service() {
                 Gravity.CENTER
             )
         )
+        container.post { updatePlayPausePosition() }
         // 初始档位后刷新边界按钮状态（缩放在最小档时 － 灰，最大档时 ＋ 灰）
         updateBoundaryButtons()
 
@@ -329,6 +342,19 @@ class FloatingVideoService : Service() {
                     true
                 }
                 MotionEvent.ACTION_UP -> {
+                    if (moved) {
+                        // 拖动结束：水平吸附到最近的左/右缘（iOS PiP 行为），y 保持不变
+                        val screenW = resources.displayMetrics.widthPixels
+                        val margin = (12 * density).toInt()
+                        val left = params.x
+                        val rightX = screenW - container.width - margin
+                        params.x = if (kotlin.math.abs(left - margin) < kotlin.math.abs(left - rightX)) {
+                            margin // 吸附左缘
+                        } else {
+                            rightX // 吸附右缘（x 为距左缘距离，右缘 = 屏宽 - 窗宽 - margin）
+                        }
+                        windowManager.updateViewLayout(container, params)
+                    }
                     if (!moved) {
                         if (singleTapPending != null) {
                             // 已有等待中的单击 → 本次是双击：取消回全屏，切换播放/暂停
@@ -508,6 +534,25 @@ class FloatingVideoService : Service() {
         playPauseButton?.visibility = if (visible) android.view.View.VISIBLE else android.view.View.GONE
     }
 
+    /**
+     * 重算中央 ⏸/▶ 的垂直位置，避免与控制条重叠：
+     * - 理想位置 = 浮窗垂直居中
+     * - 但若"居中位置 - 按钮半径" 会侵入控制条（barPx），则下移到控制条之下 8dp
+     * 在浮窗创建、changeScale 后调用（浮窗高度随档位变化）。
+     */
+    private fun updatePlayPausePosition() {
+        val btn = playPauseButton ?: return
+        val root = rootView ?: return
+        val density = resources.displayMetrics.density
+        val barPx = (56 * density).toInt()
+        val btnSize = btn.layoutParams.height
+        val containerH = root.height
+        if (containerH <= 0) return // 首帧布局前跳过，addView 后会有 layout 回调
+        val idealTop = (containerH - btnSize) / 2
+        val minTop = barPx + (8 * density).toInt()
+        btn.translationY = (if (idealTop < minTop) minTop - idealTop else 0).toFloat()
+    }
+
     /** 多档缩放：dir=+1 放大 / -1 缩小，到边界不动。缩放后吸附到水平边缘。 */
     private fun changeScale(dir: Int) {
         val params = layoutParams ?: return
@@ -532,6 +577,8 @@ class FloatingVideoService : Service() {
         windowManager.updateViewLayout(root, params)
         // 同步刷新边界按钮状态（缩到最小档时 － 灰，缩到最大档时 ＋ 灰）
         updateBoundaryButtons()
+        // 浮窗高度变了，重算中央 ⏸/▶ 位置避免与控制条重叠
+        root.post { updatePlayPausePosition() }
     }
 
     /**
@@ -544,21 +591,23 @@ class FloatingVideoService : Service() {
     private fun updateBoundaryButtons() {
         val min = 0
         val max = scaleFactors.size - 1
-        shrinkButton?.alpha = if (scaleLevel == min) 0.3f else 1.0f
-        enlargeButton?.alpha = if (scaleLevel == max) 0.3f else 1.0f
+        // 0.45：既能明显区分"不可用"，又不至于在亮色画面上完全隐形（0.3 太淡）
+        shrinkButton?.alpha = if (scaleLevel == min) 0.45f else 1.0f
+        enlargeButton?.alpha = if (scaleLevel == max) 0.45f else 1.0f
         // ⏸ / ✕ 永远可点
         playPauseButton?.alpha = 1.0f
         closeButton?.alpha = 1.0f
     }
 
     /**
-     * 同步播放/暂停按钮图标：播放中显示 ⏸，暂停/未播放显示 ▶。
+     * 同步播放/暂停图标：播放中画「⏸ 双竖线」，暂停/未播放画「▶ 三角」。
      * 由 Player.Listener.onIsPlayingChanged 自动触发，也可在创建时手动调一次保证初始状态正确。
+     * 注意：这里是**重绘矢量图形**，不是改 TextView 文字。
      */
     private fun updatePlayPauseIcon() {
-        val label = playPauseLabel ?: return
+        val icon = playPauseIcon ?: return
         runCatching {
-            label.text = if (playerManager.getPlayer().isPlaying) "⏸" else "▶"
+            icon.isPlaying = playerManager.getPlayer().isPlaying
         }
     }
 
@@ -588,7 +637,7 @@ class FloatingVideoService : Service() {
         playerView = null
         layoutParams = null
         playPauseButton = null
-        playPauseLabel = null
+        playPauseIcon = null
         shrinkButton = null
         enlargeButton = null
         closeButton = null
@@ -627,6 +676,70 @@ class FloatingVideoService : Service() {
             .addAction(0, getString(R.string.floating_close), close)
             .setOngoing(true)
             .build()
+    }
+}
+
+/**
+ * 纯矢量绘制的播放/暂停图标（**不用 Unicode 字符**）。
+ *
+ * 原因：⏸ 是 U+23F8「PAUSE BUTTON」，属于 emoji 字符集。Android/Noto Color Emoji 会把它
+ * 渲染成**彩色 emoji（橙红圆角方块 + 白色双竖线）**，此时 TextView 的 setTextColor 对它
+ * 完全无效，图标看起来就是一坨橙色。▶(U+25B6) 虽是文本符号（白色），但为了两态观感一致，
+ * 这里两个图形都用 Canvas 画成纯白，彻底摆脱字体/emoji 依赖。
+ *
+ * - isPlaying = true  → 画「暂停」两条圆角竖线
+ * - isPlaying = false → 画「播放」圆角三角形
+ */
+private class PlayPauseIconView(context: Context) : View(context) {
+
+    var isPlaying: Boolean = true
+        set(value) {
+            if (field != value) {
+                field = value
+                invalidate()
+            }
+        }
+
+    private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.WHITE
+        style = Paint.Style.FILL
+    }
+    private val path = Path()
+
+    override fun onDraw(canvas: Canvas) {
+        super.onDraw(canvas)
+        val cx = width / 2f
+        val cy = height / 2f
+        val u = minOf(width, height) * 0.34f // 图标主体基准尺寸
+
+        if (isPlaying) {
+            // 暂停：两条对称的圆角竖线
+            val barW = u * 0.34f
+            val barH = u * 1.05f
+            val halfGap = u * 0.15f
+            val r = barW / 2f
+            canvas.drawRoundRect(
+                cx - halfGap - barW, cy - barH / 2f,
+                cx - halfGap, cy + barH / 2f,
+                r, r, paint
+            )
+            canvas.drawRoundRect(
+                cx + halfGap, cy - barH / 2f,
+                cx + halfGap + barW, cy + barH / 2f,
+                r, r, paint
+            )
+        } else {
+            // 播放：白色三角形（顶点略偏右，使视觉重心居中）
+            val half = u * 0.62f
+            val left = cx - u * 0.30f
+            val right = cx + u * 0.40f
+            path.reset()
+            path.moveTo(left, cy - half)
+            path.lineTo(right, cy)
+            path.lineTo(left, cy + half)
+            path.close()
+            canvas.drawPath(path, paint)
+        }
     }
 }
 
