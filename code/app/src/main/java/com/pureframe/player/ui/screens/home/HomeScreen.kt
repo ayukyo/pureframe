@@ -537,153 +537,159 @@ fun VideoGridItem(
         (video.resolution.split("x").getOrNull(0)?.toIntOrNull() ?: 0) <
         (video.resolution.split("x").getOrNull(1)?.toIntOrNull() ?: 0)
 
-    Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick = { showMenu = true }
+    // DropdownMenu 锚定到它的父布局。之前菜单放在 Card 外面，
+    // 锚到了整个网格容器，导致菜单位置与长按的卡片完全无关。
+    // 包一层 Box 让菜单锚定到卡片本身。
+    Box(modifier = modifier.fillMaxWidth()) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .combinedClickable(
+                    onClick = onClick,
+                    onLongClick = { showMenu = true }
+                ),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
             ),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        ),
-        shape = RoundedCornerShape(12.dp)
-    ) {
-        Column {
-            // 视频缩略图（自适应横竖屏）
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(if (isPortrait) 9f / 16f else 16f / 9f)
-                    .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
-                contentAlignment = Alignment.Center
-            ) {
-                val context = LocalContext.current
-
-                AsyncImage(
-                    model = ImageRequest.Builder(context)
-                        .data(video.filePath.toUri())
-                        .decoderFactory { result, options, _ ->
-                            VideoFrameDecoder(result.source, options)
-                        }
-                        .crossfade(true)
-                        .build(),
-                    contentDescription = video.title,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
-
-                // 左下角时长
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Column {
+                // 视频缩略图（自适应横竖屏）
                 Box(
                     modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(6.dp)
-                        .background(
-                            Color.Black.copy(alpha = 0.7f),
-                            RoundedCornerShape(4.dp)
+                        .fillMaxWidth()
+                        .aspectRatio(if (isPortrait) 9f / 16f else 16f / 9f)
+                        .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                    contentAlignment = Alignment.Center
+                ) {
+                    val context = LocalContext.current
+
+                    AsyncImage(
+                        model = ImageRequest.Builder(context)
+                            .data(video.filePath.toUri())
+                            .decoderFactory { result, options, _ ->
+                                VideoFrameDecoder(result.source, options)
+                            }
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = video.title,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+
+                    // 左下角时长
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(6.dp)
+                            .background(
+                                Color.Black.copy(alpha = 0.7f),
+                                RoundedCornerShape(4.dp)
+                            )
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = video.formattedDuration,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.White
                         )
-                        .padding(horizontal = 6.dp, vertical = 2.dp)
-                ) {
-                    Text(
-                        text = video.formattedDuration,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color.White
-                    )
-                }
-            }
-
-            // 视频信息
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text(
-                        text = video.title,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = video.formattedSize,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    }
                 }
 
-                // 收藏按钮
-                IconButton(
-                    onClick = onFavoriteClick,
-                    modifier = Modifier.size(32.dp)
+                // 视频信息
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = if (video.isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                        contentDescription = if (video.isFavorite) stringResource(R.string.home_favorite_remove) else stringResource(R.string.home_favorite_add),
-                        tint = if (video.isFavorite) Color(0xFFFF6B6B) else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(18.dp)
-                    )
+                    Column(
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(
+                            text = video.title,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = video.formattedSize,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    // 收藏按钮
+                    IconButton(
+                        onClick = onFavoriteClick,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (video.isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                            contentDescription = if (video.isFavorite) stringResource(R.string.home_favorite_remove) else stringResource(R.string.home_favorite_add),
+                            tint = if (video.isFavorite) Color(0xFFFF6B6B) else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                 }
             }
         }
-    }
 
-    // 长按操作菜单（锚定在卡片上）
-    DropdownMenu(
-        expanded = showMenu,
-        onDismissRequest = { showMenu = false }
-    ) {
-        DropdownMenuItem(
-            text = { Text(stringResource(R.string.home_menu_play)) },
-            onClick = {
-                showMenu = false
-                onClick()
-            },
-            leadingIcon = { Icon(Icons.Filled.PlayArrow, null, modifier = Modifier.size(20.dp)) }
-        )
-        DropdownMenuItem(
-            text = { Text(if (video.isFavorite) stringResource(R.string.home_favorite_remove) else stringResource(R.string.home_favorite_add)) },
-            onClick = {
-                showMenu = false
-                onFavoriteClick()
-            },
-            leadingIcon = {
-                Icon(
-                    if (video.isFavorite) Icons.Filled.FavoriteBorder else Icons.Filled.Favorite,
-                    null,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-        )
-        DropdownMenuItem(
-            text = { Text(stringResource(R.string.home_menu_detail)) },
-            onClick = {
-                showMenu = false
-                showDetailDialog = true
-            },
-            leadingIcon = { Icon(Icons.Filled.Info, null, modifier = Modifier.size(20.dp)) }
-        )
-        DropdownMenuItem(
-            text = { Text(stringResource(R.string.home_menu_delete), color = MaterialTheme.colorScheme.error) },
-            onClick = {
-                showMenu = false
-                showDeleteDialog = true
-            },
-            leadingIcon = {
-                Icon(
-                    Icons.Filled.Delete,
-                    null,
-                    tint = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-        )
+        // 长按操作菜单：在 Box 内声明，锚定到卡片左上角，
+        // 菜单会出现在被长按的卡片旁边而不是固定在列表底部
+        DropdownMenu(
+            expanded = showMenu,
+            onDismissRequest = { showMenu = false }
+        ) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.home_menu_play)) },
+                onClick = {
+                    showMenu = false
+                    onClick()
+                },
+                leadingIcon = { Icon(Icons.Filled.PlayArrow, null, modifier = Modifier.size(20.dp)) }
+            )
+            DropdownMenuItem(
+                text = { Text(if (video.isFavorite) stringResource(R.string.home_favorite_remove) else stringResource(R.string.home_favorite_add)) },
+                onClick = {
+                    showMenu = false
+                    onFavoriteClick()
+                },
+                leadingIcon = {
+                    Icon(
+                        if (video.isFavorite) Icons.Filled.FavoriteBorder else Icons.Filled.Favorite,
+                        null,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.home_menu_detail)) },
+                onClick = {
+                    showMenu = false
+                    showDetailDialog = true
+                },
+                leadingIcon = { Icon(Icons.Filled.Info, null, modifier = Modifier.size(20.dp)) }
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.home_menu_delete), color = MaterialTheme.colorScheme.error) },
+                onClick = {
+                    showMenu = false
+                    showDeleteDialog = true
+                },
+                leadingIcon = {
+                    Icon(
+                        Icons.Filled.Delete,
+                        null,
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            )
+        }
     }
 
     // 视频详情对话框
