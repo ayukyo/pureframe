@@ -398,7 +398,7 @@ class FloatingVideoService : Service() {
         Timber.i("FloatingVideoService window shown: ${width}x${height} portrait=$portrait")
     }
 
-    /** 构造控制条按钮：40dp 圆形半透明白底 + 阴影（iOS PiP 风）。仅标签，无 onClickListener。 */
+    /** 构造控制按钮：圆形深黑底 + 白字 + 阴影（iOS PiP 风）。仅标签，无 onClickListener。 */
     private fun makeControlLabel(label: String, sizePx: Int): android.view.View {
         val density = resources.displayMetrics.density
         val tv = TextView(this).apply {
@@ -406,10 +406,13 @@ class FloatingVideoService : Service() {
             textSize = if (label == "✕") 18f else 22f
             setTextColor(Color.WHITE)
             gravity = Gravity.CENTER
-            // 圆形半透明白底（iOS PiP 风）
+            // 圆形深黑底（不透明度 0xE6≈90%）：
+            // 之前用 0x99(60%) 太透，视频亮色/暖色会透出来，
+            // 中央 ⏸ 压在画面暖色区时会明显发橙，与顶部按钮观感不一致。
+            // 提到 90% 后任意画面底色下都呈统一的深灰黑。
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
-                setColor(0x99000000.toInt())
+                setColor(0xE6000000.toInt())
             }
             // 阴影（elevation 在小圆上效果有限，主要是 Outline）
             elevation = 4 * density
