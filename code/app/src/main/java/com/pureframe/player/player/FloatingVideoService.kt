@@ -10,13 +10,18 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.PixelFormat
+import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.IBinder
 import android.view.Gravity
 import android.view.MotionEvent
+import android.view.View
+import android.view.ViewOutlineProvider
 import android.view.WindowManager
 import android.widget.FrameLayout
+import android.widget.TextView
 import androidx.core.app.NotificationCompat
+import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.PlayerView
 import com.pureframe.player.R
@@ -79,8 +84,25 @@ class FloatingVideoService : Service() {
     /** 当前窗口布局来源：视频是否竖屏 */
     private var layoutPortrait = false
 
-    /** 是否处于"放大"状态：竖屏 半宽→全宽；横屏 全宽→半宽 */
-    private var isExpanded = false
+    /** 尺寸档位宽度系数：0=半宽 1=中(70%) 2=全宽 */
+    private val scaleFactors = floatArrayOf(0.5f, 0.7f, 1.0f)
+
+    /** 当前尺寸档位：竖屏初始最小档(0)，横屏初始全宽档(2) */
+    private var scaleLevel = 0
+
+    /** 控制条按钮的引用（用于边界变灰、图标切换；hit-test 按坐标判定） */
+    private var playPauseButton: android.view.View? = null
+    private var playPauseLabel: TextView? = null
+    private var shrinkButton: android.view.View? = null
+    private var enlargeButton: android.view.View? = null
+    private var closeButton: android.view.View? = null
+
+    /** Player 监听：自动同步 ⏸ ↔ ▶ 图标（外部 play()/pause() 调用后也能刷新） */
+    private val playerListener = object : Player.Listener {
+        override fun onIsPlayingChanged(isPlaying: Boolean) {
+            updatePlayPauseIcon()
+        }
+    }
 
     // 拖动状态
     private var touchDownX = 0f
@@ -140,8 +162,9 @@ class FloatingVideoService : Service() {
             vs.width.toFloat() / vs.height
         } else 16f / 9f
 
-        // 尺寸规则：横屏=屏幕宽；竖屏=屏幕宽一半。高按视频比例推。
-        val width = if (portrait) screenWidth / 2 else screenWidth
+        // 尺寸规则：竖屏初始=半宽（最小档），横屏初始=全宽（最大档）。高按视频比例推。
+        scaleLevel = if (portrait) 0 else scaleFactors.size - 1
+        val width = (screenWidth * scaleFactors[scaleLevel]).toInt()
         val height = (width / ratio).toInt()
 
         // 位置规则：横屏=屏幕最上方（含状态栏下）；竖屏=右上方
@@ -166,8 +189,21 @@ class FloatingVideoService : Service() {
         }
         layoutParams = params
 
+        val density = resources.displayMetrics.density
+        val cornerRadiusPx = (28 * density).toInt() // iOS PiP 风圆角
+
         val container = FrameLayout(this).apply {
-            setBackgroundColor(Color.BLACK)
+            // 圆角背景：GradientDrawable + setClipToOutline 让视频也按圆角裁剪
+            background = GradientDrawable().apply {
+                setColor(Color.BLACK)
+                cornerRadius = cornerRadiusPx.toFloat()
+            }
+            clipToOutline = true
+            outlineProvider = object : ViewOutlineProvider() {
+                override fun getOutline(view: View, outline: android.graphics.Outline) {
+                    outline.setRoundRect(0, 0, view.width, view.height, cornerRadiusPx.toFloat())
+                }
+            }
         }
         // 直接用 TextureView + player.setVideoTextureView：
         // TextureView 是普通视图层，无 SurfaceView 独占合成器的问题，切换窗口不黑屏；
@@ -193,30 +229,56 @@ class FloatingVideoService : Service() {
             )
         )
 
-        // 顶部控制条：放大/缩小 + 关闭（参考常见视频 App 画中画交互）
+        // 顶部控制条：缩小 / 放大 / 关闭（参考 iOS PiP 视觉，胶囊半透黑底 + 圆形按钮）
+        // 不在按钮上挂 onClickListener：父 setOnTouchListener 必须 return true 才能持续接收
+        // MOVE/UP 实现拖动 + 单/双击，但子 view onClick 会消化 DOWN 让外层失去 MOVE/UP。
+        // 改为：父 onTouchListener 单击时按 hit-test 决定触发哪个按钮
+        val barPx = (56 * density).toInt() // 控制条高度（含上下内边距）
+        val btnSizePx = (40 * density).toInt() // 40dp 圆形按钮
+        val btnMargin = (6 * density).toInt() // 按钮间距
+        val btnRightPx = (12 * density).toInt() // 按钮距控制条右缘
+
+        val btnPlayPause = makeControlLabel("⏸", btnSizePx)
+        val btnShrink = makeControlLabel("－", btnSizePx)
+        val btnEnlarge = makeControlLabel("＋", btnSizePx)
+        val btnClose = makeControlLabel("✕", btnSizePx)
         val controlBar = android.widget.LinearLayout(this).apply {
             orientation = android.widget.LinearLayout.HORIZONTAL
-            setGravity(android.view.Gravity.END)
-            setBackgroundColor(0x66000000)
+            setGravity(android.view.Gravity.END) // 子 view 靠右排列（⏸ － ＋ ✕ 在右侧）
+            setBackgroundColor(0x00000000) // 透明背景，避免遮挡视频；按钮自带圆底
             visibility = android.view.View.GONE // 默认隐藏，单击切换
-            // 放大/缩小
-            addView(makeControlButton("⤢") {
-                toggleExpanded()
-                hideControlBarDelayed()
-            })
-            // 关闭
-            addView(makeControlButton("✕") {
-                stopSelf()
-            })
+            // addView 顺序：⏸ 缩小 放大 关闭；gravity=END → 从左到右：⏸ － ＋ ✕
+            addView(btnPlayPause)
+            addView(btnShrink)
+            addView(btnEnlarge)
+            addView(btnClose)
+            setPadding(0, (8 * density).toInt(), btnRightPx, 0)
         }
-        val barPx = (44 * resources.displayMetrics.density).toInt()
+        playPauseButton = btnPlayPause
+        playPauseLabel = btnPlayPause as TextView
+        shrinkButton = btnShrink
+        enlargeButton = btnEnlarge
+        closeButton = btnClose
+        // 给前三个子 view 加右边距（间距 6dp，让四个按钮不要太近；✕ 是最右的，不加 marginEnd）
+        for (i in 0 until controlBar.childCount - 1) {
+            val child = controlBar.getChildAt(i)
+            (child.layoutParams as android.widget.LinearLayout.LayoutParams).marginEnd = btnMargin
+        }
+        // 绑定 Player 监听：自动同步播放/暂停图标
+        runCatching { playerManager.getPlayer().removeListener(playerListener) }
+        playerManager.getPlayer().addListener(playerListener)
+        // 初始图标（按当前真实状态）
+        updatePlayPauseIcon()
         container.addView(
             controlBar,
             FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
-                barPx
+                barPx,
+                Gravity.TOP or Gravity.END
             )
         )
+        // 初始档位后刷新边界按钮状态（缩放在最小档时 － 灰，最大档时 ＋ 灰）
+        updateBoundaryButtons()
 
         // 拖动 + 单击/双击手势（绝对坐标拖动，任何 gravity 下都不跳变）
         var moved = false
@@ -231,7 +293,9 @@ class FloatingVideoService : Service() {
                     paramDownX = loc[0]
                     paramDownY = loc[1]
                     moved = false
-                    false
+                    // DOWN 始终 return true：保证后续 MOVE/UP 都被外层收到（拖动 + 单/双击）；
+                    // 控制条按钮的 hit-test 在 UP 单击 Runnable 内做（不依赖子 view onClick）。
+                    true
                 }
                 MotionEvent.ACTION_MOVE -> {
                     val dx = (event.rawX - touchDownX).toInt()
@@ -239,8 +303,13 @@ class FloatingVideoService : Service() {
                     if (moved || dx * dx + dy * dy > 100) { // 10px 阈值才算拖动
                         moved = true
                         controlBar.visibility = android.view.View.GONE
-                        params.x = paramDownX + dx
-                        params.y = paramDownY + dy
+                        // 目标窗口左上角绝对坐标
+                        val targetLeft = paramDownX + dx
+                        val targetTop = paramDownY + dy
+                        // 统一转为 TOP|START 语义（x=距左缘），无论当前 gravity 是什么
+                        params.gravity = Gravity.TOP or Gravity.START
+                        params.x = targetLeft
+                        params.y = targetTop
                         windowManager.updateViewLayout(container, params)
                     }
                     true
@@ -257,10 +326,34 @@ class FloatingVideoService : Service() {
                             // 第一次 tap：延迟 300ms 等待双击判定，期间再 tap 则切换播放/暂停
                             val r = Runnable {
                                 singleTapPending = null
-                                // 单击：切换控制条显示；控制条已在显示则回全屏
                                 if (controlBar.visibility == android.view.View.VISIBLE) {
-                                    backToFullscreen()
+                                    // 控制条已显示 → 按 hit-test 决定触发哪个按钮
+                                    val btnHit = hitTestControlButton(touchDownX, touchDownY)
+                                    when (btnHit) {
+                                        0 -> { // ⏸ / ▶ 切换播放暂停
+                                            if (player.isPlaying) player.pause() else player.play()
+                                            // 不立即 hide：让用户看到图标切换，4s 自动隐藏
+                                            hideControlBarDelayed()
+                                        }
+                                        1 -> {
+                                            changeScale(-1)
+                                            hideControlBarDelayed()
+                                        }
+                                        2 -> {
+                                            changeScale(+1)
+                                            hideControlBarDelayed()
+                                        }
+                                        3 -> {
+                                            stopSelf()
+                                        }
+                                        else -> {
+                                            // 控制条已显示但点击落在视频区（控制条外）→ 保持控制条可见，
+                                            // 仅重置 4s 自动隐藏计时（避免点击按钮前控制条消失）
+                                            hideControlBarDelayed()
+                                        }
+                                    }
                                 } else {
+                                    // 控制条隐藏 → 显示
                                     controlBar.visibility = android.view.View.VISIBLE
                                     hideControlBarDelayed()
                                 }
@@ -285,23 +378,75 @@ class FloatingVideoService : Service() {
         Timber.i("FloatingVideoService window shown: ${width}x${height} portrait=$portrait")
     }
 
-    /** 构造控制条按钮（无皮肤依赖，纯文本按钮） */
-    private fun makeControlButton(label: String, onClick: () -> Unit): android.view.View {
-        val btn = android.widget.TextView(this).apply {
+    /** 构造控制条按钮：40dp 圆形半透明白底 + 阴影（iOS PiP 风）。仅标签，无 onClickListener。 */
+    private fun makeControlLabel(label: String, sizePx: Int): android.view.View {
+        val density = resources.displayMetrics.density
+        val tv = TextView(this).apply {
             text = label
-            textSize = 16f
+            textSize = if (label == "✕") 18f else 22f
             setTextColor(Color.WHITE)
-            gravity = android.view.Gravity.CENTER
-            setPadding(24, 8, 24, 8)
-            setOnClickListener { onClick() }
+            gravity = Gravity.CENTER
+            // 圆形半透明白底（iOS PiP 风）
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(0x99000000.toInt())
+            }
+            // 阴影（elevation 在小圆上效果有限，主要是 Outline）
+            elevation = 4 * density
         }
-        return btn
+        // 强制宽高 = sizePx（圆形按钮需要精确尺寸，不能 wrap）
+        tv.layoutParams = android.widget.LinearLayout.LayoutParams(sizePx, sizePx)
+        return tv
     }
 
     /** 4 秒无操作后自动隐藏控制条 */
     private fun hideControlBarDelayed() {
         mainHandler.removeCallbacks(hideControlBarRunnable)
         mainHandler.postDelayed(hideControlBarRunnable, 4000)
+    }
+
+    /**
+     * 在控制条内对 (x, y) 做 hit-test，返回按钮索引（0=⏸, 1=缩小, 2=放大, 3=关闭）或 -1（未命中）。
+     * 按钮是固定 40dp 圆形，gravity=END 靠右排列。依次从右向左为 ✕、＋、－、⏸。
+     * 按按钮圆心距离判定：圆心半径 distance < btnSize/2 视为命中。
+     */
+    private fun hitTestControlButton(rawX: Float, rawY: Float): Int {
+        val root = rootView ?: return -1
+        for (i in 0 until root.childCount) {
+            val child = root.getChildAt(i)
+            if (child !is android.widget.LinearLayout) continue
+            val loc = IntArray(2)
+            child.getLocationOnScreen(loc)
+            val barLeft = loc[0]
+            val barRight = barLeft + child.width
+            val barTop = loc[1]
+            val barBottom = barTop + child.height
+            if (rawY < barTop || rawY > barBottom) continue
+            if (rawX < barLeft || rawX > barRight) continue
+            // 子顺序：⏸ － ＋ ✕，gravity=END → 从左到右排列：⏸ － ＋ ✕
+            // 即子 idx 0(⏸) 在最左、idx 3(✕) 在最右
+            val n = child.childCount
+            if (n == 0) return -1
+            val halfBtn = (child.getChildAt(0).width.toFloat() / 2f)
+            var bestIdx = -1
+            var bestDist = Float.MAX_VALUE
+            for (j in 0 until n) {
+                val btn = child.getChildAt(j)
+                val btnLoc = IntArray(2)
+                btn.getLocationOnScreen(btnLoc)
+                val cx = btnLoc[0] + btn.width / 2f
+                val cy = btnLoc[1] + btn.height / 2f
+                val d = kotlin.math.hypot((rawX - cx).toDouble(), (rawY - cy).toDouble()).toFloat()
+                if (d < bestDist) {
+                    bestDist = d
+                    bestIdx = j
+                }
+            }
+            if (bestIdx < 0 || bestDist > halfBtn) return -1
+            // 子 idx → 按钮编号：0=⏸, 1=-/缩小, 2=+/放大, 3=✕/关闭
+            return bestIdx
+        }
+        return -1
     }
 
     private val hideControlBarRunnable = Runnable {
@@ -314,10 +459,14 @@ class FloatingVideoService : Service() {
         }
     }
 
-    /** 放大/缩小切换：竖屏 半宽↔全宽；横屏 全宽↔2/3宽。位置吸附对应角。 */
-    private fun toggleExpanded() {
+    /** 多档缩放：dir=+1 放大 / -1 缩小，到边界不动。缩放后吸附到水平边缘。 */
+    private fun changeScale(dir: Int) {
         val params = layoutParams ?: return
         val root = rootView ?: return
+        val newLevel = (scaleLevel + dir).coerceIn(0, scaleFactors.size - 1)
+        if (newLevel == scaleLevel) return
+        scaleLevel = newLevel
+
         val player = playerManager.getPlayer()
         val vs = player.videoSize
         val ratio = if (vs.width > 0 && vs.height > 0) {
@@ -325,17 +474,43 @@ class FloatingVideoService : Service() {
         } else 16f / 9f
         val screenWidth = resources.displayMetrics.widthPixels
 
-        isExpanded = !isExpanded
-        // 竖屏: 收起=半宽 放大=全宽; 横屏: 收起=全宽 放大=半宽
-        // (isExpanded == layoutPortrait) 时为全宽：竖屏放大或横屏收起态
-        val targetWidth = if (isExpanded == layoutPortrait) screenWidth else screenWidth / 2
+        val targetWidth = (screenWidth * scaleFactors[scaleLevel]).toInt()
         params.width = targetWidth
         params.height = (targetWidth / ratio).toInt()
-        // 吸附角保持：竖屏右上 / 横屏左上
+        // 吸附：竖屏吸右缘、横屏吸左缘（保持 y 不变，只水平吸附）
         params.gravity = if (layoutPortrait) Gravity.TOP or Gravity.END else Gravity.TOP or Gravity.START
         params.x = 0
-        params.y = 0
         windowManager.updateViewLayout(root, params)
+        // 同步刷新边界按钮状态（缩到最小档时 － 灰，缩到最大档时 ＋ 灰）
+        updateBoundaryButtons()
+    }
+
+    /**
+     * 根据当前 scaleLevel 刷新边界按钮 alpha：
+     * - 已在最小档(0)：shrinkButton 灰掉 (alpha=0.3)
+     * - 已在最大档(size-1)：enlargeButton 灰掉
+     * - ⏸ 永远可点（不受档位影响）
+     * 视觉上让用户知道"已经无法再缩/放了"，点击落到已灰按钮由 hit-test 判定不触发 changeScale。
+     */
+    private fun updateBoundaryButtons() {
+        val min = 0
+        val max = scaleFactors.size - 1
+        shrinkButton?.alpha = if (scaleLevel == min) 0.3f else 1.0f
+        enlargeButton?.alpha = if (scaleLevel == max) 0.3f else 1.0f
+        // ⏸ / ✕ 永远可点
+        playPauseButton?.alpha = 1.0f
+        closeButton?.alpha = 1.0f
+    }
+
+    /**
+     * 同步播放/暂停按钮图标：播放中显示 ⏸，暂停/未播放显示 ▶。
+     * 由 Player.Listener.onIsPlayingChanged 自动触发，也可在创建时手动调一次保证初始状态正确。
+     */
+    private fun updatePlayPauseIcon() {
+        val label = playPauseLabel ?: return
+        runCatching {
+            label.text = if (playerManager.getPlayer().isPlaying) "⏸" else "▶"
+        }
     }
 
     /** 回全屏：拉起 MainActivity 到播放页，销毁悬浮窗 */
@@ -352,6 +527,8 @@ class FloatingVideoService : Service() {
         singleTapPending?.let { mainHandler.removeCallbacks(it) }
         singleTapPending = null
         mainHandler.removeCallbacks(hideControlBarRunnable)
+        // 解绑 Player 监听
+        runCatching { playerManager.getPlayer().removeListener(playerListener) }
         // 清空视频输出（播放页回前台后 PlayerView 会重新 setVideoSurfaceView 接管）
         runCatching { floatingTexture?.let { playerManager.getPlayer().clearVideoTextureView(it) } }
         floatingTexture = null
@@ -361,6 +538,11 @@ class FloatingVideoService : Service() {
         rootView = null
         playerView = null
         layoutParams = null
+        playPauseButton = null
+        playPauseLabel = null
+        shrinkButton = null
+        enlargeButton = null
+        closeButton = null
         isShowing = false
         navigationState.setFloatingMode(false)
         stopForeground(STOP_FOREGROUND_REMOVE)
