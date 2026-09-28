@@ -97,8 +97,9 @@ class FloatingVideoService : Service() {
     private var playPauseButton: android.view.View? = null
     private var playPauseIcon: PlayPauseIconView? = null
     private var shrinkButton: android.view.View? = null
-    private var enlargeButton: android.view.View? = null
-    private var closeButton: android.view.View? = null
+    private var enlargeButton: View? = null
+    private var closeButton: View? = null
+    private var backButton: View? = null // 左上角"回到播放页"按钮
 
     /** Player 监听：自动同步 ⏸ ↔ ▶ 图标（外部 play()/pause() 调用后也能刷新） */
     private val playerListener = object : Player.Listener {
@@ -255,6 +256,16 @@ class FloatingVideoService : Service() {
         val btnShrink = makeControlLabel("－", btnSizePx)
         val btnEnlarge = makeControlLabel("＋", btnSizePx)
         val btnClose = makeControlLabel("✕", btnSizePx)
+        // 左上角"回到播放页"按钮：与右侧控制条对称，iOS PiP 风格圆形黑底。
+        // 点击 → backToFullscreen() 拉起播放页并关闭浮窗。图标用 Canvas 矢量
+        // （避免 Unicode 字符被渲染成 emoji 的坑，同 ⏸ 的教训）。
+        val btnBack = ExpandIconView(this).apply {
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(0xE6000000.toInt())
+            }
+            elevation = 4 * density
+        }
         val controlBar = android.widget.LinearLayout(this).apply {
             orientation = android.widget.LinearLayout.HORIZONTAL
             setGravity(android.view.Gravity.END) // 子 view 靠右排列（－ ＋ ✕ 在右侧）
@@ -271,6 +282,7 @@ class FloatingVideoService : Service() {
         shrinkButton = btnShrink
         enlargeButton = btnEnlarge
         closeButton = btnClose
+        backButton = btnBack
         // 给前两个子 view 加右边距（间距 6dp，让三个按钮不要太近；✕ 是最右的，不加 marginEnd）
         for (i in 0 until controlBar.childCount - 1) {
             val child = controlBar.getChildAt(i)
@@ -288,6 +300,20 @@ class FloatingVideoService : Service() {
                 barPx,
                 Gravity.TOP or Gravity.END
             )
+        )
+        // 左上角"回到播放页"按钮：单独挂在 container 上（与控制条不同侧，
+        // 不参与 －/＋/✕ 的 hit-test），显示/隐藏与控制条同步。
+        btnBack.visibility = android.view.View.GONE
+        container.addView(
+            btnBack,
+            FrameLayout.LayoutParams(
+                btnSizePx,
+                btnSizePx,
+                Gravity.TOP or Gravity.START
+            ).apply {
+                marginStart = btnRightPx
+                topMargin = (8 * density).toInt()
+            }
         )
         // 播放/暂停按钮单独居中放在浮窗中央（与控制条风格一致但稍大一档 48dp）。
         // 默认隐藏，与控制条（－/＋/✕）一起在单击视频时同步出现，4s 后同步隐藏。
@@ -330,6 +356,7 @@ class FloatingVideoService : Service() {
                         moved = true
                         controlBar.visibility = android.view.View.GONE
                         showPlayPause(false)
+                        backButton?.visibility = android.view.View.GONE
                         // 目标窗口左上角绝对坐标
                         val targetLeft = paramDownX + dx
                         val targetTop = paramDownY + dy
@@ -378,29 +405,36 @@ class FloatingVideoService : Service() {
                                     hideControlBarDelayed()
                                 } else if (barVisible) {
                                     // 控制条已显示 → 按 hit-test 决定触发哪个按钮
-                                    val btnHit = hitTestControlButton(touchDownX, touchDownY)
-                                    when (btnHit) {
-                                        1 -> {
-                                            changeScale(-1)
-                                            hideControlBarDelayed()
-                                        }
-                                        2 -> {
-                                            changeScale(+1)
-                                            hideControlBarDelayed()
-                                        }
-                                        3 -> {
-                                            stopSelf()
-                                        }
-                                        else -> {
-                                            // 控制条已显示但点击落在视频区（控制条外）→ 保持控制条可见，
-                                            // 仅重置 4s 自动隐藏计时（避免点击按钮前控制条消失）
-                                            hideControlBarDelayed()
+                                    val hitBack = hitTestButton(backButton, touchDownX, touchDownY)
+                                    if (hitBack) {
+                                        // 左上角"回到播放页"：拉起 MainActivity 播放页并关闭浮窗
+                                        backToFullscreen()
+                                    } else {
+                                        val btnHit = hitTestControlButton(touchDownX, touchDownY)
+                                        when (btnHit) {
+                                            1 -> {
+                                                changeScale(-1)
+                                                hideControlBarDelayed()
+                                            }
+                                            2 -> {
+                                                changeScale(+1)
+                                                hideControlBarDelayed()
+                                            }
+                                            3 -> {
+                                                stopSelf()
+                                            }
+                                            else -> {
+                                                // 控制条已显示但点击落在视频区（控制条外）→ 保持控制条可见，
+                                                // 仅重置 4s 自动隐藏计时（避免点击按钮前控制条消失）
+                                                hideControlBarDelayed()
+                                            }
                                         }
                                     }
                                 } else {
-                                    // 控制条隐藏 → 显示（控制条与 ⏸ 一起出现）
+                                    // 控制条隐藏 → 显示（控制条与 ⏸、回播放页按钮一起出现）
                                     controlBar.visibility = android.view.View.VISIBLE
                                     showPlayPause(true)
+                                    backButton?.visibility = android.view.View.VISIBLE
                                     hideControlBarDelayed()
                                 }
                             }
@@ -518,14 +552,29 @@ class FloatingVideoService : Service() {
         return d < btn.width / 2f
     }
 
+    /**
+     * 通用单按钮 hit-test（左上角"回播放页"等 container 直接子 view）：
+     * 点击点距按钮圆心 < 半径即命中。未布局（width=0）时返回 false。
+     */
+    private fun hitTestButton(btn: View?, rawX: Float, rawY: Float): Boolean {
+        if (btn == null || btn.width == 0) return false
+        val loc = IntArray(2)
+        btn.getLocationOnScreen(loc)
+        val cx = loc[0] + btn.width / 2f
+        val cy = loc[1] + btn.height / 2f
+        val d = kotlin.math.hypot((rawX - cx).toDouble(), (rawY - cy).toDouble()).toFloat()
+        return d < btn.width / 2f
+    }
+
     private val hideControlBarRunnable = Runnable {
         rootView?.let { root ->
-            // 找到控制条（LinearLayout）并隐藏，同时隐藏中央 ⏸/▶（与控制条同步）
+            // 找到控制条（LinearLayout）并隐藏，同时隐藏中央 ⏸/▶ 与左上角回播放页按钮
             for (i in 0 until root.childCount) {
                 val child = root.getChildAt(i)
                 if (child is android.widget.LinearLayout) child.visibility = android.view.View.GONE
             }
             playPauseButton?.visibility = android.view.View.GONE
+            backButton?.visibility = android.view.View.GONE
         }
     }
 
@@ -641,6 +690,7 @@ class FloatingVideoService : Service() {
         shrinkButton = null
         enlargeButton = null
         closeButton = null
+        backButton = null
         isShowing = false
         navigationState.setFloatingMode(false)
         stopForeground(STOP_FOREGROUND_REMOVE)
@@ -743,8 +793,47 @@ private class PlayPauseIconView(context: Context) : View(context) {
     }
 }
 
-/** Hilt 入口：服务里取 PlayerManager / NavigationState 单例 */
-@dagger.hilt.EntryPoint
+/**
+ * 纯矢量绘制的"回到播放页"图标（四个向外的角箭头 = 展开到全屏）。
+ * 同 PlayPauseIconView：不用 Unicode 字符（⤢/⛶ 等字符在不同字体下渲染不一致或变 emoji），
+ * Canvas 画四个 L 形圆角折线，观感与系统全屏图标一致。
+ */
+private class ExpandIconView(context: Context) : View(context) {
+
+    private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.WHITE
+        style = Paint.Style.STROKE
+        strokeCap = Paint.Cap.ROUND
+        strokeJoin = Paint.Join.ROUND
+    }
+
+    override fun onDraw(canvas: Canvas) {
+        super.onDraw(canvas)
+        val u = minOf(width, height) * 0.5f  // 图标主体外接半径基准
+        val inset = u * 0.28f                // 距中心的起始偏移
+        val arm = u * 0.42f                  // 每条边的臂长
+        paint.strokeWidth = u * 0.16f
+
+        val cx = width / 2f
+        val cy = height / 2f
+
+        // 四角：左上 / 右上 / 左下 / 右下，每角一条 L 形折线
+        // 左上：从 (cx-inset-arm, cy-inset) 横向到角再竖直向下
+        canvas.drawLine(cx - inset - arm, cy - inset, cx - inset, cy - inset, paint)
+        canvas.drawLine(cx - inset, cy - inset, cx - inset, cy - inset + arm, paint)
+        // 右上
+        canvas.drawLine(cx + inset + arm, cy - inset, cx + inset, cy - inset, paint)
+        canvas.drawLine(cx + inset, cy - inset, cx + inset, cy - inset + arm, paint)
+        // 左下
+        canvas.drawLine(cx - inset - arm, cy + inset, cx - inset, cy + inset, paint)
+        canvas.drawLine(cx - inset, cy + inset, cx - inset, cy + inset - arm, paint)
+        // 右下
+        canvas.drawLine(cx + inset + arm, cy + inset, cx + inset, cy + inset, paint)
+        canvas.drawLine(cx + inset, cy + inset, cx + inset, cy + inset - arm, paint)
+    }
+}
+
+/** Hilt 入口：服务里取 PlayerManager / NavigationState 单例 */@dagger.hilt.EntryPoint
 @dagger.hilt.InstallIn(dagger.hilt.components.SingletonComponent::class)
 interface FloatingPlayerEntryPoint {
     fun playerManager(): PlayerManager
