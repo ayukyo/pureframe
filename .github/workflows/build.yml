@@ -20,22 +20,53 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-          cache: gradle
+
+      - name: Setup Gradle cache
+        uses: gradle/actions/setup-gradle@v4
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
         working-directory: code
 
       - name: Build Debug APK
-        run: ./gradlew assembleDebug
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
         working-directory: code
 
-      - name: Upload Debug APK
+      # APK 改名带上 short SHA + 日期，形成"阶段性快照"版本：
+      # pureframe-debug-1.0.0-<sha7>-<yyyymmdd>.apk
+      - name: Rename APK with version info
+        run: |
+          APK=$(find code/app/build/outputs/apk/debug -name "*.apk" | head -1)
+          SHA7=$(git rev-parse --short=7 HEAD)
+          DATE=$(date +%Y%m%d)
+          DEST="pureframe-debug-1.0.0-${SHA7}-${DATE}.apk"
+          mv "$APK" "$DEST"
+          echo "APK_NAME=$DEST" >> $GITHUB_ENV
+          echo "SHA7=$SHA7" >> $GITHUB_ENV
+          echo "Renamed to: $DEST"
+
+      - name: Upload Debug APK (artifact)
         uses: actions/upload-artifact@v4
         with:
-          name: pureframe-debug
-          path: code/app/build/outputs/apk/debug/*.apk
-          retention-days: 7
+          name: pureframe-debug-${{ env.SHA7 }}
+          path: code/app/build/outputs/apk/debug/${{ env.APK_NAME }}
+          retention-days: 14
+
+      # 推送到 main 时把 APK 作为 Release（tag: build-<date>-<sha>）持续替换发布，
+      # 方便手机直接从 Releases 页下载安装，无需登录 GitHub 拉 artifact
+      - name: Upload to GitHub Releases
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ env.SHA7 }}
+          name: 阶段性构建 ${{ env.SHA7 }} (${{ github.event.head_commit.message }})
+          body: |
+            自动构建于 push 到 main（commit ${{ github.sha }}）
+
+            提交信息：${{ github.event.head_commit.message }}
+          files: code/app/build/outputs/apk/debug/${{ env.APK_NAME }}
+          fail_on_unmatched_files: true
+          make_latest: true
 
   lint:
     runs-on: ubuntu-latest
@@ -49,14 +80,16 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-          cache: gradle
+
+      - name: Setup Gradle cache
+        uses: gradle/actions/setup-gradle@v4
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
         working-directory: code
 
       - name: Run Lint
-        run: ./gradlew lintDebug
+        run: ./gradlew lintDebug --no-daemon
         working-directory: code
 
       - name: Upload Lint Report
