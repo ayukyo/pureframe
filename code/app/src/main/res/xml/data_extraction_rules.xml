@@ -1,7 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- allowBackup=false：禁止云备份与设备迁移提取用户数据（防 adb backup 抓库） -->
 <data-extraction-rules>
     <cloud-backup>
-        <include domain="sharedpref" path="."/>
-        <include domain="database" path="."/>
+        <exclude domain="root" path="."/>
+        <exclude domain="sharedpref" path="."/>
+        <exclude domain="database" path="."/>
     </cloud-backup>
+    <device-transfer>
+        <exclude domain="root" path="."/>
+        <exclude domain="sharedpref" path="."/>
+        <exclude domain="database" path="."/>
+    </device-transfer>
 </data-extraction-rules>

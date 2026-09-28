@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- allowBackup=false：禁止全量备份用户数据 -->
 <full-backup-content>
-    <include domain="sharedpref" path="."/>
-    <include domain="database" path="."/>
+    <exclude domain="root" path="."/>
+    <exclude domain="sharedpref" path="."/>
+    <exclude domain="database" path="."/>
 </full-backup-content>

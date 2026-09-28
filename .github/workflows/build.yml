@@ -35,6 +35,22 @@ jobs:
         run: ./gradlew assembleDebug --no-daemon --stacktrace
         working-directory: code
 
+      # ---- Release 签名构建 ----
+      # keystore/密码/签名 hash 存于 GitHub Secrets（PF_STOREFILE_BASE64 等），
+      # 本地构建则读 local.properties，两者互不依赖。
+      - name: Decode release keystore
+        run: echo "${{ secrets.PF_STOREFILE_BASE64 }}" | base64 -d > /tmp/pureframe-release.jks
+
+      - name: Build Release APK (signed)
+        env:
+          PF_STOREFILE: /tmp/pureframe-release.jks
+          PF_STOREPASSWORD: ${{ secrets.PF_STOREPASSWORD }}
+          PF_KEYALIAS: ${{ secrets.PF_KEYALIAS }}
+          PF_KEYPASSWORD: ${{ secrets.PF_KEYPASSWORD }}
+          PF_SIGNING_SHA256: ${{ secrets.PF_SIGNING_SHA256 }}
+        run: ./gradlew assembleRelease --no-daemon --stacktrace
+        working-directory: code
+
       # APK 改名带上 short SHA + 日期，形成"阶段性快照"版本：
       # pureframe-debug-1.0.0-<sha7>-<yyyymmdd>.apk
       # 注意 mv 到原目录（不改变路径），否则后续步骤找不到文件
@@ -57,6 +73,23 @@ jobs:
           path: code/app/build/outputs/apk/debug/${{ env.APK_NAME }}
           retention-days: 14
 
+      - name: Rename Release APK with version info
+        run: |
+          APK=$(find code/app/build/outputs/apk/release -name "*.apk" ! -name "*unsigned*" | head -1)
+          APK_DIR=$(dirname "$APK")
+          DATE=$(date +%Y%m%d)
+          DEST="pureframe-release-1.0.0-${SHA7}-${DATE}.apk"
+          mv "$APK" "$APK_DIR/$DEST"
+          echo "RELEASE_APK_NAME=$DEST" >> $GITHUB_ENV
+          echo "Renamed release to: $APK_DIR/$DEST"
+
+      - name: Upload Release APK (artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: pureframe-release-${{ env.SHA7 }}
+          path: code/app/build/outputs/apk/release/${{ env.RELEASE_APK_NAME }}
+          retention-days: 14
+
       # 推送到 main 时把 APK 作为 Release（tag: build-<date>-<sha>）持续替换发布，
       # 方便手机直接从 Releases 页下载安装，无需登录 GitHub 拉 artifact
       - name: Upload to GitHub Releases
@@ -69,8 +102,10 @@ jobs:
             自动构建于 push 到 main（commit ${{ github.sha }}）
 
             提交信息：${{ github.event.head_commit.message }}
-          files: code/app/build/outputs/apk/debug/${{ env.APK_NAME }}
-          fail_on_unmatched_files: true
+          files: |
+            code/app/build/outputs/apk/debug/${{ env.APK_NAME }}
+            code/app/build/outputs/apk/release/${{ env.RELEASE_APK_NAME }}
+          fail_on_unmatched_files: false
           make_latest: true
 
   lint:

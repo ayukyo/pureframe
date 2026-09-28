@@ -1,9 +1,20 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("com.google.devtools.ksp")
     id("com.google.dagger.hilt.android")
 }
+
+// release 签名：本机从 local.properties 读，CI 从环境变量读（GitHub Secrets 注入）。
+// 密码/keystore 路径任何情况下不进 git。
+val keystoreProps = Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}
+fun envOr(key: String): String? =
+    System.getenv("PF_${key.uppercase()}") ?: keystoreProps.getProperty("pureframe.$key")
 
 android {
     namespace = "com.pureframe.player"
@@ -20,15 +31,39 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+
+        // 防二次打包：把发布签名的 SHA-256 注入 BuildConfig，运行时自校验。
+        // debug / 未配置 keystore 的构建注入 "skip"（SignatureGuard 自动跳过）。
+        val sha256 = keystoreProps.getProperty("pureframe.signingSha256")
+            ?: System.getenv("PF_SIGNING_SHA256")
+            ?: "skip"
+        buildConfigField("String", "ORIGINAL_SIGNING_SHA256", "\"$sha256\"")
+    }
+
+    signingConfigs {
+        create("release") {
+            val storePath = envOr("storeFile")
+            if (storePath != null) {
+                storeFile = file(storePath)
+                storePassword = envOr("storePassword")
+                keyAlias = envOr("keyAlias")
+                keyPassword = envOr("keyPassword")
+            }
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // 只有本机/CI 拿到 keystore 时才签名，否则保持未签名可构建
+            val hasKeystore = keystoreProps.getProperty("pureframe.storeFile") != null ||
+                System.getenv("PF_STOREFILE") != null
+            signingConfig = if (hasKeystore) signingConfigs.getByName("release") else null
         }
         debug {
             // debug 包默认不做 R8 裁剪，material-icons-extended 的 1 万多个图标类
@@ -39,9 +74,10 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             applicationIdSuffix = ".debug"
+            // debug 不做日志剔除（proguard-rules.pro 的 assumenosideeffects 对
+            // debug 有副作用），只带裁剪规则文件
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro",
                 "proguard-debug.pro"
             )
         }
@@ -58,6 +94,8 @@ android {
 
     buildFeatures {
         compose = true
+        // BuildConfig.DEBUG 供运行时判定是否植入日志树（release 不打日志）
+        buildConfig = true
     }
 
     composeOptions {
