@@ -161,8 +161,20 @@ fun PlayerScreen(
 
     // ---- 悬浮窗小窗播放 ----
     // 主动小窗改用悬浮窗方案（系统 PiP 尺寸/位置不可编程：横屏到不了全宽、竖屏只有 30% 屏宽、位置固定吸底）
-    val canDrawOverlays = remember {
-        android.provider.Settings.canDrawOverlays(context)
+    // 注意：不能用 remember{} 缓存权限值——用户从设置页授权返回后不会刷新，导致提示反复弹出（需重启进程）。
+    // 改为每次进入 RESUMED 状态时重读（onResume 是授权返回的必经路径）。
+    var canDrawOverlays by remember {
+        mutableStateOf(android.provider.Settings.canDrawOverlays(context))
+    }
+    val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+    androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                canDrawOverlays = android.provider.Settings.canDrawOverlays(context)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
     var showFloatingPermissionTip by remember { mutableStateOf(false) }
     // 悬浮窗显示时播放页 PlayerView 必须解除 player 绑定（SurfaceView 不能被两个窗口同时消费）
