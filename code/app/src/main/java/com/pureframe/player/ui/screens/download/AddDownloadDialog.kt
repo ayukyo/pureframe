@@ -32,9 +32,10 @@ import com.pureframe.player.R
  * 链接类型
  */
 enum class LinkType {
-    MAGNET,    // 磁力链接
-    HTTP,      // HTTP/直链
-    UNKNOWN    // 未知类型
+    MAGNET,        // 磁力链接
+    TORRENT_FILE,  // .torrent 种子文件直链
+    HTTP,          // HTTP/直链
+    UNKNOWN        // 未知类型
 }
 
 /**
@@ -62,6 +63,10 @@ fun AddDownloadDialog(
     fun detectLinkType(link: String): LinkType {
         return when {
             link.startsWith("magnet:?xt=urn:btih:") -> LinkType.MAGNET
+            // .torrent 种子文件直链：走 BT 流程（先取种子文件再解析），不能当普通文件下载
+            (link.startsWith("http://") || link.startsWith("https://")) &&
+                link.substringBefore('?').substringBefore('#').lowercase().endsWith(".torrent") ->
+                LinkType.TORRENT_FILE
             link.startsWith("http://") || link.startsWith("https://") -> LinkType.HTTP
             else -> LinkType.UNKNOWN
         }
@@ -109,9 +114,21 @@ fun AddDownloadDialog(
     }
 
     val currentLinkType = detectLinkType(urlInput.text)
-    val inputLabel = if (currentLinkType == LinkType.MAGNET) stringResource(R.string.add_magnet_label) else stringResource(R.string.add_link_label)
-    val inputPlaceholder = if (currentLinkType == LinkType.MAGNET) "magnet:?xt=urn:btih:..." else "https://example.com/file.mp4"
-    val dialogTitle = if (currentLinkType == LinkType.MAGNET) stringResource(R.string.add_magnet_title) else stringResource(R.string.add_link_title)
+    val inputLabel = when (currentLinkType) {
+        LinkType.MAGNET -> stringResource(R.string.add_magnet_label)
+        LinkType.TORRENT_FILE -> stringResource(R.string.add_torrent_link_label)
+        else -> stringResource(R.string.add_link_label)
+    }
+    val inputPlaceholder = when (currentLinkType) {
+        LinkType.MAGNET -> "magnet:?xt=urn:btih:..."
+        LinkType.TORRENT_FILE -> "https://example.com/file.torrent"
+        else -> "https://example.com/file.mp4"
+    }
+    val dialogTitle = when (currentLinkType) {
+        LinkType.MAGNET -> stringResource(R.string.add_magnet_title)
+        LinkType.TORRENT_FILE -> stringResource(R.string.add_torrent_link_title)
+        else -> stringResource(R.string.add_link_title)
+    }
     // 校验用文案：Button 的 onClick 不是 @Composable 作用域，需提前解析
     val errorEmpty = stringResource(R.string.add_error_empty)
     val errorUnsupported = stringResource(R.string.add_error_unsupported)
@@ -146,7 +163,7 @@ fun AddDownloadDialog(
         val linkType = detectLinkType(text)
         val extracted = when (linkType) {
             LinkType.MAGNET -> extractTitleFromMagnet(text)
-            LinkType.HTTP -> extractTitleFromUrl(text)
+            LinkType.TORRENT_FILE, LinkType.HTTP -> extractTitleFromUrl(text)
             else -> null
         }
         if (extracted != null && (title.text.isEmpty() || titleAutoFilled)) {
@@ -190,7 +207,7 @@ fun AddDownloadDialog(
                         val linkType = detectLinkType(it.text)
                         val extracted = when (linkType) {
                             LinkType.MAGNET -> extractTitleFromMagnet(it.text)
-                            LinkType.HTTP -> extractTitleFromUrl(it.text)
+                            LinkType.TORRENT_FILE, LinkType.HTTP -> extractTitleFromUrl(it.text)
                             else -> null
                         }
                         // 仅在用户没有手动改过标题时自动跟随，持续刷新为完整文件名
@@ -239,6 +256,7 @@ fun AddDownloadDialog(
             // 提示文字
             val hintText = when (currentLinkType) {
                 LinkType.MAGNET -> stringResource(R.string.add_hint_magnet)
+                LinkType.TORRENT_FILE -> stringResource(R.string.add_hint_torrent_link)
                 LinkType.HTTP -> stringResource(R.string.add_hint_http)
                 else -> stringResource(R.string.add_hint_any)
             }

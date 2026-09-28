@@ -80,6 +80,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-debug.pro"
             )
+            // debug 包强制跳过签名自校验：defaultConfig 注入的 release hash 会让
+            // 本机 debug 包（debug 签名 ≠ release 签名）启动即自杀（实测踩坑）
+            buildConfigField("String", "ORIGINAL_SIGNING_SHA256", "\"skip\"")
         }
     }
 

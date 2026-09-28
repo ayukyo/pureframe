@@ -141,6 +141,9 @@
     <string name="add_hint_magnet">Tip: magnet links are supported, and can be streamed after adding</string>
     <string name="add_hint_http">Tip: direct links download faster</string>
     <string name="add_hint_any">Tip: both magnet links and direct links are supported</string>
+    <string name="add_torrent_link_label">Torrent file link</string>
+    <string name="add_torrent_link_title">Add torrent file link</string>
+    <string name="add_hint_torrent_link">Tip: the .torrent file will be parsed and downloaded via BitTorrent</string>
     <string name="add_error_empty">Enter a download link</string>
     <string name="add_error_unsupported">Unsupported link type</string>
     <string name="add_error_magnet_invalid">Invalid magnet link</string>
@@ -302,6 +305,7 @@
     <string name="error_download_failed_detail">Download failed: %1$s</string>
     <string name="error_add_to_engine_failed">Failed to add to the download engine</string>
     <string name="error_invalid_magnet">Could not fetch resource info. Check that the magnet link is valid.</string>
+    <string name="error_torrent_download_failed">Failed to download the .torrent file. Check the link and try again.</string>
     <string name="error_missing_file">Downloaded media file not found: %1$s</string>
     <string name="error_progress_insufficient">Download progress is too low; at least %1$d%% is required</string>
     <string name="error_task_status_invalid">Download task is in an invalid state: %1$s</string>

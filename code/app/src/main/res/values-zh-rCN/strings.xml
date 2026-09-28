@@ -135,6 +135,9 @@
     <string name="add_hint_magnet">提示：支持磁力链接下载，下载后可边下边播</string>
     <string name="add_hint_http">提示：直链下载，速度更快</string>
     <string name="add_hint_any">提示：支持磁力链接和直链下载</string>
+    <string name="add_torrent_link_label">种子文件链接</string>
+    <string name="add_torrent_link_title">添加种子文件链接</string>
+    <string name="add_hint_torrent_link">提示：.torrent 文件将通过 BT 方式解析下载</string>
     <string name="add_error_empty">请输入下载链接</string>
     <string name="add_error_unsupported">不支持的链接类型</string>
     <string name="add_error_magnet_invalid">磁力链接格式不正确</string>
@@ -294,6 +297,7 @@
     <string name="error_download_failed_detail">下载失败：%1$s</string>
     <string name="error_add_to_engine_failed">添加到下载引擎失败</string>
     <string name="error_invalid_magnet">无法获取资源信息，请检查磁力链接是否有效</string>
+    <string name="error_torrent_download_failed">种子文件下载失败，请检查链接后重试</string>
     <string name="error_missing_file">找不到已下载的媒体文件: %1$s</string>
     <string name="error_progress_insufficient">下载进度不足，需要至少 %1$d%%</string>
     <string name="error_task_status_invalid">下载任务状态异常: %1$s</string>

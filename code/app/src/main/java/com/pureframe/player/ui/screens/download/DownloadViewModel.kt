@@ -162,6 +162,12 @@ class DownloadViewModel @Inject constructor(
     ) {
         Timber.d("DownloadViewModel.addDownloadTask 被调用 - url=$url, linkType=$linkType")
 
+        // .torrent 种子文件直链：先下载种子文件到缓存，再走 BT 任务流程
+        if (linkType == LinkType.TORRENT_FILE) {
+            addTorrentLinkDownload(url, title)
+            return
+        }
+
         // 如果是 HTTP 直链，直接开始下载
         if (linkType == LinkType.HTTP) {
             addHttpDownloadTask(url, title)
@@ -244,6 +250,70 @@ class DownloadViewModel @Inject constructor(
                 Timber.e(e, "DownloadViewModel: 添加 HTTP 下载任务失败")
                 _uiState.update { it.copy(errorMessage = e.message, isAddingTask = false) }
             }
+        }
+    }
+
+    /**
+     * 添加 .torrent 种子文件链接下载任务
+     *
+     * .torrent 不是媒体文件，不能当 HTTP 直链下载；正确流程是：
+     * 1. 把 .torrent 文件下载到应用缓存目录
+     * 2. 交给 [addTorrentFileDownload] 走既有 BT 流程（创建任务 + 弹出文件选择对话框）
+     *
+     * @param url .torrent 文件的下载链接
+     * @param title 任务标题（可选，默认用种子内名称）
+     */
+    private fun addTorrentLinkDownload(url: String, title: String? = null) {
+        Timber.d("DownloadViewModel.addTorrentLinkDownload 被调用 - url=$url")
+        viewModelScope.launch {
+            _uiState.update { it.copy(isAddingTask = true, errorMessage = null) }
+            try {
+                val torrentFile = withContext(Dispatchers.IO) { downloadTorrentFile(url) }
+                Timber.d("DownloadViewModel: 种子文件已下载 - ${torrentFile.absolutePath}")
+                addTorrentFileDownload(torrentFile.absolutePath)
+            } catch (e: Exception) {
+                Timber.e(e, "DownloadViewModel: 种子文件下载失败")
+                _uiState.update {
+                    it.copy(
+                        errorMessage = LocaleManager.getString(appContext, R.string.error_torrent_download_failed),
+                        isAddingTask = false
+                    )
+                }
+            }
+        }
+    }
+
+    /**
+     * 下载 .torrent 种子文件到缓存目录
+     * 种子文件通常只有几十 KB，单连接即可；下载失败（非 2xx / IO 异常）直接抛出
+     */
+    private fun downloadTorrentFile(url: String): File {
+        val conn = java.net.URL(url).openConnection() as java.net.HttpURLConnection
+        conn.connectTimeout = 15_000
+        conn.readTimeout = 30_000
+        conn.setRequestProperty("User-Agent", "PureFrame/1.0")
+        conn.instanceFollowRedirects = true
+        try {
+            val code = conn.responseCode
+            if (code !in 200..299) {
+                throw java.io.IOException("server returned HTTP $code")
+            }
+            val cacheDir = File(appContext.cacheDir, "torrents").apply { mkdirs() }
+            // 命名：优先 URL 文件名，保证以 .torrent 结尾（TorrentInfo 解析不依赖扩展名，仅便于识别）
+            val name = url.substringBefore('?').substringBefore('#').substringAfterLast('/')
+                .takeIf { it.isNotEmpty() } ?: "torrent_${System.currentTimeMillis()}"
+            val safeName = (if (name.lowercase().endsWith(".torrent")) name else "$name.torrent")
+                .replace(Regex("[\\\\/:*?\"<>|]"), "_")
+            val outFile = File(cacheDir, safeName)
+            conn.inputStream.use { input ->
+                outFile.outputStream().use { output -> input.copyTo(output) }
+            }
+            if (outFile.length() == 0L) {
+                throw java.io.IOException("empty torrent file")
+            }
+            return outFile
+        } finally {
+            conn.disconnect()
         }
     }
 
