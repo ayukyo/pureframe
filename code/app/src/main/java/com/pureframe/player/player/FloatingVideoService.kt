@@ -99,7 +99,7 @@ class FloatingVideoService : Service() {
     private var shrinkButton: android.view.View? = null
     private var enlargeButton: View? = null
     private var closeButton: View? = null
-    private var backButton: View? = null // 左上角"回到播放页"按钮
+    private var backButton: View? = null // 右下角"回到播放页"按钮
 
     /** Player 监听：自动同步 ⏸ ↔ ▶ 图标（外部 play()/pause() 调用后也能刷新） */
     private val playerListener = object : Player.Listener {
@@ -256,7 +256,7 @@ class FloatingVideoService : Service() {
         val btnShrink = makeControlLabel("－", btnSizePx)
         val btnEnlarge = makeControlLabel("＋", btnSizePx)
         val btnClose = makeControlLabel("✕", btnSizePx)
-        // 左上角"回到播放页"按钮：与右侧控制条对称，iOS PiP 风格圆形黑底。
+        // 右下角"回到播放页"按钮：iOS PiP 风格圆形黑底。
         // 点击 → backToFullscreen() 拉起播放页并关闭浮窗。图标用 Canvas 矢量
         // （避免 Unicode 字符被渲染成 emoji 的坑，同 ⏸ 的教训）。
         val btnBack = ExpandIconView(this).apply {
@@ -301,18 +301,18 @@ class FloatingVideoService : Service() {
                 Gravity.TOP or Gravity.END
             )
         )
-        // 左上角"回到播放页"按钮：单独挂在 container 上（与控制条不同侧，
-        // 不参与 －/＋/✕ 的 hit-test），显示/隐藏与控制条同步。
+        // 右下角"回到播放页"按钮：单独挂在 container 上（不参与 －/＋/✕ 的 hit-test），
+        // 显示/隐藏与控制条同步。
         btnBack.visibility = android.view.View.GONE
         container.addView(
             btnBack,
             FrameLayout.LayoutParams(
                 btnSizePx,
                 btnSizePx,
-                Gravity.TOP or Gravity.START
+                Gravity.BOTTOM or Gravity.END
             ).apply {
-                marginStart = btnRightPx
-                topMargin = (8 * density).toInt()
+                marginEnd = btnRightPx
+                bottomMargin = (12 * density).toInt()
             }
         )
         // 播放/暂停按钮单独居中放在浮窗中央（与控制条风格一致但稍大一档 48dp）。
@@ -407,7 +407,7 @@ class FloatingVideoService : Service() {
                                     // 控制条已显示 → 按 hit-test 决定触发哪个按钮
                                     val hitBack = hitTestButton(backButton, touchDownX, touchDownY)
                                     if (hitBack) {
-                                        // 左上角"回到播放页"：拉起 MainActivity 播放页并关闭浮窗
+                                        // 右下角"回到播放页"：拉起 MainActivity 播放页并关闭浮窗
                                         backToFullscreen()
                                     } else {
                                         val btnHit = hitTestControlButton(touchDownX, touchDownY)
@@ -553,7 +553,7 @@ class FloatingVideoService : Service() {
     }
 
     /**
-     * 通用单按钮 hit-test（左上角"回播放页"等 container 直接子 view）：
+     * 通用单按钮 hit-test（右下角"回播放页"等 container 直接子 view）：
      * 点击点距按钮圆心 < 半径即命中。未布局（width=0）时返回 false。
      */
     private fun hitTestButton(btn: View?, rawX: Float, rawY: Float): Boolean {
@@ -568,7 +568,7 @@ class FloatingVideoService : Service() {
 
     private val hideControlBarRunnable = Runnable {
         rootView?.let { root ->
-            // 找到控制条（LinearLayout）并隐藏，同时隐藏中央 ⏸/▶ 与左上角回播放页按钮
+            // 找到控制条（LinearLayout）并隐藏，同时隐藏中央 ⏸/▶ 与右下角回播放页按钮
             for (i in 0 until root.childCount) {
                 val child = root.getChildAt(i)
                 if (child is android.widget.LinearLayout) child.visibility = android.view.View.GONE
