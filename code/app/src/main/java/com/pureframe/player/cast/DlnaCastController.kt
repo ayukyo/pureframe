@@ -42,6 +42,11 @@ class DlnaContentUrlProvider @Inject constructor(
             "srt" to "application/x-subrip", "vtt" to "text/vtt",
             "ass" to "text/plain", "ssa" to "text/plain"
         )
+
+        /** 按文件名（含扩展名）推断 MIME，供 Cast 线复用 */
+        fun mimeTypeFor(fileName: String): String =
+            MIME_MAP[fileName.substringAfterLast('.', "").lowercase()] ?: "application/octet-stream"
+
         private const val TOKEN_PATH = "/pfmedia"
         private const val SOCKET_TIMEOUT = 30_000
     }

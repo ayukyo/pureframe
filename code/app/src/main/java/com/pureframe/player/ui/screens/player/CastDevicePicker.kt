@@ -183,7 +183,14 @@ fun CastDevicePicker(
                                     fontSize = 15.sp
                                 )
                                 Text(
-                                    text = stringResource(R.string.cast_dlna_label),
+                                    // 协议标签：DLNA / Google Cast（UI 上区分来源）
+                                    text = stringResource(
+                                        if (device.type == com.pureframe.player.cast.RouteType.CAST) {
+                                            R.string.cast_googlecast_label
+                                        } else {
+                                            R.string.cast_dlna_label
+                                        }
+                                    ),
                                     color = Color.White.copy(alpha = 0.45f),
                                     fontSize = 11.sp
                                 )

@@ -50,9 +50,10 @@ enum class RouteType {
     LOCAL,
 
     /** DLNA/UPnP 推流到电视/盒子 */
-    DLNA
+    DLNA,
 
-    // CAST — PR2 (Google Cast) 占位
+    /** Google Cast（Chromecast/Android TV/带 Cast 的电视） */
+    CAST
 }
 
 /**

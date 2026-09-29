@@ -3,6 +3,9 @@ package com.pureframe.player.cast
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -24,9 +27,13 @@ import javax.inject.Singleton
  */
 @Singleton
 class RouteManager @Inject constructor(
-    private val dlnaCastController: DlnaCastController
+    controllers: Set<@JvmSuppressWildcards CastController>
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+
+    /** 全部协议控制器（DLNA/Cast/...），按 device.type 路由连接 */
+    private val controllers: Map<RouteType, CastController> =
+        controllers.associateBy { it.type }
 
     /** 当前激活的远程路由（null = 本机播放） */
     private val _activeRoute = MutableStateFlow<PlaybackRoute?>(null)
@@ -43,10 +50,20 @@ class RouteManager @Inject constructor(
     var localPositionOnCastStart: Long = 0L
 
     /**
-     * 扫描设备（目前只有 DLNA，PR2 后聚合多协议结果）
+     * 扫描设备（聚合全部协议的结果：DLNA SSDP + Cast MediaRouter 并行扫）
      */
     suspend fun discoverDevices(timeoutMs: Long = 5000L): List<CastDevice> =
-        dlnaCastController.discoverDevices(timeoutMs)
+        coroutineScope {
+            controllers.values.map { controller ->
+                async {
+                    runCatching { controller.discoverDevices(timeoutMs) }
+                        .onFailure { Timber.e(it, "%s 扫描失败", controller.type) }
+                        .getOrDefault(emptyList())
+                }
+            }.awaitAll().flatten().sortedWith(
+                compareByDescending<CastDevice> { it.isTv }.thenBy { it.name }
+            )
+        }
 
     /**
      * 连接设备并把内容投上去
@@ -66,7 +83,11 @@ class RouteManager @Inject constructor(
         // 已有投屏会话则先断开
         disconnectFromDevice(keepLocalPaused = true)
 
-        val route = dlnaCastController.connect(device) ?: return false
+        val controller = controllers[device.type] ?: run {
+            Timber.w("无 %s 协议控制器", device.type)
+            return false
+        }
+        val route = controller.connect(device) ?: return false
         _activeRoute.value = route
         _routeState.value = route.state.value
 
@@ -119,7 +140,7 @@ class RouteManager @Inject constructor(
             route?.release()
             _activeRoute.value = null
             _routeState.value = null
-            dlnaCastController.release()
+            controllers.values.forEach { runCatching { it.release() } }
         }
     }
 }

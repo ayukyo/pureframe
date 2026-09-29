@@ -67,3 +67,8 @@
 # 混淆会破坏 wsdl/action 反射查找，全量 keep
 -keep class com.yinnho.upnpcast.** { *; }
 -dontwarn com.yinnho.upnpcast.**
+
+# Google Cast (play-services-cast-framework)：OptionsProvider 经 manifest 类名反射创建；
+# GMS 库自带 consumer rules，只需补 dontwarn（gms 内部引用的可选类在某些设备缺失）
+-dontwarn com.google.android.gms.cast.**
+-dontwarn com.google.android.gms.internal.**

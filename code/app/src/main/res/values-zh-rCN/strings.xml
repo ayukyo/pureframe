@@ -316,6 +316,7 @@
     <string name="cast_no_devices">未发现可投屏的设备</string>
     <string name="cast_same_wifi_hint">请确认手机与电视连接同一 Wi-Fi 网络</string>
     <string name="cast_dlna_label">DLNA 设备</string>
+    <string name="cast_googlecast_label">Google Cast 设备</string>
     <string name="cast_connected_to">正在投屏到 %1$s</string>
     <string name="cast_disconnect">断开</string>
     <string name="cast_active_label">投屏中</string>

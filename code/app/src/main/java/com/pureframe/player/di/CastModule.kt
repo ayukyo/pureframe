@@ -4,17 +4,19 @@ import com.pureframe.player.cast.CastController
 import com.pureframe.player.cast.ContentUrlProvider
 import com.pureframe.player.cast.DlnaCastController
 import com.pureframe.player.cast.DlnaContentUrlProvider
+import com.pureframe.player.cast.GoogleCastController
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import dagger.multibindings.IntoSet
 import javax.inject.Singleton
 
 /**
  * 投屏模块 DI 绑定
  *
- * 接口化架构的关键点：上层注入 CastController / ContentUrlProvider 接口，
- * 新增协议时在此追加 @Binds 即可，上层零改动。
+ * 接口化架构的关键点：上层注入 CastController 接口集合（@IntoSet multibinding），
+ * 新增协议时在此追加一个 @Binds @IntoSet 即可，上层零改动。
  */
 @Module
 @InstallIn(SingletonComponent::class)
@@ -26,5 +28,11 @@ abstract class CastModule {
 
     @Binds
     @Singleton
+    @IntoSet
     abstract fun bindDlnaCastController(impl: DlnaCastController): CastController
+
+    @Binds
+    @Singleton
+    @IntoSet
+    abstract fun bindGoogleCastController(impl: GoogleCastController): CastController
 }

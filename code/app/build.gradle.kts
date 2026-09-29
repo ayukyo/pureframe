@@ -3,6 +3,7 @@ import java.util.Properties
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+    id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.devtools.ksp")
     id("com.google.dagger.hilt.android")
 }
@@ -18,7 +19,7 @@ fun envOr(key: String): String? =
 
 android {
     namespace = "com.pureframe.player"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.pureframe.player"
@@ -101,9 +102,8 @@ android {
         buildConfig = true
     }
 
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.4"
-    }
+    // Compose Compiler 已由 org.jetbrains.kotlin.plugin.compose 插件管理
+    // （Kotlin 2.0 起版本与 Kotlin 一致，不再需要 kotlinCompilerExtensionVersion）
 
     packaging {
         resources {
@@ -138,18 +138,19 @@ dependencies {
     // DataStore
     implementation("androidx.datastore:datastore-preferences:1.0.0")
 
-    // ExoPlayer - 视频播放
-    implementation("androidx.media3:media3-exoplayer:1.2.0")
-    implementation("androidx.media3:media3-ui:1.2.0")
-    implementation("androidx.media3:media3-session:1.2.0")
+    // ExoPlayer - 视频播放（1.9.0：media3-cast 的 CastPlayer.Builder 需要 ≥1.9.0）
+    implementation("androidx.media3:media3-exoplayer:1.9.0")
+    implementation("androidx.media3:media3-ui:1.9.0")
+    implementation("androidx.media3:media3-session:1.9.0")
+    implementation("androidx.media3:media3-cast:1.9.0")
 
     // Coil - 图片加载
     implementation("io.coil-kt:coil-compose:2.5.0")
     implementation("io.coil-kt:coil-video:2.5.0")
 
-    // Hilt - 依赖注入
-    implementation("com.google.dagger:hilt-android:2.48.1")
-    ksp("com.google.dagger:hilt-compiler:2.48.1")
+    // Hilt - 依赖注入（2.51.1：Kotlin 2.0 元数据需要，2.48 无法读取）
+    implementation("com.google.dagger:hilt-android:2.51.1")
+    ksp("com.google.dagger:hilt-compiler:2.51.1")
     implementation("androidx.hilt:hilt-navigation-compose:1.1.0")
 
     // Coroutines

@@ -324,6 +324,7 @@
     <string name="cast_no_devices">No casting devices found</string>
     <string name="cast_same_wifi_hint">Make sure your phone and TV are on the same Wi-Fi network</string>
     <string name="cast_dlna_label">DLNA device</string>
+    <string name="cast_googlecast_label">Google Cast device</string>
     <string name="cast_connected_to">Casting to %1$s</string>
     <string name="cast_disconnect">Disconnect</string>
     <string name="cast_active_label">Casting</string>

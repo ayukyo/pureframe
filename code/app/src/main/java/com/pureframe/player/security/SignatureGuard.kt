@@ -51,7 +51,7 @@ object SignatureGuard {
         } else {
             @Suppress("DEPRECATION")
             pm.getPackageInfo(context.packageName, PackageManager.GET_SIGNATURES).signatures
-        }
+        } ?: return null
         val md = java.security.MessageDigest.getInstance("SHA-256")
         signatures.firstOrNull()?.toByteArray()?.let { bytes ->
             md.digest(bytes).joinToString("") { "%02x".format(it) }
