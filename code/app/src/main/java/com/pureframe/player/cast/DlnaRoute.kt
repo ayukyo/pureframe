@@ -42,22 +42,44 @@ class DlnaRoute(
         _state.value = _state.value.copy(phase = RoutePhase.CONNECTING)
         currentContent = content
         return try {
-            val url = when (content) {
-                is RouteContent.LocalFile ->
-                    urlProvider.urlFor(File(content.filePath))
+            val videoUrl: String
+            val subtitleUrl: String?
+            when (content) {
+                is RouteContent.LocalFile -> {
+                    videoUrl = urlProvider.urlFor(File(content.filePath))
                         ?: run {
                             fail("文件不可读，无法投屏")
                             return false
                         }
-                is RouteContent.Stream ->
-                    urlProvider.urlForStream(content.streamUrl)
+                    subtitleUrl = content.subtitlePath?.let { urlProvider.urlFor(File(it)) }
+                }
+                is RouteContent.Stream -> {
+                    videoUrl = urlProvider.urlForStream(content.streamUrl)
+                    subtitleUrl = content.subtitlePath?.let { urlProvider.urlFor(File(it)) }
+                }
             }
-            Timber.i("DLNA: 推流 %s -> %s", url, device.name)
-            val ok = DLNACast.castToDevice(
-                device = device,
-                url = url,
-                title = content.title
-            )
+            // 字幕文件：file server 已支持任意文件 + Range，srt 走同一通道下发
+            val options = subtitleUrl?.let {
+                com.yinnho.upnpcast.CastOptions(
+                    subtitleUri = it,
+                    subtitleMimeType = "application/x-subrip"
+                )
+            }
+            Timber.i("DLNA: 推流 %s -> %s (subtitle=%s)", videoUrl, device.name, subtitleUrl != null)
+            val ok = if (options != null) {
+                DLNACast.castToDevice(
+                    device = device,
+                    url = videoUrl,
+                    title = content.title,
+                    options = options
+                )
+            } else {
+                DLNACast.castToDevice(
+                    device = device,
+                    url = videoUrl,
+                    title = content.title
+                )
+            }
             if (!ok) {
                 fail("设备拒绝了投屏请求")
                 return false

@@ -247,6 +247,20 @@ fun SettingsScreen(
                 }
             }
 
+            // 投屏设置
+            item {
+                SettingsSection(title = stringResource(R.string.settings_section_cast)) {
+                    // 自动连接上次投屏设备
+                    SwitchSettingsItem(
+                        icon = Icons.Filled.Cast,
+                        title = stringResource(R.string.settings_cast_auto_connect),
+                        subtitle = stringResource(R.string.settings_cast_auto_connect_desc),
+                        checked = userPreferences.castAutoConnect,
+                        onCheckedChange = { viewModel.setCastAutoConnect(it) }
+                    )
+                }
+            }
+
             // 关于
             item {
                 SettingsSection(title = stringResource(R.string.settings_section_about)) {

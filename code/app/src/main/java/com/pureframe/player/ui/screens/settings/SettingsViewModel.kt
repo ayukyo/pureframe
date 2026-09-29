@@ -184,6 +184,15 @@ class SettingsViewModel @Inject constructor(
     }
 
     /**
+     * 更新投屏自动连接上次设备开关
+     */
+    fun setCastAutoConnect(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.updateCastAutoConnect(enabled)
+        }
+    }
+
+    /**
      * 清除所有偏好设置
      */
     fun clearAllPreferences() {

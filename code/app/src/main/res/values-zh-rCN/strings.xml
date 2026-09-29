@@ -207,7 +207,11 @@
     <string name="settings_section_player">播放器</string>
     <string name="settings_section_download">下载</string>
     <string name="settings_section_interface">界面</string>
+    <string name="settings_section_cast">投屏</string>
     <string name="settings_section_about">关于</string>
+
+    <string name="settings_cast_auto_connect">自动连接上次设备</string>
+    <string name="settings_cast_auto_connect_desc">打开投屏设备面板时自动连接上次投屏的设备</string>
 
     <string name="settings_loop_play">循环播放</string>
     <string name="settings_loop_play_desc">播放结束时自动重播</string>

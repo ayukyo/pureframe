@@ -36,4 +36,10 @@ object PreferencesKeys {
     val KEEP_SCREEN_ON = booleanPreferencesKey("keep_screen_on")
     val BRIGHTNESS_GESTURE = booleanPreferencesKey("brightness_gesture")
     val VOLUME_GESTURE = booleanPreferencesKey("volume_gesture")
+
+    // 投屏设置
+    val CAST_AUTO_CONNECT = booleanPreferencesKey("cast_auto_connect")
+    val CAST_LAST_DEVICE_ID = stringPreferencesKey("cast_last_device_id")
+    val CAST_LAST_DEVICE_NAME = stringPreferencesKey("cast_last_device_name")
+    val CAST_LAST_DEVICE_TYPE = stringPreferencesKey("cast_last_device_type")
 }

@@ -62,12 +62,22 @@ enum class RouteType {
  * @param title 显示标题（投到电视端显示）
  * @param filePath 本地文件绝对路径（本地播放或经 ContentUrlProvider 转 URL）
  * @param streamUrl 已就绪的流 URL（如 BT 边下边播的 StreamProxyServer 地址，可直接下发给电视）
+ * @param subtitlePath 同目录同名 .srt 字幕文件（存在时随视频投递给电视端）
  */
 sealed class RouteContent {
     abstract val title: String
 
-    data class LocalFile(val filePath: String, override val title: String) : RouteContent()
-    data class Stream(val streamUrl: String, override val title: String) : RouteContent()
+    data class LocalFile(
+        val filePath: String,
+        override val title: String,
+        val subtitlePath: String? = null
+    ) : RouteContent()
+
+    data class Stream(
+        val streamUrl: String,
+        override val title: String,
+        val subtitlePath: String? = null
+    ) : RouteContent()
 }
 
 /**

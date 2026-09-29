@@ -67,7 +67,24 @@ class DlnaContentUrlProvider @Inject constructor(
         return "http://$ip:$PORT$TOKEN_PATH?path=$encoded"
     }
 
-    override fun urlForStream(streamUrl: String): String = streamUrl
+    override fun urlForStream(streamUrl: String): String {
+        // BT 边下边播流：StreamProxyServer 输出 http://127.0.0.1:{port}/... 仅本机可达。
+        // 服务器本身监听全部网络接口（ServerSocket accept 未绑定地址），
+        // 把 host 重写为本机 LAN IP 后电视端即可直接拉流。
+        if (streamUrl.startsWith("http://127.0.0.1") || streamUrl.startsWith("http://localhost")) {
+            val ip = currentLanIp()
+            if (ip == null) {
+                Timber.w("DlnaContentUrlProvider: BT 流重写失败，未找到局域网 IP")
+                return streamUrl
+            }
+            val rewritten = streamUrl
+                .replaceFirst("127.0.0.1", ip)
+                .replaceFirst("localhost", ip)
+            Timber.i("DlnaContentUrlProvider: BT 流 URL 重写 -> %s", rewritten)
+            return rewritten
+        }
+        return streamUrl
+    }
 
     override fun release() {
         runCatching { DLNACast.cleanup() }

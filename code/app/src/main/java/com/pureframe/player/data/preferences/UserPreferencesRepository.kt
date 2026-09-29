@@ -56,7 +56,13 @@ class UserPreferencesRepository @Inject constructor(
             // 其他设置
             keepScreenOn = preferences[PreferencesKeys.KEEP_SCREEN_ON] ?: true,
             brightnessGesture = preferences[PreferencesKeys.BRIGHTNESS_GESTURE] ?: true,
-            volumeGesture = preferences[PreferencesKeys.VOLUME_GESTURE] ?: true
+            volumeGesture = preferences[PreferencesKeys.VOLUME_GESTURE] ?: true,
+
+            // 投屏设置
+            castAutoConnect = preferences[PreferencesKeys.CAST_AUTO_CONNECT] ?: false,
+            castLastDeviceId = preferences[PreferencesKeys.CAST_LAST_DEVICE_ID] ?: "",
+            castLastDeviceName = preferences[PreferencesKeys.CAST_LAST_DEVICE_NAME] ?: "",
+            castLastDeviceType = preferences[PreferencesKeys.CAST_LAST_DEVICE_TYPE] ?: ""
         )
     }
     
@@ -225,6 +231,26 @@ class UserPreferencesRepository @Inject constructor(
     }
     
     /**
+     * 更新投屏自动连接开关
+     */
+    suspend fun updateCastAutoConnect(enabled: Boolean) {
+        dataStore.edit { prefs ->
+            prefs[PreferencesKeys.CAST_AUTO_CONNECT] = enabled
+        }
+    }
+
+    /**
+     * 记住上次投屏设备（投屏成功后调用，供下次自动连接）
+     */
+    suspend fun updateCastLastDevice(device: com.pureframe.player.cast.CastDevice) {
+        dataStore.edit { prefs ->
+            prefs[PreferencesKeys.CAST_LAST_DEVICE_ID] = device.id
+            prefs[PreferencesKeys.CAST_LAST_DEVICE_NAME] = device.name
+            prefs[PreferencesKeys.CAST_LAST_DEVICE_TYPE] = device.type.name
+        }
+    }
+
+    /**
      * 批量更新用户偏好设置
      */
     suspend fun updateUserPreferences(preferences: UserPreferences) {
@@ -254,6 +280,12 @@ class UserPreferencesRepository @Inject constructor(
             prefs[PreferencesKeys.KEEP_SCREEN_ON] = preferences.keepScreenOn
             prefs[PreferencesKeys.BRIGHTNESS_GESTURE] = preferences.brightnessGesture
             prefs[PreferencesKeys.VOLUME_GESTURE] = preferences.volumeGesture
+
+            // 投屏设置
+            prefs[PreferencesKeys.CAST_AUTO_CONNECT] = preferences.castAutoConnect
+            prefs[PreferencesKeys.CAST_LAST_DEVICE_ID] = preferences.castLastDeviceId
+            prefs[PreferencesKeys.CAST_LAST_DEVICE_NAME] = preferences.castLastDeviceName
+            prefs[PreferencesKeys.CAST_LAST_DEVICE_TYPE] = preferences.castLastDeviceType
         }
     }
     

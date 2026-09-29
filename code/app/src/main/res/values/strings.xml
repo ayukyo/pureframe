@@ -213,7 +213,11 @@
     <string name="settings_section_player">Player</string>
     <string name="settings_section_download">Downloads</string>
     <string name="settings_section_interface">Interface</string>
+    <string name="settings_section_cast">Casting</string>
     <string name="settings_section_about">About</string>
+
+    <string name="settings_cast_auto_connect">Auto-connect last device</string>
+    <string name="settings_cast_auto_connect_desc">Automatically connect to the last cast device when opening the device picker</string>
 
     <string name="settings_loop_play">Loop playback</string>
     <string name="settings_loop_play_desc">Replay automatically when the video ends</string>

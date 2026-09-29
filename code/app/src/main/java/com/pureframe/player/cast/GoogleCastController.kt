@@ -206,23 +206,40 @@ class CastRoute(
     override suspend fun activate(content: RouteContent, startPositionMs: Long): Boolean {
         _state.value = _state.value.copy(phase = RoutePhase.CONNECTING)
         return try {
-            val url = when (content) {
-                is RouteContent.LocalFile ->
+            val url: String
+            val subtitleUrl: String?
+            when (content) {
+                is RouteContent.LocalFile -> {
                     // 本机文件同样经 ContentUrlProvider 服务化（Cast receiver 不能读 file://）
-                    contentUrlProvider.urlFor(java.io.File(content.filePath))
+                    url = contentUrlProvider.urlFor(java.io.File(content.filePath))
                         ?: run {
                             fail("文件不可读，无法投屏")
                             return false
                         }
-                is RouteContent.Stream -> contentUrlProvider.urlForStream(content.streamUrl)
+                    subtitleUrl = content.subtitlePath?.let { contentUrlProvider.urlFor(java.io.File(it)) }
+                }
+                is RouteContent.Stream -> {
+                    url = contentUrlProvider.urlForStream(content.streamUrl)
+                    subtitleUrl = content.subtitlePath?.let { contentUrlProvider.urlFor(java.io.File(it)) }
+                }
             }
             val metadata = MediaMetadata(MediaMetadata.MEDIA_TYPE_MOVIE)
             metadata.putString(MediaMetadata.KEY_TITLE, content.title)
-            val mediaInfo = MediaInfo.Builder(url)
+            val builder = MediaInfo.Builder(url)
                 .setStreamType(MediaInfo.STREAM_TYPE_BUFFERED)
                 .setContentType(mimeTypeFor(url.substringAfterLast('/').substringBefore('?')))
                 .setMetadata(metadata)
-                .build()
+            // 外挂 srt 字幕：MediaTrack TYPE_TEXT 随 load 下发，receiver 端可切
+            if (subtitleUrl != null) {
+                val track = com.google.android.gms.cast.MediaTrack.Builder(SUBTITLE_TRACK_ID, com.google.android.gms.cast.MediaTrack.TYPE_TEXT)
+                    .setName("Subtitle")
+                    .setSubtype(com.google.android.gms.cast.MediaTrack.SUBTYPE_SUBTITLES)
+                    .setContentType("application/x-subrip")
+                    .setContentId(subtitleUrl)
+                    .build()
+                builder.setMediaTracks(listOf(track))
+            }
+            val mediaInfo = builder.build()
 
             val result = kotlinx.coroutines.withTimeoutOrNull(15_000L) {
                 kotlinx.coroutines.withContext(Dispatchers.IO) {
@@ -284,6 +301,11 @@ class CastRoute(
     override fun release() {
         stopProgressPolling()
         _state.value = _state.value.copy(phase = RoutePhase.IDLE, isPlaying = false)
+    }
+
+    companion object {
+        /** 外挂字幕轨道 ID（Cast 约定非 0） */
+        private const val SUBTITLE_TRACK_ID = 1L
     }
 
     /** 1s 轮询远端进度（与 DlnaRoute 对称；Cast 亦有事件推送，轮询作兜底统一模型） */

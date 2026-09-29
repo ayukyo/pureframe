@@ -33,7 +33,13 @@ data class UserPreferences(
     // 其他设置
     val keepScreenOn: Boolean = true,
     val brightnessGesture: Boolean = true,
-    val volumeGesture: Boolean = true
+    val volumeGesture: Boolean = true,
+
+    // 投屏设置
+    val castAutoConnect: Boolean = false,
+    val castLastDeviceId: String = "",
+    val castLastDeviceName: String = "",
+    val castLastDeviceType: String = ""
 )
 
 /**

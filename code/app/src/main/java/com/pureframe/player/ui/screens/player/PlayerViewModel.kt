@@ -35,6 +35,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import java.io.File
 import javax.inject.Inject
 import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -226,8 +227,10 @@ class PlayerViewModel @Inject constructor(
                 
                 // 加载视频文件
                 playerManager.loadLocalFile(video.filePath)
-                // 记录投屏内容（本机文件，投屏时经 ContentUrlProvider 转 LAN URL）
-                currentRouteContent = RouteContent.LocalFile(video.filePath, video.title)
+                // 记录投屏内容（本机文件，投屏时经 ContentUrlProvider 转 LAN URL；同名 srt 一并投递）
+                currentRouteContent = RouteContent.LocalFile(
+                    video.filePath, video.title, findExternalSubtitle(video.filePath)
+                )
 
                 // 应用用户偏好设置
                 val prefs = userPreferencesRepository.userPreferencesFlow.first()
@@ -270,7 +273,16 @@ class PlayerViewModel @Inject constructor(
             result.fold(
                 onSuccess = { streamUrl ->
                     currentStreamProxyUrl = streamUrl
-                    currentRouteContent = RouteContent.Stream(streamUrl, downloadTask.title)
+                    // BT 流：字幕在下载目录按任务文件名找同名 srt（largestFile 视频文件）
+                    val videoFile = downloadTask.savePath.let { path ->
+                        File(path).listFiles { f ->
+                            f.isFile && f.extension.lowercase() in listOf("mp4", "mkv", "avi", "webm", "ts", "mov", "m4v", "flv", "wmv", "mpg", "mpeg", "3gp")
+                        }?.maxByOrNull { it.length() }
+                    }
+                    currentRouteContent = RouteContent.Stream(
+                        streamUrl, downloadTask.title,
+                        videoFile?.let { findExternalSubtitle(it.absolutePath) }
+                    )
                     _uiState.update {
                         it.copy(
                             downloadTask = downloadTask,
@@ -643,11 +655,40 @@ class PlayerViewModel @Inject constructor(
     // ==================== 投屏控制（委托 RouteManager） ====================
 
     /**
+     * 查找视频同目录同名 .srt 外挂字幕（例：Movie.mp4 -> Movie.srt）。
+     * 找到则随投屏内容一起下发电视端；本地播放不受影响。
+     */
+    private fun findExternalSubtitle(videoPath: String): String? {
+        val base = videoPath.substringBeforeLast('.')
+        val srt = File("$base.srt")
+        return if (srt.exists() && srt.canRead()) srt.absolutePath else null
+    }
+
+    /**
      * 打开投屏设备弹层并开始扫描
+     *
+     * 自动连接：设置开启且未在投屏时，扫描结果中找到上次设备则自动连接。
+     * 找不到（设备离线/改名）则静默跳过，不打扰用户。
      */
     fun openCastDialog() {
         _showCastDialog.value = true
         refreshCastDevices()
+        maybeAutoConnectLastDevice()
+    }
+
+    /** 扫描完成后尝试自动连接上次投屏设备 */
+    private fun maybeAutoConnectLastDevice() {
+        viewModelScope.launch {
+            val prefs = userPreferencesRepository.userPreferencesFlow.first()
+            if (!prefs.castAutoConnect || routeManager.isCasting) return@launch
+            if (prefs.castLastDeviceId.isBlank()) return@launch
+            // 等本次扫描结束再在结果里找目标设备
+            _isScanningDevices.first { !it }
+            val target = _discoveredDevices.value.firstOrNull { it.id == prefs.castLastDeviceId }
+                ?: return@launch
+            Timber.i("投屏自动连接上次设备: %s", target.name)
+            castToDevice(target)
+        }
     }
 
     fun dismissCastDialog() {
@@ -669,10 +710,14 @@ class PlayerViewModel @Inject constructor(
      * 连接设备并投屏
      *
      * 进度跟随：以本机当前进度为起点，投屏后本机暂停。
+     * 已投屏状态下切换设备：本机进度是投屏开始时冻结的旧值，
+     * 应以当前远端进度为起点，避免回跳。
      */
     fun castToDevice(device: CastDevice) {
         val content = currentRouteContent ?: return
-        val startPos = playerManager.currentPosition.value
+        val startPos = routeManager.routeState.value?.positionMs
+            ?.takeIf { routeManager.isCasting && it > 0L }
+            ?: playerManager.currentPosition.value
         viewModelScope.launch {
             val ok = routeManager.castTo(
                 device = device,
@@ -682,6 +727,8 @@ class PlayerViewModel @Inject constructor(
             )
             if (ok) {
                 _showCastDialog.value = false
+                // 记住本次投屏设备（供「自动连接上次设备」用）
+                userPreferencesRepository.updateCastLastDevice(device)
             } else {
                 _uiState.update {
                     it.copy(errorMessage = LocaleManager.getString(appContext, R.string.cast_connect_failed))
