@@ -62,3 +62,7 @@
 -dontwarn org.conscrypt.**
 -dontwarn org.bouncycastle.**
 -dontwarn org.eclipse.jetty.**
+
+# UPnPCast (DLNA 投屏)：库内通过反射构建 SOAP/XML 协议栈，混淆会破坏反射查找，全量 keep
+-keep class com.yinnho.upnpcast.** { *; }
+-dontwarn com.yinnho.upnpcast.**

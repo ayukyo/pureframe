@@ -96,6 +96,24 @@ fun PlayerScreen(
     val showAspectRatioDialog by viewModel.showAspectRatioDialog.collectAsStateWithLifecycle()
     val showResumeDialog by viewModel.showResumeDialog.collectAsStateWithLifecycle()
     val lastPosition by viewModel.lastPosition.collectAsStateWithLifecycle()
+
+    // 投屏状态
+    val isCasting by viewModel.isCasting.collectAsStateWithLifecycle()
+    val castState by viewModel.castState.collectAsStateWithLifecycle()
+    val showCastDialog by viewModel.showCastDialog.collectAsStateWithLifecycle()
+    val discoveredDevices by viewModel.discoveredDevices.collectAsStateWithLifecycle()
+    val isScanningDevices by viewModel.isScanningDevices.collectAsStateWithLifecycle()
+    // 投屏时播放控制走远程，显示的进度/播放态取远程值
+    val effIsPlaying = if (isCasting) (castState?.isPlaying ?: false) else isPlaying
+    val effPosition = if (isCasting) (castState?.positionMs ?: 0L) else currentPosition
+    val effDuration = if (isCasting) (castState?.durationMs?.takeIf { it > 0 } ?: duration) else duration
+    val effPlaybackState = if (isCasting) {
+        when {
+            castState?.phase == com.pureframe.player.cast.RoutePhase.CONNECTING -> PlayerState.BUFFERING
+            castState?.isPlaying == true -> PlayerState.READY
+            else -> PlayerState.READY
+        }
+    } else playbackState
     
     // 控制栏显示状态
     var showControls by remember { mutableStateOf(true) }
@@ -310,11 +328,11 @@ fun PlayerScreen(
             EnhancedPlayerControls(
                 title = uiState.video?.title
                     ?: uiState.title.ifEmpty { stringResource(R.string.player_title) },
-                isPlaying = isPlaying,
-                currentPosition = currentPosition,
-                duration = duration,
+                isPlaying = effIsPlaying,
+                currentPosition = effPosition,
+                duration = effDuration,
                 bufferedPosition = bufferedPosition,
-                playbackState = playbackState,
+                playbackState = effPlaybackState,
                 playbackSpeed = playbackSpeed,
                 aspectRatio = aspectRatio,
                 isFullscreen = isFullscreen,
@@ -328,14 +346,22 @@ fun PlayerScreen(
                         onBack()
                     }
                 },
-                onPlayPause = { viewModel.togglePlayPause() },
-                onSeek = { viewModel.seekTo(it) },
-                onSeekRelative = { viewModel.seekRelative(it) },
+                onPlayPause = {
+                    if (isCasting) viewModel.castPlayPause() else viewModel.togglePlayPause()
+                },
+                onSeek = {
+                    if (isCasting) viewModel.castSeekTo(it) else viewModel.seekTo(it)
+                },
+                onSeekRelative = {
+                    if (isCasting) viewModel.castSeekRelative(it) else viewModel.seekRelative(it)
+                },
                 onSpeedChange = { viewModel.setPlaybackSpeed(it) },
                 onAspectRatioChange = { viewModel.setAspectRatio(it) },
                 onFullscreenToggle = { viewModel.toggleFullscreen() },
                 onShowSpeedDialog = { viewModel.showSpeedDialog() },
                 onShowAspectRatioDialog = { viewModel.showAspectRatioDialog() },
+                onShowCastDialog = { viewModel.openCastDialog() },
+                isCasting = isCasting,
                 onEnterPip = { enterFloatingWindow() },
                 onUserInteraction = {
                     controlsTrigger++
@@ -381,6 +407,22 @@ fun PlayerScreen(
                 currentRatio = aspectRatio,
                 onRatioChange = { viewModel.setAspectRatio(it) },
                 onDismiss = { viewModel.dismissAspectRatioDialog() }
+            )
+        }
+
+        // 投屏设备选择弹层
+        if (showCastDialog) {
+            CastDevicePicker(
+                devices = discoveredDevices,
+                isScanning = isScanningDevices,
+                isCasting = isCasting,
+                currentDeviceName = castState?.deviceName,
+                onDeviceClick = { viewModel.castToDevice(it) },
+                onDisconnect = {
+                    viewModel.disconnectCast()
+                },
+                onRefresh = { viewModel.refreshCastDevices() },
+                onDismiss = { viewModel.dismissCastDialog() }
             )
         }
         

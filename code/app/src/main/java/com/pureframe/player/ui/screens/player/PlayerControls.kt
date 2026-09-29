@@ -68,6 +68,8 @@ fun EnhancedPlayerControls(
     onFullscreenToggle: () -> Unit,
     onShowSpeedDialog: () -> Unit,
     onShowAspectRatioDialog: () -> Unit,
+    onShowCastDialog: (() -> Unit)? = null,
+    isCasting: Boolean = false,
     onEnterPip: (() -> Unit)? = null,
     onUserInteraction: () -> Unit = {},
     modifier: Modifier = Modifier
@@ -95,6 +97,8 @@ fun EnhancedPlayerControls(
             onBack = onBack,
             onShowSpeedDialog = onShowSpeedDialog,
             onShowAspectRatioDialog = onShowAspectRatioDialog,
+            onShowCastDialog = onShowCastDialog,
+            isCasting = isCasting,
             onEnterPip = onEnterPip,
             onUserInteraction = onUserInteraction,
             modifier = Modifier
@@ -145,6 +149,8 @@ fun TopControlBar(
     onBack: () -> Unit,
     onShowSpeedDialog: () -> Unit,
     onShowAspectRatioDialog: () -> Unit,
+    onShowCastDialog: (() -> Unit)? = null,
+    isCasting: Boolean = false,
     onEnterPip: (() -> Unit)? = null,
     onUserInteraction: () -> Unit = {},
     modifier: Modifier = Modifier
@@ -195,6 +201,24 @@ fun TopControlBar(
                     .weight(1f)
                     .padding(horizontal = 12.dp)
             )
+
+            // 投屏按钮（标题右侧）
+            if (onShowCastDialog != null) {
+                IconButton(
+                    onClick = {
+                        onUserInteraction()
+                        onShowCastDialog()
+                    },
+                    modifier = Modifier.size(40.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Cast,
+                        contentDescription = stringResource(R.string.cast_button),
+                        tint = if (isCasting) Color(0xFF7CB342) else Color.White,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
 
             // 画中画按钮（非全屏且支持时显示）
             if (onEnterPip != null && !isFullscreen) {

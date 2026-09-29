@@ -309,4 +309,16 @@
     <string name="error_no_stream_url">无法获取流播放 URL</string>
     <string name="error_wait_for_download">尚未下载到该位置，请等待</string>
     <string name="error_directory_not_found">目录不存在: %1$s</string>
+    <!-- 投屏（DLNA） -->
+    <string name="cast_button">投屏</string>
+    <string name="cast_picker_title">在电视上播放</string>
+    <string name="cast_refresh">重新扫描</string>
+    <string name="cast_no_devices">未发现可投屏的设备</string>
+    <string name="cast_same_wifi_hint">请确认手机与电视连接同一 Wi-Fi 网络</string>
+    <string name="cast_dlna_label">DLNA 设备</string>
+    <string name="cast_connected_to">正在投屏到 %1$s</string>
+    <string name="cast_disconnect">断开</string>
+    <string name="cast_active_label">投屏中</string>
+    <string name="cast_connect_failed">连接设备失败</string>
 </resources>
+

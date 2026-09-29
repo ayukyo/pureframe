@@ -165,6 +165,27 @@ dependencies {
     implementation("org.libtorrent4j:libtorrent4j-android-x86:2.1.0-39")
     implementation("org.libtorrent4j:libtorrent4j-android-x86_64:2.1.0-39")
 
+    // UPnPCast - DLNA/UPnP 投屏（coroutine API，MIT）
+    implementation("com.github.yinnho:UPnPCast:v1.3.0")
+    // 自实现 ContentUrlProvider 的 file server（UPnPCast 用 implementation 引入，app 不可见）
+    implementation("org.nanohttpd:nanohttpd:2.3.1")
+
+    // UPnPCast 传递依赖把 androidx.core / recyclerview 抬到 1.16/1.4（要求 compileSdk 35
+    // + AGP 8.6，本项目 compileSdk 34 + AGP 8.2）。constraints 压不住显式依赖，
+    // 用 force 强制回兼容版本——app 未使用这些库 1.13/1.4 之后的 API，无功能影响
+    constraints {
+        implementation("androidx.core:core:1.13.1")
+        implementation("androidx.core:core-ktx:1.13.1")
+        implementation("androidx.recyclerview:recyclerview:1.3.2")
+    }
+    configurations.all {
+        resolutionStrategy {
+            force("androidx.core:core:1.13.1")
+            force("androidx.core:core-ktx:1.13.1")
+            force("androidx.recyclerview:recyclerview:1.3.2")
+        }
+    }
+
     // Testing
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")

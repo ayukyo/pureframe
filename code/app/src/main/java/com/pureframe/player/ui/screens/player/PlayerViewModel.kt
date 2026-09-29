@@ -14,6 +14,9 @@ import com.pureframe.player.domain.usecase.video.UpdatePlayInfoUseCase
 import com.pureframe.player.domain.usecase.download.GetDownloadByIdUseCase
 import com.pureframe.player.player.PlayerManager
 import com.pureframe.player.player.PlayerState
+import com.pureframe.player.cast.CastDevice
+import com.pureframe.player.cast.RouteContent
+import com.pureframe.player.cast.RouteManager
 import com.pureframe.player.download.StreamPlaybackHelper
 import com.pureframe.player.download.StreamPlaybackState
 import com.pureframe.player.download.StreamProgressInfo
@@ -62,6 +65,7 @@ class PlayerViewModel @Inject constructor(
     private val updatePlayInfoUseCase: UpdatePlayInfoUseCase,
     private val getDownloadByIdUseCase: GetDownloadByIdUseCase,
     private val playerManager: PlayerManager,
+    private val routeManager: RouteManager,
     private val streamPlaybackHelper: StreamPlaybackHelper,
     private val userPreferencesRepository: com.pureframe.player.data.preferences.UserPreferencesRepository,
     @ApplicationContext private val appContext: Context
@@ -130,9 +134,39 @@ class PlayerViewModel @Inject constructor(
     
     private val _showResumeDialog = MutableStateFlow(false)
     val showResumeDialog: StateFlow<Boolean> = _showResumeDialog.asStateFlow()
-    
+
     private val _lastPosition = MutableStateFlow(0L)
     val lastPosition: StateFlow<Long> = _lastPosition.asStateFlow()
+
+    // ==================== 投屏（RouteManager 接口化接入） ====================
+
+    /** 投屏设备选择弹层 */
+    private val _showCastDialog = MutableStateFlow(false)
+    val showCastDialog: StateFlow<Boolean> = _showCastDialog.asStateFlow()
+
+    /** 是否正在投屏（投屏中 UI 层切换到远程控制模式） */
+    val isCasting: StateFlow<Boolean> = routeManager.activeRoute
+        .map { it != null }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    /** 远程路由状态（进度/设备名/错误），非投屏时为 null */
+    val castState = routeManager.routeState
+
+    /** 投屏中本机播放器静默，手势层用它拦截 */
+    val castingDeviceName: StateFlow<String?> = routeManager.routeState
+        .map { it?.deviceName }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    /** 打开投屏弹层时触发设备扫描的结果 */
+    private val _discoveredDevices = MutableStateFlow<List<CastDevice>>(emptyList())
+    val discoveredDevices: StateFlow<List<CastDevice>> = _discoveredDevices.asStateFlow()
+
+    private val _isScanningDevices = MutableStateFlow(false)
+    val isScanningDevices: StateFlow<Boolean> = _isScanningDevices.asStateFlow()
+
+    /** 当前内容快照（投屏时构建 RouteContent 用） */
+    private var currentRouteContent: RouteContent? = null
+    private var currentStreamProxyUrl: String? = null
     
     // 仅用于 onCleared() 中的收尾写入（viewModelScope 此时已被取消）
     private val saveScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -192,6 +226,8 @@ class PlayerViewModel @Inject constructor(
                 
                 // 加载视频文件
                 playerManager.loadLocalFile(video.filePath)
+                // 记录投屏内容（本机文件，投屏时经 ContentUrlProvider 转 LAN URL）
+                currentRouteContent = RouteContent.LocalFile(video.filePath, video.title)
 
                 // 应用用户偏好设置
                 val prefs = userPreferencesRepository.userPreferencesFlow.first()
@@ -232,7 +268,9 @@ class PlayerViewModel @Inject constructor(
             val result = streamPlaybackHelper.startStreamPlayback(downloadTask)
             
             result.fold(
-                onSuccess = { _streamUrl ->  // URL 由 StreamPlaybackHelper 内部处理
+                onSuccess = { streamUrl ->
+                    currentStreamProxyUrl = streamUrl
+                    currentRouteContent = RouteContent.Stream(streamUrl, downloadTask.title)
                     _uiState.update {
                         it.copy(
                             downloadTask = downloadTask,
@@ -601,7 +639,86 @@ class PlayerViewModel @Inject constructor(
         // 简化实现：假设总时长已知，按下载比例计算
         return (task.progress / 100f * DEFAULT_VIDEO_DURATION).toLong()
     }
-    
+
+    // ==================== 投屏控制（委托 RouteManager） ====================
+
+    /**
+     * 打开投屏设备弹层并开始扫描
+     */
+    fun openCastDialog() {
+        _showCastDialog.value = true
+        refreshCastDevices()
+    }
+
+    fun dismissCastDialog() {
+        _showCastDialog.value = false
+    }
+
+    /**
+     * 重新扫描局域网投屏设备
+     */
+    fun refreshCastDevices() {
+        viewModelScope.launch {
+            _isScanningDevices.value = true
+            _discoveredDevices.value = routeManager.discoverDevices()
+            _isScanningDevices.value = false
+        }
+    }
+
+    /**
+     * 连接设备并投屏
+     *
+     * 进度跟随：以本机当前进度为起点，投屏后本机暂停。
+     */
+    fun castToDevice(device: CastDevice) {
+        val content = currentRouteContent ?: return
+        val startPos = playerManager.currentPosition.value
+        viewModelScope.launch {
+            val ok = routeManager.castTo(
+                device = device,
+                content = content,
+                startPositionMs = startPos,
+                onLocalPause = { playerManager.pause() }
+            )
+            if (ok) {
+                _showCastDialog.value = false
+            } else {
+                _uiState.update {
+                    it.copy(errorMessage = LocaleManager.getString(appContext, R.string.cast_connect_failed))
+                }
+            }
+        }
+    }
+
+    /**
+     * 断开投屏，本机从断点续播
+     */
+    fun disconnectCast() {
+        val resumePos = routeManager.routeState.value?.positionMs ?: 0L
+        viewModelScope.launch {
+            routeManager.disconnectFromDevice()
+            if (resumePos > 0) {
+                playerManager.seekTo(resumePos)
+            }
+            playerManager.play()
+        }
+    }
+
+    /** 投屏中：播放/暂停切换（发到远端） */
+    fun castPlayPause() {
+        if (routeManager.isCasting) routeManager.playPause()
+    }
+
+    /** 投屏中：绝对跳转（发到远端） */
+    fun castSeekTo(positionMs: Long) {
+        if (routeManager.isCasting) routeManager.seekTo(positionMs)
+    }
+
+    /** 投屏中：相对跳转（发到远端） */
+    fun castSeekRelative(deltaMs: Long) {
+        if (routeManager.isCasting) routeManager.seekRelative(deltaMs)
+    }
+
     override fun onCleared() {
         // 先做业务收尾，再调 super.onCleared()
         // 注意：不能用 viewModelScope —— ViewModel.clear() 会先关闭所有 Closeable
@@ -609,6 +726,25 @@ class PlayerViewModel @Inject constructor(
         // 协程会立即被取消，进度根本存不进去。这里用独立的短生命周期 scope。
         saveProgress(saveScope)
         updatePlayInfo(saveScope)
+        // 投屏进度落库：以远端断点为准（本机进度在投屏期间是冻结的）
+        val castSt = routeManager.routeState.value
+        val castVideo = _uiState.value.video
+        if (castSt != null && castSt.positionMs > 0 && castVideo != null) {
+            saveScope.launch {
+                savePlaybackProgressUseCase(
+                    SavePlaybackProgressUseCase.Params(
+                        videoId = castVideo.id,
+                        videoTitle = castVideo.title,
+                        videoPath = castVideo.filePath,
+                        position = castSt.positionMs,
+                        duration = castSt.durationMs,
+                        completed = castSt.durationMs > 0 && castSt.positionMs >= castSt.durationMs * 0.95f
+                    )
+                )
+            }
+        }
+        // 断开投屏（远端停播），本机已暂停
+        routeManager.release()
         // 停止播放
         playerManager.pause()
         super.onCleared()

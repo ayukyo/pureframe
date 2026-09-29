@@ -62,3 +62,8 @@
     public static int d(...);
     public static int i(...);
 }
+
+# UPnPCast (DLNA 投屏)：库内通过反射构建 SOAP/XML 与 Ktor/NanoHTTPD 协议栈，
+# 混淆会破坏 wsdl/action 反射查找，全量 keep
+-keep class com.yinnho.upnpcast.** { *; }
+-dontwarn com.yinnho.upnpcast.**
