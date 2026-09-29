@@ -25,11 +25,11 @@
 
 > ATD 镜像说明：Automated Test Device，去除相机/联系人等应用，启动快、内存占用小，适合 UI 冒烟。
 
-### 云真机方案（免费额度）
+### 云真机方案（免费额度）→ 已落地 Firebase Test Lab
 
 | 平台 | 免费额度 | 特点 | 限制 |
 |------|----------|------|------|
-| **Firebase Test Lab** | 每天 10 虚拟 + 5 真机测试；Robo 自动爬测 | Google 官方，报错带截图/日志/视频 | 需 Google 账号 + gcloud CLI；真机多在海外机房；国内访问需代理 |
+| **Firebase Test Lab** ✅ 已用 | 每天 10 虚拟 + 5 真机测试；Robo 自动爬测 | Google 官方，报错带截图/日志/视频 | 需 Google 账号 + gcloud CLI；真机多在海外机房；国内访问需代理 |
 | **Samsung Remote Test Lab** | 每天 10 积分 ≈ 2.5h 真机 | 三星全系真机（Galaxy S/A 系列） | 仅三星设备；需三星账号；手动操作走浏览器 |
 | **AWS Device Farm** | 新账户 1000 设备分钟 | 400 台真机 | 试用期一次，之后 $0.17/min |
 | **Google Firebase Device Streaming** | 每项目 30 分钟/月 | ADB 直连云端设备（像本地一样） | 额度少，适合临时调试 |
@@ -71,6 +71,34 @@
 
 验证方法：uiautomator dump 文本/坐标断言 + screencap 目检（ATD 无头镜像旋转后截图可能黑屏，以 dump 为准）。
 
+### 2026-09-29 Firebase Test Lab 云真机 Robo 测试结果（3/3 通过）
+
+用 gcloud 向 3 台物理真机提交 Robo 自动爬测（`--type robo --timeout 3m`，debug 包 APK），全部 Passed：
+
+| 真机 | API | 厂商/系统 | 安装启动 | Robo 爬取 | 崩溃/ANR | 覆盖屏幕 | 结论 |
+|------|-----|-----------|----------|-----------|----------|----------|------|
+| SH-01L（AQUOS sense2） | 28 | SHARP / Android 9 | ✅ | 46 动作全 SUCCESS | 0 | 11 屏 | 通过 |
+| RMX3231（realme C53 同型） | 30 | realme / Android 11 | ✅ | 48 动作，47 SUCCESS+1 脚本结束标记 | 0 | 13 屏 | 通过 |
+| SO-41A（Xperia 10 II） | 31 | Sony / Android 12 | ✅ | 45 动作，43 SUCCESS+2 脚本结束标记 | 0 | 13 屏 | 通过 |
+
+补充观察：
+- **API 28 真机通过**补齐了本地 AVD 矩阵缺失的最低版本（本地最低 API 30）
+- logcat 全程无 `FATAL EXCEPTION`、无 pureframe 进程被杀/ANR 记录
+- 截图目检：MainActivity 冷启动正常（+2.8s~+6.2s Displayed）、底部导航三 tab 完整、Settings 页（Player/Downloads/Interface 分组）渲染正常、添加下载对话框完整可见
+- Robo 主动触发了 `AppManageExternalStorageActivity`（API 30+ 权限页）和 `PickActivity`（SAF），权限引导链路工作正常
+- 产物：每台设备 12+ 截图、爬取轨迹图（sitemap.png）、logcat、录屏 video.mp4；云端保留在 `gs://test-lab-ydwcw2hjh9444-hb4cp62tdbun6/2026-09-29_13:53:54.290421_FNZP/`
+
+复现命令：
+
+```bash
+gcloud firebase test android run --type robo \
+  --app app-debug.apk \
+  --device model=SH-01L,version=28 \
+  --device model=RMX3231,version=30 \
+  --device model=SO-41A,version=31 \
+  --timeout 3m
+```
+
 ### 测试环境关键操作（复现用）
 
 ```bash
@@ -105,3 +133,12 @@ adb shell "content call --uri content://media/none --method scan_volume --arg ex
 
 - ATD 镜像 `screencap` 在 `user_rotation` 旋转后输出全黑（swiftshader 渲染限制），验证横屏布局需改用 uiautomator dump 坐标断言
 - debug 包 Timber 被裁（proguard-debug.pro），模拟器调试时无法看扫描日志；如需深挖可临时在 debug 保留 LocalVideoScanner 的 Timber.i
+
+### 云真机环境踩坑备忘（gcloud / Firebase Test Lab）
+
+- **gcloud 认证**：`auth login --no-launch-browser` 的 PKCE verifier 存在 gcloud 进程内存，**进程退出验证码即作废**；必须让进程保持存活等验证码输入（托管脚本 subprocess.Popen + stdin PIPE 已验证可行，脚本在 `.workbuddy/tmp/oauth_host.py`）
+- **沙箱 Python 冲突**：workbuddy managed Python 的 sqlite3 写 gcloud credentials.db 报 readonly，须设 `CLOUDSDK_PYTHON="C:/Windows/py.exe"`
+- **API 连通性**：`*.googleapis.com` API 调用本机**直连可达**（无需代理）；但 `storage.googleapis.com`（gsutil 拉结果）直连超时、走代理 502 → 改用 REST API + OAuth Bearer token（urllib）下载产物
+- **新项目首次跑测试的两个前置**：① `gcloud services enable testing.googleapis.com`（Google Cloud Testing API，否则 matrix validation 报 SERVICE_NOT_ACTIVATED）；② 不要自建 `--results-bucket`（建桶需计费权限），用默认 `test-lab-<hash>` 桶
+- **拉取结果**：`gsutil ls` 不可用时，用 `gcloud auth print-access-token` + `storage/v1/b/<bucket>/o?prefix=...` REST 列举，`?alt=media` 下载（Python 脚本 `.workbuddy/tmp/download_flt_artifacts.py`）
+- 项目用的是 Gemini 自动创建的 `gen-lang-client-*` 项目，Test Lab 直接可用（Spark 免费层）
