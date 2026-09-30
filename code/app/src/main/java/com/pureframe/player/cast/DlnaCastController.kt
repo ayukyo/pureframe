@@ -149,7 +149,11 @@ class DlnaContentUrlProvider @Inject constructor(
                     val raf = RandomAccessFile(file, "r")
                     raf.seek(start)
                     val length = (end - start + 1)
-                    val resp = newChunkedResponse(Response.Status.PARTIAL_CONTENT, mime, RangeInputStream(raf, length))
+                    // 固定长度响应：不少电视 DLNA 播放器不支持 chunked 编码，
+                    // Content-Length 必须明确（连接复位问题多源于此）
+                    val resp = newFixedLengthResponse(
+                        Response.Status.PARTIAL_CONTENT, mime, RangeInputStream(raf, length), length
+                    )
                     resp.addHeader("Content-Range", "bytes $start-$end/$fileLength")
                     return resp
                 }
@@ -157,7 +161,9 @@ class DlnaContentUrlProvider @Inject constructor(
 
             // 全量请求
             val raf = RandomAccessFile(file, "r")
-            val resp = newChunkedResponse(Response.Status.OK, mime, RangeInputStream(raf, fileLength))
+            val resp = newFixedLengthResponse(
+                Response.Status.OK, mime, RangeInputStream(raf, fileLength), fileLength
+            )
             resp.addHeader("Accept-Ranges", "bytes")
             return resp
         }

@@ -238,18 +238,8 @@ fun TopControlBar(
                 }
             }
 
-            // 画面比例
-            IconButton(
-                onClick = onShowAspectRatioDialog,
-                modifier = Modifier.size(40.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.AspectRatio,
-                    contentDescription = stringResource(R.string.aspect_title),
-                    tint = Color.White,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
+            // 画面比例入口已暂时移除（功能保留：弹层与 ViewModel 逻辑不动，恢复时在此加回
+            // AspectRatio 图标按钮，onClick = onShowAspectRatioDialog）
         }
     }
 }
