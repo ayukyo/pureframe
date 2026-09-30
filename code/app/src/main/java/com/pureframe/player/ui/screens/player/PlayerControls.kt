@@ -238,14 +238,14 @@ fun TopControlBar(
                 }
             }
 
-            // 更多选项
+            // 画面比例
             IconButton(
                 onClick = onShowAspectRatioDialog,
                 modifier = Modifier.size(40.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Filled.MoreVert,
-                    contentDescription = stringResource(R.string.player_more),
+                    imageVector = Icons.Filled.AspectRatio,
+                    contentDescription = stringResource(R.string.aspect_title),
                     tint = Color.White,
                     modifier = Modifier.size(24.dp)
                 )

@@ -34,12 +34,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pureframe.player.R
 import com.pureframe.player.cast.CastDevice
+import com.pureframe.player.ui.theme.appDialogColors
 
 /**
  * 投屏设备选择弹层
  *
- * 展示局域网内发现的 DLNA 设备；空态给「确认同一 Wi-Fi」引导；
+ * 展示局域网内发现的 DLNA/Cast 设备；空态给「确认同一 Wi-Fi」引导；
  * 下拉刷新按钮触发重扫。
+ *
+ * 配色跟随 App 主题（appDialogColors 经 LocalAppDarkTheme 透传），
+ * 而非播放页的固定深色——浅色模式下弹层为浅色底深色字。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -53,9 +57,10 @@ fun CastDevicePicker(
     onRefresh: () -> Unit,
     onDismiss: () -> Unit
 ) {
+    val dlg = appDialogColors()
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = Color(0xFF1E1E22)
+        containerColor = dlg.container
     ) {
         Column(
             modifier = Modifier
@@ -70,7 +75,7 @@ fun CastDevicePicker(
             ) {
                 Text(
                     text = stringResource(R.string.cast_picker_title),
-                    color = Color.White,
+                    color = dlg.onContainer,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.weight(1f)
@@ -78,7 +83,7 @@ fun CastDevicePicker(
                 IconButton(onClick = onRefresh, enabled = !isScanning) {
                     if (isScanning) {
                         CircularProgressIndicator(
-                            color = Color.White,
+                            color = dlg.onContainer,
                             strokeWidth = 2.dp,
                             modifier = Modifier.size(20.dp)
                         )
@@ -86,7 +91,7 @@ fun CastDevicePicker(
                         Icon(
                             imageVector = Icons.Filled.Refresh,
                             contentDescription = stringResource(R.string.cast_refresh),
-                            tint = Color.White
+                            tint = dlg.onContainer
                         )
                     }
                 }
@@ -98,7 +103,7 @@ fun CastDevicePicker(
             if (isCasting && currentDeviceName != null) {
                 Surface(
                     shape = RoundedCornerShape(12.dp),
-                    color = Color(0xFF2B2B31),
+                    color = dlg.selectedContainer,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
@@ -113,7 +118,7 @@ fun CastDevicePicker(
                         )
                         Text(
                             text = stringResource(R.string.cast_connected_to, currentDeviceName),
-                            color = Color.White,
+                            color = dlg.onContainer,
                             fontSize = 14.sp,
                             modifier = Modifier
                                 .weight(1f)
@@ -142,13 +147,13 @@ fun CastDevicePicker(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
                             text = stringResource(R.string.cast_no_devices),
-                            color = Color.White.copy(alpha = 0.85f),
+                            color = dlg.onContainer.copy(alpha = 0.85f),
                             fontSize = 15.sp
                         )
                         Spacer(Modifier.height(6.dp))
                         Text(
                             text = stringResource(R.string.cast_same_wifi_hint),
-                            color = Color.White.copy(alpha = 0.5f),
+                            color = dlg.onContainerMuted,
                             fontSize = 12.sp
                         )
                     }
@@ -169,7 +174,7 @@ fun CastDevicePicker(
                             Icon(
                                 imageVector = if (device.isTv) Icons.Filled.Tv else Icons.Filled.Speaker,
                                 contentDescription = null,
-                                tint = Color.White.copy(alpha = 0.85f),
+                                tint = dlg.onContainer.copy(alpha = 0.85f),
                                 modifier = Modifier.size(24.dp)
                             )
                             Column(
@@ -179,7 +184,7 @@ fun CastDevicePicker(
                             ) {
                                 Text(
                                     text = device.name,
-                                    color = Color.White,
+                                    color = dlg.onContainer,
                                     fontSize = 15.sp
                                 )
                                 Text(
@@ -191,7 +196,7 @@ fun CastDevicePicker(
                                             R.string.cast_dlna_label
                                         }
                                     ),
-                                    color = Color.White.copy(alpha = 0.45f),
+                                    color = dlg.onContainerMuted,
                                     fontSize = 11.sp
                                 )
                             }

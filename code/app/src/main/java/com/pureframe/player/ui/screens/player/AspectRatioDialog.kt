@@ -19,61 +19,66 @@ import androidx.compose.ui.res.stringResource
 import com.pureframe.player.R
 
 /**
- * 画面比例选择对话框
+ * 画面比例选择弹层（底部弹出样式，与投屏设备弹层一致）
  *
  * 只提供两种选项：
  * - 自动 (AUTO) - 保持原始比例
  * - 填充 (FILL) - 填满屏幕
+ *
+ * 配色跟随 App 主题（appDialogColors 经 LocalAppDarkTheme 透传），
+ * 而非播放页的固定深色——浅色模式下弹层为浅色底深色字。
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AspectRatioDialog(
     currentRatio: String,
     onRatioChange: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
-    // 对话框跟随 App 主题深浅色，而不是播放器固定的深色
     val dialogColors = appDialogColors()
-    AlertDialog(
+    ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = dialogColors.container,
-        titleContentColor = dialogColors.onContainer,
-        textContentColor = dialogColors.onContainer,
-        title = {
+        containerColor = dialogColors.container
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 32.dp)
+        ) {
+            // 标题
             Text(
                 text = stringResource(R.string.aspect_title),
-                fontWeight = FontWeight.Medium,
-                fontSize = 18.sp
+                color = dialogColors.onContainer,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.SemiBold
             )
-        },
-        text = {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                RatioOption(
-                    name = stringResource(R.string.aspect_auto),
-                    description = stringResource(R.string.aspect_auto_desc),
-                    isSelected = currentRatio == "AUTO",
-                    colors = dialogColors,
-                    onClick = {
-                        onRatioChange("AUTO")
-                        onDismiss()
-                    }
-                )
-                RatioOption(
-                    name = stringResource(R.string.aspect_fill),
-                    description = stringResource(R.string.aspect_fill_desc),
-                    isSelected = currentRatio == "FILL",
-                    colors = dialogColors,
-                    onClick = {
-                        onRatioChange("FILL")
-                        onDismiss()
-                    }
-                )
-            }
-        },
-        confirmButton = {}
-    )
+
+            Spacer(Modifier.height(12.dp))
+
+            RatioOption(
+                name = stringResource(R.string.aspect_auto),
+                description = stringResource(R.string.aspect_auto_desc),
+                isSelected = currentRatio == "AUTO",
+                colors = dialogColors,
+                onClick = {
+                    onRatioChange("AUTO")
+                    onDismiss()
+                }
+            )
+            Spacer(Modifier.height(4.dp))
+            RatioOption(
+                name = stringResource(R.string.aspect_fill),
+                description = stringResource(R.string.aspect_fill_desc),
+                isSelected = currentRatio == "FILL",
+                colors = dialogColors,
+                onClick = {
+                    onRatioChange("FILL")
+                    onDismiss()
+                }
+            )
+        }
+    }
 }
 
 @Composable
@@ -87,10 +92,10 @@ private fun RatioOption(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(12.dp))
             .background(if (isSelected) colors.selectedContainer else Color.Transparent)
             .clickable(onClick = onClick)
-            .padding(12.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         RadioButton(
@@ -108,8 +113,8 @@ private fun RatioOption(
             Text(
                 text = name,
                 color = colors.onContainer,
-                fontSize = 16.sp,
-                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                fontSize = 15.sp,
+                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
             )
             Text(
                 text = description,
