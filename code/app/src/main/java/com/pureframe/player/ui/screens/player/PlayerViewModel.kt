@@ -5,6 +5,9 @@ import android.window.OnBackInvokedDispatcher
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.session.MediaController
+import androidx.media3.session.SessionToken
+import com.pureframe.player.player.PlaybackService
 import com.pureframe.player.domain.model.Video
 import com.pureframe.player.domain.model.DownloadTask
 import com.pureframe.player.domain.usecase.playback.GetLastPlaybackPositionUseCase
@@ -181,6 +184,14 @@ class PlayerViewModel @Inject constructor(
     // 当前播放的视频ID
     private var currentVideoId: Long? = null
 
+    /**
+     * MediaController 连接 PlaybackService 的引用（用于保活 + 通知栏媒体控件）。
+     *
+     * 持有 MediaController 期间 PlaybackService 是前台服务状态，进程不会被 cached 杀；
+     * 通知栏显示当前视频标题 + 播放/暂停控件。释放后通知与 service 在 10min 超时后回收。
+     */
+    private var mediaController: MediaController? = null
+
     init {
         // 字幕开关：设置页修改后立即同步到播放器（无需重新加载视频）
         viewModelScope.launch {
@@ -188,6 +199,22 @@ class PlayerViewModel @Inject constructor(
                 playerManager.setSubtitleEnabled(prefs.showSubtitle)
             }
         }
+        // 连接 PlaybackService：进程升为前台服务，通知栏媒体控件可见。
+        // 用主线程 Handler 当 executor（1.9.0 没有 Util.mainHandlerExecutor API）。
+        // 注意：这里不调 ListenableFuture.addListener（直接同步调），因为之前的实现
+        // 走过 SessionToken.createCompatToken 反序列化路径，在 Android 13+ 会因
+        // Parcel 严格校验抛 BadParcelableException。改用 SessionToken(Context, ComponentName)
+        // 构造器路径直接构造 binder-safe token。
+        val mainExecutor = java.util.concurrent.Executor { it.run() }
+        runCatching {
+            val token = PlaybackService.newSessionToken(appContext)
+            val controllerFuture = MediaController.Builder(appContext, token).buildAsync()
+            controllerFuture.addListener({
+                runCatching { mediaController = controllerFuture.get() }
+                    .onSuccess { Timber.i("MediaController 已连接 PlaybackService") }
+                    .onFailure { Timber.w(it, "MediaController 取值失败") }
+            }, mainExecutor)
+        }.onFailure { Timber.w(it, "SessionToken 构造失败") }
     }
     
     /**
@@ -797,6 +824,22 @@ class PlayerViewModel @Inject constructor(
         routeManager.release()
         // 停止播放
         playerManager.pause()
+
+        // 延迟释放 MediaController：给用户「切下一个视频 / 返回播放页 / 切换 app」留出
+        // 6s 复用窗口（沿用 service 进程 + ExoPlayer 缓冲，避免重建播放服务的开销）。
+        // 若窗口内用户再次进入播放页，init() 会重新连接 controller 替换这个引用，
+        // 旧 controller 在这里 release 之前会被新的覆盖 → 不会双重 release。
+        val controller = mediaController
+        if (controller != null) {
+            mediaController = null
+            // 用独立 handler 避免依赖 viewModelScope（onCleared 之后 viewModelScope 已 cancel）
+            val handler = android.os.Handler(android.os.Looper.getMainLooper())
+            handler.postDelayed({
+                runCatching { controller.release() }
+                    .onFailure { Timber.w(it, "MediaController.release 失败") }
+            }, 6_000L)
+        }
+
         super.onCleared()
     }
     
