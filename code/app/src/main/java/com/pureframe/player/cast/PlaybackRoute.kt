@@ -113,6 +113,9 @@ enum class RoutePhase {
     /** 已连接，已暂停 */
     PAUSED,
 
+    /** 远端已播放结束（电视端多数会自动退出播放器回首页） */
+    ENDED,
+
     /** 连接断开或播放失败 */
     ERROR
 }

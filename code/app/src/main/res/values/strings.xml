@@ -333,5 +333,6 @@
     <string name="cast_disconnect">Disconnect</string>
     <string name="cast_active_label">Casting</string>
     <string name="cast_connect_failed">Failed to connect to the device</string>
+    <string name="cast_ended_on_device">Playback finished on %1$s</string>
 </resources>
 

@@ -325,5 +325,6 @@
     <string name="cast_disconnect">断开</string>
     <string name="cast_active_label">投屏中</string>
     <string name="cast_connect_failed">连接设备失败</string>
+    <string name="cast_ended_on_device">%1$s 播放已结束</string>
 </resources>
 

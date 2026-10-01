@@ -100,6 +100,16 @@ fun PlayerScreen(
     // 投屏状态
     val isCasting by viewModel.isCasting.collectAsStateWithLifecycle()
     val castState by viewModel.castState.collectAsStateWithLifecycle()
+    val castEndedEvent by viewModel.castEnded.collectAsStateWithLifecycle()
+    // 播完提示条显示状态（收到事件时显示，6s 后自动消失）
+    var showCastEndedToast by remember { mutableStateOf(false) }
+    LaunchedEffect(castEndedEvent) {
+        castEndedEvent?.let {
+            showCastEndedToast = true
+            kotlinx.coroutines.delay(6_000)
+            showCastEndedToast = false
+        }
+    }
     val showCastDialog by viewModel.showCastDialog.collectAsStateWithLifecycle()
     val discoveredDevices by viewModel.discoveredDevices.collectAsStateWithLifecycle()
     val isScanningDevices by viewModel.isScanningDevices.collectAsStateWithLifecycle()
@@ -316,6 +326,45 @@ fun PlayerScreen(
                     indicator = indicator,
                     modifier = Modifier.align(alignment)
                 )
+            }
+        }
+
+        // 投屏结束提示条（远端播完自动断开后显示，自动消失）
+        androidx.compose.animation.AnimatedVisibility(
+            visible = showCastEndedToast,
+            enter = fadeIn(animationSpec = tween(200)) + slideInVertically(                initialOffsetY = { -it },
+                animationSpec = tween(200)
+            ),
+            exit = fadeOut(animationSpec = tween(300)),
+            modifier = Modifier.align(Alignment.TopCenter)
+        ) {
+            Surface(
+                shape = RoundedCornerShape(24.dp),
+                color = Color.Black.copy(alpha = 0.75f),
+                modifier = Modifier.padding(top = 64.dp, start = 24.dp, end = 24.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Cast,
+                        contentDescription = null,
+                        tint = Color.White.copy(alpha = 0.85f),
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = castEndedEvent?.let {
+                            stringResource(
+                                R.string.cast_ended_on_device,
+                                it.deviceName
+                            )
+                        } ?: "",
+                        color = Color.White,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
             }
         }
 

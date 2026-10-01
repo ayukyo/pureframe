@@ -330,6 +330,8 @@ class CastRoute(
                         MediaStatus.PLAYER_STATE_PAUSED -> RoutePhase.PAUSED
                         MediaStatus.PLAYER_STATE_BUFFERING,
                         MediaStatus.PLAYER_STATE_LOADING -> RoutePhase.CONNECTING
+                        // 远端播完，显式给出结束语义（与 DlnaRoute 对称）
+                        MediaStatus.PLAYER_STATE_IDLE -> RoutePhase.ENDED
                         else -> _state.value.phase
                     }
                     _state.value = _state.value.copy(isPlaying = playing, phase = phase)

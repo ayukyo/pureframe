@@ -43,6 +43,16 @@ class RouteManager @Inject constructor(
     private val _routeState = MutableStateFlow<RouteState?>(null)
     val routeState: StateFlow<RouteState?> = _routeState.asStateFlow()
 
+    /**
+     * 远端播完事件（一次性通知）
+     *
+     * 路由轮询发现远端播放结束（DLNA STOPPED / Cast IDLE）时发出，
+     * 随后 RouteManager 自动断开会话。UI 收到后展示「播放已结束」提示。
+     * SharedFlow 保证 UI 在断开完成后仍能收到事件（isCasting 已变 false）。
+     */
+    private val _castEnded = MutableStateFlow<CastEndedEvent?>(null)
+    val castEnded: StateFlow<CastEndedEvent?> = _castEnded.asStateFlow()
+
     /** 是否正在投屏 */
     val isCasting: Boolean get() = _activeRoute.value != null
 
@@ -91,9 +101,16 @@ class RouteManager @Inject constructor(
         _activeRoute.value = route
         _routeState.value = route.state.value
 
-        // 观察路由状态流
+        // 观察路由状态流；远端播完（ENDED）时自动断开会话
         scope.launch {
-            route.state.collect { _routeState.value = it }
+            route.state.collect { st ->
+                _routeState.value = st
+                if (st.phase == RoutePhase.ENDED) {
+                    Timber.i("远端播放结束，自动断开投屏: %s", device.name)
+                    _castEnded.value = CastEndedEvent(deviceName = device.name, positionMs = st.positionMs)
+                    disconnectFromDevice(keepLocalPaused = true)
+                }
+            }
         }
 
         onLocalPause()
@@ -144,3 +161,14 @@ class RouteManager @Inject constructor(
         }
     }
 }
+
+/**
+ * 远端播放结束事件
+ *
+ * @param deviceName 设备名
+ * @param positionMs 结束时的播放位置（约等于时长）
+ */
+data class CastEndedEvent(
+    val deviceName: String,
+    val positionMs: Long
+)

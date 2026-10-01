@@ -153,6 +153,9 @@ class PlayerViewModel @Inject constructor(
     /** 远程路由状态（进度/设备名/错误），非投屏时为 null */
     val castState = routeManager.routeState
 
+    /** 远端播完事件（RouteManager 自动断开后发出，UI 展示一次性提示） */
+    val castEnded = routeManager.castEnded
+
     /** 投屏中本机播放器静默，手势层用它拦截 */
     val castingDeviceName: StateFlow<String?> = routeManager.routeState
         .map { it?.deviceName }

@@ -167,6 +167,8 @@ class DlnaRoute(
                         DLNACast.PlaybackState.PLAYING -> RoutePhase.PLAYING
                         DLNACast.PlaybackState.PAUSED -> RoutePhase.PAUSED
                         DLNACast.PlaybackState.BUFFERING -> RoutePhase.CONNECTING
+                        // 远端播完（电视固件通常会自动退出播放器回首页），显式给出结束语义
+                        DLNACast.PlaybackState.STOPPED -> RoutePhase.ENDED
                         else -> _state.value.phase
                     }
                     _state.value = _state.value.copy(isPlaying = playing, phase = phase)
