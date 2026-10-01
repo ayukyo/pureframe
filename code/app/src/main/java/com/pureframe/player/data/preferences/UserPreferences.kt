@@ -43,7 +43,15 @@ data class UserPreferences(
     val castAutoConnect: Boolean = false,
     val castLastDeviceId: String = "",
     val castLastDeviceName: String = "",
-    val castLastDeviceType: String = ""
+    val castLastDeviceType: String = "",
+
+    // 通知与锁屏（PR8）
+    // mediaNotificationEnabled=false：不建 MediaSession/不起前台服务，通知与锁屏媒体控件全部消失，
+    // 代价是进程保活失效（后台播放可能被系统杀）
+    val mediaNotificationEnabled: Boolean = true,
+    // lockscreenMediaVisible=false：通知 visibility=SECRET，锁屏不显示通知本体；
+    // 系统锁屏媒体卡片是否消失取决于 ROM，效果不保证
+    val lockscreenMediaVisible: Boolean = true
 )
 
 /**

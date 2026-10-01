@@ -9,6 +9,7 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.common.TrackSelectionParameters
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import com.pureframe.player.data.preferences.DecoderType
@@ -101,6 +102,10 @@ class PlayerManager @Inject constructor(
     private val _subtitleEnabled = MutableStateFlow(true)
     val subtitleEnabled: StateFlow<Boolean> = _subtitleEnabled.asStateFlow()
 
+    // 循环模式（PR8：通知栏自定义按钮三态切换 OFF → ALL → ONE → OFF）
+    private val _repeatMode = MutableStateFlow(Player.REPEAT_MODE_OFF)
+    val repeatMode: StateFlow<Int> = _repeatMode.asStateFlow()
+
     // 当前正在播放的 MediaItem URI（PR7 同目录队列切换后通知 UI 刷新）
     private val _currentMediaUri = MutableStateFlow<String?>(null)
     val currentMediaUri: StateFlow<String?> = _currentMediaUri.asStateFlow()
@@ -161,6 +166,24 @@ class PlayerManager @Inject constructor(
             _currentMediaTitle.value = mediaItem?.mediaMetadata?.title?.toString()
             Timber.i("PlayerManager: 切换 MediaItem - uri=%s, title=%s",
                 _currentMediaUri.value, _currentMediaTitle.value)
+        }
+
+        // PR8：循环模式变化时同步 StateFlow（通知栏按钮 / UI 双向同步的下游出口）。
+        // isLooping（UI 单曲循环开关）跟随 REPEAT_MODE_ONE 映射，保证播放页开关状态一致。
+        override fun onRepeatModeChanged(repeatMode: Int) {
+            super.onRepeatModeChanged(repeatMode)
+            _repeatMode.value = repeatMode
+            _isLooping.value = repeatMode == Player.REPEAT_MODE_ONE
+            Timber.d("PlayerManager: repeatMode=%d", repeatMode)
+        }
+
+        // PR8：轨道选择参数变化时同步字幕开关 StateFlow（通知栏「字幕」按钮 → 播放页 UI 跟随）。
+        // 注意 UI 侧 setSubtitleEnabled 也走 trackSelectionParameters，两者统一从这里回灌，
+        // 避免两处写同一 StateFlow 的竞态。
+        override fun onTrackSelectionParametersChanged(trackSelectionParameters: TrackSelectionParameters) {
+            super.onTrackSelectionParametersChanged(trackSelectionParameters)
+            _subtitleEnabled.value = C.TRACK_TYPE_TEXT !in trackSelectionParameters.disabledTrackTypes
+            Timber.d("PlayerManager: subtitleEnabled=%s (trackSelection)", _subtitleEnabled.value)
         }
 
         override fun onTimelineChanged(timeline: androidx.media3.common.Timeline, reason: Int) {
@@ -542,6 +565,21 @@ class PlayerManager @Inject constructor(
      * 当前队列是否还有上一首
      */
     fun hasPrevious(): Boolean = exoPlayer.hasPreviousMediaItem()
+
+    /**
+     * 循环模式三态切换（PR8：通知栏自定义按钮入口，UI 也可复用）。
+     *
+     * OFF → ALL（列表循环）→ ONE（单曲循环）→ OFF。
+     * 状态经 onRepeatModeChanged 回灌 [_repeatMode] / [_isLooping]，通知与 UI 天然同步。
+     */
+    fun toggleRepeat() {
+        val next = when (exoPlayer.repeatMode) {
+            Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
+            Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
+            else -> Player.REPEAT_MODE_OFF
+        }
+        exoPlayer.repeatMode = next
+    }
 
     /**
      * 开始进度更新

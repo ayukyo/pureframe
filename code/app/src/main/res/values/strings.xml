@@ -219,6 +219,16 @@
     <string name="settings_cast_auto_connect">Auto-connect last device</string>
     <string name="settings_cast_auto_connect_desc">Automatically connect to the last cast device when opening the device picker</string>
 
+    <!-- PR8: notification & lock screen -->
+    <string name="settings_section_notification">Notification &amp; lock screen</string>
+    <string name="settings_media_notification">Media notification &amp; controls</string>
+    <string name="settings_media_notification_desc">Show playback controls in the notification bar. When off, the keep-alive foreground service is also disabled — background playback may be stopped by the system (MIUI in particular)</string>
+    <string name="settings_lockscreen_media">Show on lock screen</string>
+    <string name="settings_lockscreen_media_desc">Hide notification details on the lock screen. Note: some devices may still show the system media card on the lock screen</string>
+    <string name="notif_button_subtitle">Subtitles</string>
+    <string name="notif_button_repeat">Repeat mode</string>
+    <string name="notif_button_favorite">Favorite</string>
+
     <string name="settings_loop_play">Loop playback</string>
     <string name="settings_loop_play_desc">Replay automatically when the video ends</string>
     <string name="settings_show_subtitle">Show subtitles</string>

@@ -43,4 +43,8 @@ object PreferencesKeys {
     val CAST_LAST_DEVICE_ID = stringPreferencesKey("cast_last_device_id")
     val CAST_LAST_DEVICE_NAME = stringPreferencesKey("cast_last_device_name")
     val CAST_LAST_DEVICE_TYPE = stringPreferencesKey("cast_last_device_type")
+
+    // 通知与锁屏（PR8）
+    val MEDIA_NOTIFICATION_ENABLED = booleanPreferencesKey("media_notification_enabled")
+    val LOCKSCREEN_MEDIA_VISIBLE = booleanPreferencesKey("lockscreen_media_visible")
 }

@@ -63,7 +63,11 @@ class UserPreferencesRepository @Inject constructor(
             castAutoConnect = preferences[PreferencesKeys.CAST_AUTO_CONNECT] ?: false,
             castLastDeviceId = preferences[PreferencesKeys.CAST_LAST_DEVICE_ID] ?: "",
             castLastDeviceName = preferences[PreferencesKeys.CAST_LAST_DEVICE_NAME] ?: "",
-            castLastDeviceType = preferences[PreferencesKeys.CAST_LAST_DEVICE_TYPE] ?: ""
+            castLastDeviceType = preferences[PreferencesKeys.CAST_LAST_DEVICE_TYPE] ?: "",
+
+            // 通知与锁屏（PR8）
+            mediaNotificationEnabled = preferences[PreferencesKeys.MEDIA_NOTIFICATION_ENABLED] ?: true,
+            lockscreenMediaVisible = preferences[PreferencesKeys.LOCKSCREEN_MEDIA_VISIBLE] ?: true
         )
     }
     
@@ -269,6 +273,30 @@ class UserPreferencesRepository @Inject constructor(
     }
 
     /**
+     * 更新媒体通知总开关（PR8 语义 A）
+     *
+     * false 时不建 MediaSession / 不起媒体前台服务，通知与锁屏媒体控件全部消失，
+     * 进程保活同时失效（设置文案已告知用户）。
+     */
+    suspend fun updateMediaNotificationEnabled(enabled: Boolean) {
+        dataStore.edit { prefs ->
+            prefs[PreferencesKeys.MEDIA_NOTIFICATION_ENABLED] = enabled
+        }
+    }
+
+    /**
+     * 更新锁屏通知内容可见性（PR8 语义 B）
+     *
+     * false 时通知 visibility=SECRET，锁屏不显示通知本体；
+     * 系统锁屏媒体卡片是否消失取决于 ROM，效果不保证。
+     */
+    suspend fun updateLockscreenMediaVisible(enabled: Boolean) {
+        dataStore.edit { prefs ->
+            prefs[PreferencesKeys.LOCKSCREEN_MEDIA_VISIBLE] = enabled
+        }
+    }
+
+    /**
      * 批量更新用户偏好设置
      */
     suspend fun updateUserPreferences(preferences: UserPreferences) {
@@ -305,6 +333,10 @@ class UserPreferencesRepository @Inject constructor(
             prefs[PreferencesKeys.CAST_LAST_DEVICE_ID] = preferences.castLastDeviceId
             prefs[PreferencesKeys.CAST_LAST_DEVICE_NAME] = preferences.castLastDeviceName
             prefs[PreferencesKeys.CAST_LAST_DEVICE_TYPE] = preferences.castLastDeviceType
+
+            // 通知与锁屏（PR8）
+            prefs[PreferencesKeys.MEDIA_NOTIFICATION_ENABLED] = preferences.mediaNotificationEnabled
+            prefs[PreferencesKeys.LOCKSCREEN_MEDIA_VISIBLE] = preferences.lockscreenMediaVisible
         }
     }
     

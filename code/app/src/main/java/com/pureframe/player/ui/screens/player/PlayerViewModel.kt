@@ -218,6 +218,23 @@ class PlayerViewModel @Inject constructor(
                 }
             }
         }
+        // PR8：媒体通知总开关（语义 A）。关 → 断开 controller + service 侧释放 session，
+        // 通知/锁屏媒体控件消失（代价：保活失效，后台播放可能被系统停）；开 → 重连触发重建。
+        // 与 service 侧 observePreferences 形成双向对称：service 只处理关闭方向，
+        // 开启方向依赖这里 connectMediaController 重新拉起 onCreate。
+        viewModelScope.launch {
+            var lastEnabled: Boolean? = null
+            userPreferencesRepository.userPreferencesFlow.collect { prefs ->
+                val wantNotification = prefs.mediaNotificationEnabled
+                if (lastEnabled == wantNotification) return@collect
+                lastEnabled = wantNotification
+                if (wantNotification) {
+                    connectMediaController()
+                } else {
+                    releaseMediaController()
+                }
+            }
+        }
         // PR7：监听播放器 MediaItem 切换。当用户点通知栏「下一首」时，ExoPlayer 自动切到
         // 同目录 sibling，PlayerViewModel 必须同步：
         // - _uiState.video → 标题栏、进度归属、saveProgress 都依赖它

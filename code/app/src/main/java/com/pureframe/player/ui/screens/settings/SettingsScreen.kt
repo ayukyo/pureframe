@@ -271,6 +271,31 @@ fun SettingsScreen(
                 }
             }
 
+            // 通知与锁屏（PR8）
+            item {
+                SettingsSection(title = stringResource(R.string.settings_section_notification)) {
+                    // 媒体通知总开关：关闭 = 不建 MediaSession/不起前台服务
+                    SwitchSettingsItem(
+                        icon = Icons.Filled.Notifications,
+                        title = stringResource(R.string.settings_media_notification),
+                        subtitle = stringResource(R.string.settings_media_notification_desc),
+                        checked = userPreferences.mediaNotificationEnabled,
+                        onCheckedChange = { viewModel.setMediaNotificationEnabled(it) }
+                    )
+
+                    Divider(color = MaterialTheme.colorScheme.outlineVariant, modifier = Modifier.padding(vertical = 8.dp))
+
+                    // 锁屏通知内容可见性：visibility=SECRET（部分机型锁屏媒体卡片仍可能显示）
+                    SwitchSettingsItem(
+                        icon = Icons.Filled.Lock,
+                        title = stringResource(R.string.settings_lockscreen_media),
+                        subtitle = stringResource(R.string.settings_lockscreen_media_desc),
+                        checked = userPreferences.lockscreenMediaVisible,
+                        onCheckedChange = { viewModel.setLockscreenMediaVisible(it) }
+                    )
+                }
+            }
+
             // 关于
             item {
                 SettingsSection(title = stringResource(R.string.settings_section_about)) {
