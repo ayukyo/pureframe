@@ -8,6 +8,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.pureframe.player.player.PlaybackService
+import com.pureframe.player.player.PlaylistUtils
 import com.pureframe.player.domain.model.Video
 import com.pureframe.player.domain.model.DownloadTask
 import com.pureframe.player.domain.usecase.playback.GetLastPlaybackPositionUseCase
@@ -64,6 +65,7 @@ import com.pureframe.player.i18n.LocaleManager
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
     private val getVideoByIdUseCase: GetVideoByIdUseCase,
+    private val videoRepository: com.pureframe.player.data.repository.VideoRepository,
     private val getLastPlaybackPositionUseCase: GetLastPlaybackPositionUseCase,
     private val savePlaybackProgressUseCase: SavePlaybackProgressUseCase,
     private val updatePlayInfoUseCase: UpdatePlayInfoUseCase,
@@ -216,6 +218,60 @@ class PlayerViewModel @Inject constructor(
                 }
             }
         }
+        // PR7：监听播放器 MediaItem 切换。当用户点通知栏「下一首」时，ExoPlayer 自动切到
+        // 同目录 sibling，PlayerViewModel 必须同步：
+        // - _uiState.video → 标题栏、进度归属、saveProgress 都依赖它
+        // - currentVideoId → 续播对话框需要
+        // - currentRouteContent → 再次点投屏要投对视频
+        viewModelScope.launch {
+            var lastUri: String? = null
+            playerManager.currentMediaUri.collect { uri ->
+                if (uri == null || uri == lastUri) return@collect
+                lastUri = uri
+                onMediaItemChanged(uri)
+            }
+        }
+    }
+
+    /**
+     * PR7：处理 MediaItem 切换。uri 是 MediaItem.localConfiguration.uri.toString()：
+     * - 本地文件路径是 `file://xxx.mp4`
+     * - 我们存到 DB 的 path 是裸绝对路径（无 scheme）
+     * 用 endsWith 兼容 scheme 前缀差异
+     */
+    private suspend fun onMediaItemChanged(uri: String) {
+        val playbackType = _uiState.value.playbackType
+        if (playbackType != PlaybackType.LOCAL) {
+            // PR7 暂不对 STREAM 模式做同目录队列，仅同步 title 让通知栏显示对
+            playerManager.currentMediaTitle.value?.let { title ->
+                _uiState.update { it.copy(title = title) }
+            }
+            return
+        }
+        // 把 `file:///storage/emulated/0/xxx.mp4` 转回裸绝对路径
+        val path = if (uri.startsWith("file://")) uri.removePrefix("file://") else uri
+        // 首次进播放页：initLocalPlayback 已经设好 video，这里跳过避免 race 覆盖
+        // （initLocalPlayback 协程还没跑完，_uiState.video.id == 0 但 filePath == path；
+        //  切到下一首时 currentVideoId 已变才会触发真正的同步）
+        if (_uiState.value.video?.filePath == path) return
+
+        val video = videoRepository.getVideoByPath(path) ?: run {
+            // 未入库的视频（用户刚扫到但还没入库）：用 path + nameWithoutExtension 构造最小 Video
+            val file = File(path)
+            Video(
+                id = -1L,
+                title = file.nameWithoutExtension,
+                filePath = path,
+                fileSize = file.length()
+            )
+        }
+        currentVideoId = video.id
+        _uiState.update { it.copy(video = video, title = video.title) }
+        // 重新挂载投屏内容（切到下一首后再点投屏要投新视频）
+        currentRouteContent = RouteContent.LocalFile(
+            video.filePath, video.title, findExternalSubtitle(video.filePath)
+        )
+        Timber.i("PlayerViewModel: 同步 UI 到新 MediaItem - %s", video.title)
     }
 
     /**
@@ -283,7 +339,12 @@ class PlayerViewModel @Inject constructor(
                 }
                 
                 // 加载视频文件（title 用于媒体通知/锁屏显示名）
-                playerManager.loadLocalFile(video.filePath, video.title)
+                // PR7：把同目录视频作为隐式队列一起传给 PlayerManager，
+                // 让 ExoPlayer playlist 含多个 MediaItem → Media3 默认通知栏/锁屏
+                // 渲染「上/下一首」按钮，无需自定义 MediaNotificationProvider。
+                val siblings = PlaylistUtils.listVideoSiblings(video.filePath)
+                    .map { it.absolutePath }
+                playerManager.loadLocalFile(video.filePath, video.title, siblings)
                 // 记录投屏内容（本机文件，投屏时经 ContentUrlProvider 转 LAN URL；同名 srt 一并投递）
                 currentRouteContent = RouteContent.LocalFile(
                     video.filePath, video.title, findExternalSubtitle(video.filePath)
@@ -444,6 +505,24 @@ class PlayerViewModel @Inject constructor(
      */
     fun togglePlayPause() {
         playerManager.togglePlayPause()
+    }
+
+    /**
+     * 播放下一个视频（同目录队列下一项）。
+     *
+     * PR7 起由 [com.pureframe.player.player.PlaybackService] 内的 MediaSession 自定义
+     * command "pureframe.NEXT" 触发（通知栏 / 锁屏的下一首按钮）。本方法也可直接由 UI 层
+     * 调用（如以后加入 PlayerScreen 上下首按钮时）。
+     */
+    fun playNext() {
+        playerManager.playNext()
+    }
+
+    /**
+     * 播放上一个视频（同目录队列上一项）。
+     */
+    fun playPrevious() {
+        playerManager.playPrevious()
     }
     
     /**

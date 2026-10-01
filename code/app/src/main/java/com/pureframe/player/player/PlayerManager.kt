@@ -101,6 +101,18 @@ class PlayerManager @Inject constructor(
     private val _subtitleEnabled = MutableStateFlow(true)
     val subtitleEnabled: StateFlow<Boolean> = _subtitleEnabled.asStateFlow()
 
+    // 当前正在播放的 MediaItem URI（PR7 同目录队列切换后通知 UI 刷新）
+    private val _currentMediaUri = MutableStateFlow<String?>(null)
+    val currentMediaUri: StateFlow<String?> = _currentMediaUri.asStateFlow()
+
+    // 队列大小（PR7：UI 用来判断是否还有上下首）
+    private val _mediaItemCount = MutableStateFlow(0)
+    val mediaItemCount: StateFlow<Int> = _mediaItemCount.asStateFlow()
+
+    // 当前 MediaItem 的显示名（取自 MediaMetadata.title，PR7 队列切换后通知 UI 刷新标题栏）
+    private val _currentMediaTitle = MutableStateFlow<String?>(null)
+    val currentMediaTitle: StateFlow<String?> = _currentMediaTitle.asStateFlow()
+
     // 进度更新 Job
     private var progressUpdateJob: Job? = null
 
@@ -139,6 +151,21 @@ class PlayerManager @Inject constructor(
                     }
                 }
             }
+        }
+
+        // PR7：监听 playlist 切换，更新 currentMediaUri/currentMediaTitle/mediaItemCount 三个 StateFlow
+        // 让 PlayerViewModel 能同步 UI 标题、进度归属、投屏内容归属
+        override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+            super.onMediaItemTransition(mediaItem, reason)
+            _currentMediaUri.value = mediaItem?.localConfiguration?.uri?.toString()
+            _currentMediaTitle.value = mediaItem?.mediaMetadata?.title?.toString()
+            Timber.i("PlayerManager: 切换 MediaItem - uri=%s, title=%s",
+                _currentMediaUri.value, _currentMediaTitle.value)
+        }
+
+        override fun onTimelineChanged(timeline: androidx.media3.common.Timeline, reason: Int) {
+            super.onTimelineChanged(timeline, reason)
+            _mediaItemCount.value = exoPlayer.mediaItemCount
         }
         
         override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -182,34 +209,58 @@ class PlayerManager @Inject constructor(
      * 会自动查找视频同目录、同名（不含扩展名）的侧载字幕文件
      * （.srt/.vtt/.ass/.ssa），找到则作为字幕轨附加到 MediaItem。
      *
+     * 内部走「同目录隐式队列」模式（PR7）：扫描同目录视频文件构造 playlist，
+     * 一次性 setMediaItems 给 ExoPlayer。这样通知栏 / 锁屏的上下首按钮天然可用
+     * （Media3 DefaultMediaNotificationProvider 从 playlist 推导）。当传入的
+     * [siblings] 已包含其它文件时优先用调用方提供的列表（避免重复扫盘）。
+     *
      * @param filePath 文件路径
      * @param title 视频显示名（用于媒体通知/锁屏，不传则用文件 basename 兜底）
+     * @param siblings 同目录视频文件列表（绝对路径）；不传则现场扫描
      */
-    fun loadLocalFile(filePath: String, title: String? = null) {
+    fun loadLocalFile(filePath: String, title: String? = null, siblings: List<String>? = null) {
         clearError()
-        val subtitleUri = findSidecarSubtitle(filePath)
-        val effectiveTitle = title ?: java.io.File(filePath).nameWithoutExtension
-        val builder = MediaItem.Builder()
-            .setUri(filePath)
-            .setMediaMetadata(
-                MediaMetadata.Builder()
-                    .setTitle(effectiveTitle)
-                    .setDisplayTitle(effectiveTitle)
-                    .build()
-            )
-        if (subtitleUri != null) {
-            builder.setSubtitleConfigurations(
-                listOf(
-                    MediaItem.SubtitleConfiguration.Builder(subtitleUri)
-                        .setMimeType(subtitleMimeType(subtitleUri))
-                        .setLanguage("zh")
-                        .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
+        // 1. 构造完整队列（同目录视频按自然排序）
+        val siblingPaths = siblings ?: PlaylistUtils.listVideoSiblings(filePath)
+            .map { it.absolutePath }
+        // 防御：current 必须在 siblingPaths 里（siblings 是外部传时可能漏掉）
+        val normalized = if (filePath in siblingPaths) siblingPaths
+            else listOf(filePath) + siblingPaths.filter { it != filePath }
+        val currentIndex = normalized.indexOf(filePath).coerceAtLeast(0)
+
+        // 2. 把每个 sibling 构造为 MediaItem（挂字幕 + title metadata）
+        val items = normalized.map { path ->
+            val isCurrent = path == filePath
+            val subtitleUri = findSidecarSubtitle(path)
+            val effectiveTitle = if (isCurrent) {
+                title ?: java.io.File(path).nameWithoutExtension
+            } else {
+                java.io.File(path).nameWithoutExtension
+            }
+            val builder = MediaItem.Builder()
+                .setUri(path)
+                .setMediaMetadata(
+                    MediaMetadata.Builder()
+                        .setTitle(effectiveTitle)
+                        .setDisplayTitle(effectiveTitle)
                         .build()
                 )
-            )
-            Timber.i("PlayerManager: 找到侧载字幕 - %s", subtitleUri)
+            if (subtitleUri != null) {
+                builder.setSubtitleConfigurations(
+                    listOf(
+                        MediaItem.SubtitleConfiguration.Builder(subtitleUri)
+                            .setMimeType(subtitleMimeType(subtitleUri))
+                            .setLanguage("zh")
+                            .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
+                            .build()
+                    )
+                )
+            }
+            builder.build()
         }
-        exoPlayer.setMediaItem(builder.build())
+        // 3. 一次性 setMediaItems + seekToDefaultPosition(0) → 自动回到 currentIndex = 0
+        //    但 currentIndex 可能 > 0（用户在同目录列表中间点进来的），所以用三参重载
+        exoPlayer.setMediaItems(items, currentIndex, /* startPositionMs = */ 0L)
         exoPlayer.prepare()
         // 应用当前的字幕开关状态
         applySubtitleEnabled(_subtitleEnabled.value)
@@ -462,6 +513,35 @@ class PlayerManager @Inject constructor(
      * 获取 ExoPlayer 实例（用于 UI 绑定）
      */
     fun getPlayer(): ExoPlayer = exoPlayer
+
+    /**
+     * 播放下一个 MediaItem（同目录队列）。
+     *
+     * 仅在 ExoPlayer 当前 MediaItem 不是 playlist 最后一项时生效；否则无效（ExoPlayer 默认行为）。
+     * 通知栏/锁屏的「下一首」按钮也通过本方法触发（PlaybackService 内 onCustomCommand 调用）。
+     */
+    fun playNext() {
+        if (!exoPlayer.hasNextMediaItem()) return
+        exoPlayer.seekToNextMediaItem()
+    }
+
+    /**
+     * 播放上一个 MediaItem（同目录队列）。
+     */
+    fun playPrevious() {
+        if (!exoPlayer.hasPreviousMediaItem()) return
+        exoPlayer.seekToPreviousMediaItem()
+    }
+
+    /**
+     * 当前队列是否还有下一首
+     */
+    fun hasNext(): Boolean = exoPlayer.hasNextMediaItem()
+
+    /**
+     * 当前队列是否还有上一首
+     */
+    fun hasPrevious(): Boolean = exoPlayer.hasPreviousMediaItem()
 
     /**
      * 开始进度更新
