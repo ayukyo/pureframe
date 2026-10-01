@@ -199,12 +199,30 @@ class PlayerViewModel @Inject constructor(
                 playerManager.setSubtitleEnabled(prefs.showSubtitle)
             }
         }
-        // 连接 PlaybackService：进程升为前台服务，通知栏媒体控件可见。
-        // 用主线程 Handler 当 executor（1.9.0 没有 Util.mainHandlerExecutor API）。
-        // 注意：这里不调 ListenableFuture.addListener（直接同步调），因为之前的实现
-        // 走过 SessionToken.createCompatToken 反序列化路径，在 Android 13+ 会因
-        // Parcel 严格校验抛 BadParcelableException。改用 SessionToken(Context, ComponentName)
-        // 构造器路径直接构造 binder-safe token。
+        // 系统 PiP 偏好：根据用户设置决定是否连接 PlaybackService（PR5 保活）
+        // - true（默认）：连接 MediaController → service 前台 → 系统可能自动弹 PiP
+        // - false：不连接 → service 仅在 manifest 注册时按需 bind，不会触发系统 PiP
+        // 切换时实时生效：false 时释放已有 controller；true 时连接
+        viewModelScope.launch {
+            var lastEnabled: Boolean? = null
+            userPreferencesRepository.userPreferencesFlow.collect { prefs ->
+                val wantPip = prefs.systemPipOnHome
+                if (lastEnabled == wantPip) return@collect
+                lastEnabled = wantPip
+                if (wantPip) {
+                    connectMediaController()
+                } else {
+                    releaseMediaController()
+                }
+            }
+        }
+    }
+
+    /**
+     * 主动构造 MediaController 连接到 PlaybackService。重复调用幂等。
+     */
+    private fun connectMediaController() {
+        if (mediaController != null) return
         val mainExecutor = java.util.concurrent.Executor { it.run() }
         runCatching {
             val token = PlaybackService.newSessionToken(appContext)
@@ -215,6 +233,15 @@ class PlayerViewModel @Inject constructor(
                     .onFailure { Timber.w(it, "MediaController 取值失败") }
             }, mainExecutor)
         }.onFailure { Timber.w(it, "SessionToken 构造失败") }
+    }
+
+    /**
+     * 立即释放 MediaController 引用。系统/通知在 service 转 background 后自动回收。
+     */
+    private fun releaseMediaController() {
+        val c = mediaController ?: return
+        mediaController = null
+        runCatching { c.release() }.onFailure { Timber.w(it, "MediaController.release 失败") }
     }
     
     /**
@@ -255,8 +282,8 @@ class PlayerViewModel @Inject constructor(
                     )
                 }
                 
-                // 加载视频文件
-                playerManager.loadLocalFile(video.filePath)
+                // 加载视频文件（title 用于媒体通知/锁屏显示名）
+                playerManager.loadLocalFile(video.filePath, video.title)
                 // 记录投屏内容（本机文件，投屏时经 ContentUrlProvider 转 LAN URL；同名 srt 一并投递）
                 currentRouteContent = RouteContent.LocalFile(
                     video.filePath, video.title, findExternalSubtitle(video.filePath)

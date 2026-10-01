@@ -5,6 +5,7 @@ import android.net.Uri
 import android.os.Build
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
@@ -182,11 +183,20 @@ class PlayerManager @Inject constructor(
      * （.srt/.vtt/.ass/.ssa），找到则作为字幕轨附加到 MediaItem。
      *
      * @param filePath 文件路径
+     * @param title 视频显示名（用于媒体通知/锁屏，不传则用文件 basename 兜底）
      */
-    fun loadLocalFile(filePath: String) {
+    fun loadLocalFile(filePath: String, title: String? = null) {
         clearError()
         val subtitleUri = findSidecarSubtitle(filePath)
-        val builder = MediaItem.Builder().setUri(filePath)
+        val effectiveTitle = title ?: java.io.File(filePath).nameWithoutExtension
+        val builder = MediaItem.Builder()
+            .setUri(filePath)
+            .setMediaMetadata(
+                MediaMetadata.Builder()
+                    .setTitle(effectiveTitle)
+                    .setDisplayTitle(effectiveTitle)
+                    .build()
+            )
         if (subtitleUri != null) {
             builder.setSubtitleConfigurations(
                 listOf(
@@ -267,11 +277,21 @@ class PlayerManager @Inject constructor(
      * 加载网络视频流
      *
      * @param url 视频地址
+     * @param title 视频显示名（用于媒体通知/锁屏）
      */
-    fun loadStreamUrl(url: String) {
+    fun loadStreamUrl(url: String, title: String? = null) {
         clearError()
-        val mediaItem = MediaItem.fromUri(url)
-        exoPlayer.setMediaItem(mediaItem)
+        val mediaItemBuilder = MediaItem.Builder()
+            .setUri(url)
+        if (title != null) {
+            mediaItemBuilder.setMediaMetadata(
+                MediaMetadata.Builder()
+                    .setTitle(title)
+                    .setDisplayTitle(title)
+                    .build()
+            )
+        }
+        exoPlayer.setMediaItem(mediaItemBuilder.build())
         exoPlayer.prepare()
         applySubtitleEnabled(_subtitleEnabled.value)
     }

@@ -57,6 +57,7 @@ class UserPreferencesRepository @Inject constructor(
             keepScreenOn = preferences[PreferencesKeys.KEEP_SCREEN_ON] ?: true,
             brightnessGesture = preferences[PreferencesKeys.BRIGHTNESS_GESTURE] ?: true,
             volumeGesture = preferences[PreferencesKeys.VOLUME_GESTURE] ?: true,
+            systemPipOnHome = preferences[PreferencesKeys.SYSTEM_PIP_ON_HOME] ?: true,
 
             // 投屏设置
             castAutoConnect = preferences[PreferencesKeys.CAST_AUTO_CONNECT] ?: false,
@@ -229,6 +230,23 @@ class UserPreferencesRepository @Inject constructor(
             preferences[PreferencesKeys.VOLUME_GESTURE] = enabled
         }
     }
+
+    /**
+     * 更新回桌面自动唤起系统画中画的偏好（PR5 副作用控制）
+     *
+     * - true：默认；保留 MIUI/EMUI 等系统在退桌面时自动唤起 PiP 悬浮窗的能力
+     * - false：app 主动在 Activity 进入 onStop 时关掉自己的 PiP（如果有的话）
+     *
+     * 注意：当前 PureFrame 走的是 FloatingVideoService（自实现悬浮窗），不是系统 PiP。
+     * 真正的"系统 PiP"是 MediaSessionService 默认行为：当前 Activity 不在前台 + service 是
+     * 前台媒体服务，系统会弹小窗。如果用户关掉这个选项，app 在 onStop 时主动 release
+     * MediaController，让 service 降为后台服务 → 系统不会自动弹窗。
+     */
+    suspend fun updateSystemPipOnHome(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[PreferencesKeys.SYSTEM_PIP_ON_HOME] = enabled
+        }
+    }
     
     /**
      * 更新投屏自动连接开关
@@ -280,6 +298,7 @@ class UserPreferencesRepository @Inject constructor(
             prefs[PreferencesKeys.KEEP_SCREEN_ON] = preferences.keepScreenOn
             prefs[PreferencesKeys.BRIGHTNESS_GESTURE] = preferences.brightnessGesture
             prefs[PreferencesKeys.VOLUME_GESTURE] = preferences.volumeGesture
+            prefs[PreferencesKeys.SYSTEM_PIP_ON_HOME] = preferences.systemPipOnHome
 
             // 投屏设置
             prefs[PreferencesKeys.CAST_AUTO_CONNECT] = preferences.castAutoConnect

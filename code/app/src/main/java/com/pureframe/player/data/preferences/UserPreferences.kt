@@ -35,6 +35,10 @@ data class UserPreferences(
     val brightnessGesture: Boolean = true,
     val volumeGesture: Boolean = true,
 
+    // 进程保活 / 系统画中画：false 时回桌面不弹小米/系统 PiP（PR5 自动副作用）
+    // 默认 true 保持现状；关闭后回桌面只保活前台服务，UI 仍由 PlayerScreen 负责
+    val systemPipOnHome: Boolean = true,
+
     // 投屏设置
     val castAutoConnect: Boolean = false,
     val castLastDeviceId: String = "",

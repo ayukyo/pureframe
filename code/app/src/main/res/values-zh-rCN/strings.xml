@@ -233,6 +233,8 @@
     <string name="settings_brightness_gesture_desc">在屏幕左侧上下滑动调节亮度</string>
     <string name="settings_volume_gesture">音量手势</string>
     <string name="settings_volume_gesture_desc">在屏幕右侧上下滑动调节音量</string>
+    <string name="settings_system_pip_on_home">回桌面时系统画中画</string>
+    <string name="settings_system_pip_on_home_desc">返回桌面时显示系统画中画小窗</string>
 
     <string name="settings_download_path">下载保存位置</string>
     <string name="settings_default_location">默认位置</string>

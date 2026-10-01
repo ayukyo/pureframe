@@ -75,12 +75,19 @@ class PlaybackService : MediaSessionService() {
     }
 
     /**
-     * 点击通知/媒体控件时拉起的 PendingIntent：直接进 MainActivity，
-     * 由 NavController 切到播放页（如果当前视频仍激活）。
+     * 点击通知/媒体控件时拉起的 PendingIntent：
+     * - ACTION_MAIN + NEW_TASK + REORDER_TO_FRONT：把已在后台的 MainActivity 拉到前台
+     * - 再触发 CATEGORY_LAUNCHER：系统级 fallback（如果 app 被回收，重启后回到首页）
+     * - 用户体验上：玩家在桌面 / 锁屏 / 系统多任务里点通知 → app 回到前台
+     *   → PlayerViewModel 仍持有 mediaController → 播放继续，画面回归播放页
      */
     private fun buildLaunchActivityPendingIntent(): PendingIntent {
         val intent = Intent(this, MainActivity::class.java).apply {
-            addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            action = Intent.ACTION_MAIN
+            addCategory(Intent.CATEGORY_LAUNCHER)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
+                Intent.FLAG_ACTIVITY_SINGLE_TOP
         }
         val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE

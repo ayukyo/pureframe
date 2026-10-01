@@ -175,6 +175,15 @@ class SettingsViewModel @Inject constructor(
     }
 
     /**
+     * 更新回桌面自动唤起系统画中画（PR5 副作用控制）
+     */
+    fun setSystemPipOnHome(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.updateSystemPipOnHome(enabled)
+        }
+    }
+
+    /**
      * 更新解码器类型
      */
     fun setDecoderType(type: DecoderType) {

@@ -239,6 +239,8 @@
     <string name="settings_brightness_gesture_desc">Swipe up or down on the left side to adjust brightness</string>
     <string name="settings_volume_gesture">Volume gesture</string>
     <string name="settings_volume_gesture_desc">Swipe up or down on the right side to adjust volume</string>
+    <string name="settings_system_pip_on_home">System PiP when leaving app</string>
+    <string name="settings_system_pip_on_home_desc">Show a system-managed picture-in-picture window when returning to home</string>
 
     <string name="settings_download_path">Download location</string>
     <string name="settings_default_location">Default location</string>

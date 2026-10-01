@@ -178,6 +178,16 @@ fun SettingsScreen(
                         checked = userPreferences.volumeGesture,
                         onCheckedChange = { viewModel.setVolumeGesture(it) }
                     )
+
+                    Divider(color = MaterialTheme.colorScheme.outlineVariant, modifier = Modifier.padding(vertical = 8.dp))
+
+                    SwitchSettingsItem(
+                        icon = Icons.Filled.PictureInPicture,
+                        title = stringResource(R.string.settings_system_pip_on_home),
+                        subtitle = stringResource(R.string.settings_system_pip_on_home_desc),
+                        checked = userPreferences.systemPipOnHome,
+                        onCheckedChange = { viewModel.setSystemPipOnHome(it) }
+                    )
                 }
             }
 

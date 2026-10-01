@@ -143,7 +143,7 @@ class StreamPlaybackHelper @Inject constructor(
                 )
             }
             _playbackState.value = StreamPlaybackState.Preparing
-            playerManager.loadLocalFile(file.absolutePath)
+            playerManager.loadLocalFile(file.absolutePath, downloadTask.fileName)
             _playbackState.value = StreamPlaybackState.DownloadCompleted
             Timber.i("StreamPlaybackHelper: 已完成任务本地播放 - ${file.absolutePath}")
             return Result.success(file.absolutePath)
@@ -189,7 +189,7 @@ class StreamPlaybackHelper @Inject constructor(
         _playbackState.value = StreamPlaybackState.Preparing
         
         // 开始播放
-        playerManager.loadStreamUrl(streamUrl)
+        playerManager.loadStreamUrl(streamUrl, downloadTask.fileName)
         
         // 监听下载进度
         startProgressMonitor(taskId, downloadTask)
