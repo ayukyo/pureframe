@@ -19,7 +19,7 @@ fun envOr(key: String): String? =
 
 android {
     namespace = "com.pureframe.player"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.pureframe.player"
@@ -130,10 +130,11 @@ dependencies {
     // Navigation
     implementation("androidx.navigation:navigation-compose:2.7.5")
 
-    // Room Database
-    implementation("androidx.room:room-runtime:2.6.1")
-    implementation("androidx.room:room-ktx:2.6.1")
-    ksp("androidx.room:room-compiler:2.6.1")
+    // Room Database（2.8.5：KSP2 下 2.6.x 处理器报 "unexpected jvm signature V"，
+    // Room 侧修复在 2.7.0-alpha11+，取 2.8 稳定线）
+    implementation("androidx.room:room-runtime:2.8.5")
+    implementation("androidx.room:room-ktx:2.8.5")
+    ksp("androidx.room:room-compiler:2.8.5")
 
     // DataStore
     implementation("androidx.datastore:datastore-preferences:1.0.0")
@@ -141,10 +142,9 @@ dependencies {
     // DocumentFile - SAF 目录遍历（自定义视频扫描目录）
     implementation("androidx.documentfile:documentfile:1.0.1")
 
-    // ExoPlayer - 视频播放（1.9.3：1.9.x 末版 patch，含 decoder extensions NPE 修复 #2965；
-    // 版本与 nextlib-media3ext 1.9.3-0.12.0 对齐。1.10.1+ 需要 compileSdk 36 + AGP/Gradle
-    // 构建链升级，另行任务推进——届时把四模块与 nextlib 一起抬到 1.10.1-0.13.0）
-    val media3Version = "1.9.3"
+    // ExoPlayer - 视频播放（1.10.1：跳过有 Firefox topcrash 回归 #3161 的 1.10.0；
+    // 需 compileSdk 36。nextlib-media3ext 同步对齐 1.10.1-0.13.0）
+    val media3Version = "1.10.1"
     implementation("androidx.media3:media3-exoplayer:$media3Version")
     implementation("androidx.media3:media3-ui:$media3Version")
     implementation("androidx.media3:media3-session:$media3Version")
@@ -153,17 +153,17 @@ dependencies {
     implementation("androidx.media3:media3-exoplayer-hls:$media3Version")
     // ffmpeg 软解扩展（DTS/AC3/EAC3 音轨 + H.264/HEVC/VP9 软解兜底；GPL-3.0。
     // 注意：不含 RealVideo(rmvb)/WMV 解码器，这两类容器依旧放不了。
-    // 版本选 1.8.0-0.9.0：0.10.0 起上游改用新 Kotlin 编译（元数据 2.2/2.3），本项目
-    // Kotlin 2.0.21 编译器无法读取（实测 1.9.1-0.11.0=2.3.0、1.9.3-0.12.0=2.2.0 均失败）。
-    // 待 Task #10 构建链升级（Kotlin 2.2+）后同步升 1.10.1-0.13.0
-    implementation("io.github.anilbeesetti:nextlib-media3ext:1.8.0-0.9.0")
+    // 1.10.1-0.13.0：Kotlin 2.2 元数据 + 依赖 media3 1.10.1，与本项目
+    // Kotlin 2.2.21 / media3 1.10.1 完全对齐（Task #10 构建链升级后可用）
+    implementation("io.github.anilbeesetti:nextlib-media3ext:1.10.1-0.13.0")
     // Coil - 图片加载
     implementation("io.coil-kt:coil-compose:2.5.0")
     implementation("io.coil-kt:coil-video:2.5.0")
 
-    // Hilt - 依赖注入（2.51.1：Kotlin 2.0 元数据需要，2.48 无法读取）
-    implementation("com.google.dagger:hilt-android:2.51.1")
-    ksp("com.google.dagger:hilt-compiler:2.51.1")
+    // Hilt - 依赖注入（2.56.2：KSP2 下 2.51.x 处理器报 "unexpected jvm signature V"
+    // （suspend 方法 Unit 返回值签名解析，dagger#4505），2.53.1 起修复，取最新稳定）
+    implementation("com.google.dagger:hilt-android:2.56.2")
+    ksp("com.google.dagger:hilt-compiler:2.56.2")
     implementation("androidx.hilt:hilt-navigation-compose:1.1.0")
 
     // Coroutines

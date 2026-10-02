@@ -339,6 +339,13 @@ class PlaybackService : MediaSessionService() {
             action: String,
             extras: Bundle
         ): Boolean = defaultNotificationProvider.handleCustomCommand(session, action, extras)
+
+        // media3 1.10 新增必需方法：声明通知渠道信息（service 用它创建/查询渠道）。
+        // 委托给 defaultNotificationProvider，保证渠道 id 与其内部通知构建用的
+        // channelId 一致（"default" + 库自带渠道名字符串），否则部分 ROM 上
+        // 渠道不匹配会导致通知不显示。
+        override fun getNotificationChannelInfo(): MediaNotification.Provider.NotificationChannelInfo =
+            defaultNotificationProvider.getNotificationChannelInfo()
     }
 
     override fun onDestroy() {
