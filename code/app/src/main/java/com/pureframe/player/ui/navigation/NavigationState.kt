@@ -60,4 +60,18 @@ class NavigationState @Inject constructor() {
     fun setFloatingMode(inFloating: Boolean) {
         _isFloatingMode.value = inFloating
     }
+
+    // ---- 外部链接接收（分享菜单 / magnet: / .torrent URL）----
+    // MainActivity 从 intent 提取链接后写入；DownloadScreen 收集消费
+    // （自动切到下载页 + 弹「添加下载」对话框预填链接），消费后清空。
+    private val _pendingExternalLink = MutableStateFlow<String?>(null)
+    val pendingExternalLink: StateFlow<String?> = _pendingExternalLink.asStateFlow()
+
+    fun setPendingExternalLink(link: String) {
+        _pendingExternalLink.value = link
+    }
+
+    fun consumePendingExternalLink() {
+        _pendingExternalLink.value = null
+    }
 }

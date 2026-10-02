@@ -56,6 +56,25 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- 链接分享接收：分享菜单「用 PureFrame 打开」→ 跳下载页预填链接 -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+            <!-- 直接打开磁力/torrent 链接（浏览器点击 magnet: / .torrent URL） -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="magnet" />
+                <data android:scheme="http"
+                    android:host="*"
+                    android:pathPattern=".*\\.torrent" />
+                <data android:scheme="https"
+                    android:host="*"
+                    android:pathPattern=".*\\.torrent" />
+            </intent-filter>
         </activity>
 
         <!-- 播放服务 -->

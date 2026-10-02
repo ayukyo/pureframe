@@ -284,6 +284,27 @@ fun DownloadScreen(
         )
     }
 
+    // 外部链接接收（分享菜单 / magnet: / .torrent URL）：
+    // MainScreen 已切到本页，这里消费链接自动弹出「添加下载」对话框并预填 URL
+    val pendingExternalLink by navigationState.pendingExternalLink.collectAsState()
+    var externalLinkForDialog by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(pendingExternalLink) {
+        val link = pendingExternalLink ?: return@LaunchedEffect
+        externalLinkForDialog = link
+        navigationState.consumePendingExternalLink()
+    }
+    externalLinkForDialog?.let { link ->
+        AddDownloadDialog(
+            initialUrl = link,
+            onDismiss = { externalLinkForDialog = null },
+            onConfirm = { url, title, linkType ->
+                Timber.d("DownloadScreen: external link onConfirm - url=$url, linkType=$linkType")
+                viewModel.addDownloadTask(url, title, linkType)
+                externalLinkForDialog = null
+            }
+        )
+    }
+
     // 加载对话框（获取 metadata 时显示）
     if (uiState.isAddingTask) {
         LoadingDialog(

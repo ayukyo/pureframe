@@ -19,6 +19,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -82,6 +83,19 @@ fun MainScreen(
 ) {
     // 活跃下载数（用于"下载"Tab 角标）
     val activeDownloadCount by mainViewModel.activeDownloadCount.collectAsState()
+
+    // 外部链接接收（分享菜单 / magnet: / .torrent URL）：
+    // 收到后切到下载页 tab；DownloadScreen 收集同一 StateFlow 弹对话框预填
+    val pendingExternalLink by navigationState.pendingExternalLink.collectAsState()
+    LaunchedEffect(pendingExternalLink) {
+        if (pendingExternalLink != null) {
+            navController.navigate(Screen.Download.route) {
+                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                launchSingleTop = true
+                restoreState = true
+            }
+        }
+    }
 
     // 主题由 MainActivity 的 PureFrameTheme 统一提供（跟随设置页偏好），这里不再嵌套包装
     Scaffold(

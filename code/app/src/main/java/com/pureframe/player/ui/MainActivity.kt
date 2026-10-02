@@ -1,6 +1,7 @@
 package com.pureframe.player.ui
 
 import android.content.Context
+import android.content.Intent
 import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
@@ -98,6 +99,33 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+
+        handleExternalLink(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        // singleTask 启动模式：app 已在前台时分享/打开链接走这里
+        handleExternalLink(intent)
+    }
+
+    /**
+     * 外部链接接收（分享菜单 ACTION_SEND / 打开 magnet: 或 .torrent URL ACTION_VIEW）：
+     * 提取链接写入 [NavigationState]，DownloadScreen 消费后自动弹「添加下载」对话框预填。
+     */
+    private fun handleExternalLink(intent: Intent?) {
+        val link = when (intent?.action) {
+            Intent.ACTION_SEND ->
+                intent.getStringExtra(Intent.EXTRA_TEXT)?.trim()?.takeIf { it.isNotEmpty() }
+            Intent.ACTION_VIEW -> intent.dataString?.trim()?.takeIf { it.isNotEmpty() }
+            else -> null
+        } ?: return
+        // 只接受看起来像下载链接的内容，避免分享任意文本也跳下载页
+        val looksLikeLink = link.startsWith("magnet:") ||
+            link.startsWith("http://") || link.startsWith("https://")
+        if (!looksLikeLink) return
+        Timber.i("MainActivity: 收到外部链接 %s", link)
+        navigationState.setPendingExternalLink(link)
     }
 
     override fun onUserLeaveHint() {
