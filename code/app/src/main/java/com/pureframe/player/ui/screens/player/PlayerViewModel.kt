@@ -411,7 +411,7 @@ class PlayerViewModel @Inject constructor(
                     // BT 流：字幕在下载目录按任务文件名找同名 srt（largestFile 视频文件）
                     val videoFile = downloadTask.savePath.let { path ->
                         File(path).listFiles { f ->
-                            f.isFile && f.extension.lowercase() in listOf("mp4", "mkv", "avi", "webm", "ts", "mov", "m4v", "flv", "wmv", "mpg", "mpeg", "3gp")
+                            f.isFile && f.extension.lowercase() in listOf("mp4", "mkv", "avi", "webm", "ts", "mov", "m4v", "flv", "wmv", "mpg", "mpeg", "3gp", "m3u8")
                         }?.maxByOrNull { it.length() }
                     }
                     currentRouteContent = RouteContent.Stream(
