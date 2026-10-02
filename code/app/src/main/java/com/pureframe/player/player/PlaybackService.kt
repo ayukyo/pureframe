@@ -10,7 +10,6 @@ import android.os.Bundle
 import androidx.core.app.NotificationCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
-import androidx.media3.common.TrackSelectionParameters
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.CommandButton
@@ -140,7 +139,6 @@ class PlaybackService : MediaSessionService() {
                     // 默认 AcceptedResultBuilder 只含标准 commands，必须显式 add。
                     val sessionCommands =
                         MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon()
-                            .add(SessionCommand(COMMAND_TOGGLE_SUBTITLE, Bundle.EMPTY))
                             .add(SessionCommand(COMMAND_TOGGLE_REPEAT, Bundle.EMPTY))
                             .add(SessionCommand(COMMAND_TOGGLE_FAVORITE, Bundle.EMPTY))
                             .build()
@@ -209,15 +207,6 @@ class PlaybackService : MediaSessionService() {
     // ---------- PR8 自定义按钮 ----------
 
     private fun buildCustomLayout(): ImmutableList<CommandButton> {
-        val subtitleButton = CommandButton.Builder()
-            .setDisplayName(getString(R.string.notif_button_subtitle))
-            .setIconResId(
-                if (playerManager.subtitleEnabled.value) R.drawable.ic_notif_subtitle_on
-                else R.drawable.ic_notif_subtitle_off
-            )
-            .setSessionCommand(SessionCommand(COMMAND_TOGGLE_SUBTITLE, Bundle.EMPTY))
-            .build()
-
         val repeatIcon = when (playerManager.repeatMode.value) {
             Player.REPEAT_MODE_ALL -> R.drawable.ic_notif_repeat_all
             Player.REPEAT_MODE_ONE -> R.drawable.ic_notif_repeat_one
@@ -238,7 +227,9 @@ class PlaybackService : MediaSessionService() {
             .setSessionCommand(SessionCommand(COMMAND_TOGGLE_FAVORITE, Bundle.EMPTY))
             .build()
 
-        return ImmutableList.of(subtitleButton, repeatButton, favoriteButton)
+        // 字幕按钮已移除（PR8 验收后调整）：MIUI 通知 action 上限 5，去掉字幕让收藏
+        // 稳定进大视图 actions 行；字幕开关保留在播放页 UI 内
+        return ImmutableList.of(repeatButton, favoriteButton)
     }
 
     private fun refreshCustomLayout() {
@@ -270,11 +261,6 @@ class PlaybackService : MediaSessionService() {
         customCommand: SessionCommand
     ): ListenableFuture<SessionResult> {
         when (customCommand.customAction) {
-            COMMAND_TOGGLE_SUBTITLE -> {
-                playerManager.setSubtitleEnabled(!playerManager.subtitleEnabled.value)
-                refreshCustomLayout()
-                return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
-            }
             COMMAND_TOGGLE_REPEAT -> {
                 playerManager.toggleRepeat()
                 refreshCustomLayout()
@@ -309,10 +295,6 @@ class PlaybackService : MediaSessionService() {
     /** PR8：player 状态 → 通知按钮图标（UI 侧开关变化也走这里） */
     private val servicePlayerListener = object : Player.Listener {
         override fun onRepeatModeChanged(repeatMode: Int) {
-            refreshCustomLayout()
-        }
-
-        override fun onTrackSelectionParametersChanged(trackSelectionParameters: TrackSelectionParameters) {
             refreshCustomLayout()
         }
 
@@ -390,7 +372,6 @@ class PlaybackService : MediaSessionService() {
     }
 
     companion object {
-        const val COMMAND_TOGGLE_SUBTITLE = "com.pureframe.player.command.TOGGLE_SUBTITLE"
         const val COMMAND_TOGGLE_REPEAT = "com.pureframe.player.command.TOGGLE_REPEAT"
         const val COMMAND_TOGGLE_FAVORITE = "com.pureframe.player.command.TOGGLE_FAVORITE"
 

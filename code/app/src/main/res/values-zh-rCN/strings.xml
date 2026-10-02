@@ -219,7 +219,6 @@
     <string name="settings_media_notification_desc">在通知栏显示播放控件。关闭后将同时停用保活前台服务，后台播放可能被系统停止（MIUI 尤其明显）</string>
     <string name="settings_lockscreen_media">锁屏显示通知内容</string>
     <string name="settings_lockscreen_media_desc">在锁屏上隐藏通知详情。注意：部分机型的锁屏媒体卡片仍可能显示，以实际效果为准</string>
-    <string name="notif_button_subtitle">字幕</string>
     <string name="notif_button_repeat">循环模式</string>
     <string name="notif_button_favorite">收藏</string>
 
