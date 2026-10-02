@@ -26,7 +26,7 @@ object PlaylistUtils {
      */
     val VIDEO_EXTENSIONS: Set<String> = setOf(
         "mp4", "mkv", "avi", "webm", "ts", "mov",
-        "m4v", "flv", "wmv", "mpg", "mpeg", "3gp"
+        "m4v", "flv", "wmv", "mpg", "mpeg", "3gp", "m3u8"
     )
 
     /**

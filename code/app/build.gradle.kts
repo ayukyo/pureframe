@@ -138,12 +138,25 @@ dependencies {
     // DataStore
     implementation("androidx.datastore:datastore-preferences:1.0.0")
 
-    // ExoPlayer - 视频播放（1.9.0：media3-cast 的 CastPlayer.Builder 需要 ≥1.9.0）
-    implementation("androidx.media3:media3-exoplayer:1.9.0")
-    implementation("androidx.media3:media3-ui:1.9.0")
-    implementation("androidx.media3:media3-session:1.9.0")
-    implementation("androidx.media3:media3-cast:1.9.0")
+    // DocumentFile - SAF 目录遍历（自定义视频扫描目录）
+    implementation("androidx.documentfile:documentfile:1.0.1")
 
+    // ExoPlayer - 视频播放（1.9.3：1.9.x 末版 patch，含 decoder extensions NPE 修复 #2965；
+    // 版本与 nextlib-media3ext 1.9.3-0.12.0 对齐。1.10.1+ 需要 compileSdk 36 + AGP/Gradle
+    // 构建链升级，另行任务推进——届时把四模块与 nextlib 一起抬到 1.10.1-0.13.0）
+    val media3Version = "1.9.3"
+    implementation("androidx.media3:media3-exoplayer:$media3Version")
+    implementation("androidx.media3:media3-ui:$media3Version")
+    implementation("androidx.media3:media3-session:$media3Version")
+    implementation("androidx.media3:media3-cast:$media3Version")
+    // HLS 流媒体播放（m3u8，需求 2.1.3）
+    implementation("androidx.media3:media3-exoplayer-hls:$media3Version")
+    // ffmpeg 软解扩展（DTS/AC3/EAC3 音轨 + H.264/HEVC/VP9 软解兜底；GPL-3.0。
+    // 注意：不含 RealVideo(rmvb)/WMV 解码器，这两类容器依旧放不了。
+    // 版本选 1.8.0-0.9.0：0.10.0 起上游改用新 Kotlin 编译（元数据 2.2/2.3），本项目
+    // Kotlin 2.0.21 编译器无法读取（实测 1.9.1-0.11.0=2.3.0、1.9.3-0.12.0=2.2.0 均失败）。
+    // 待 Task #10 构建链升级（Kotlin 2.2+）后同步升 1.10.1-0.13.0
+    implementation("io.github.anilbeesetti:nextlib-media3ext:1.8.0-0.9.0")
     // Coil - 图片加载
     implementation("io.coil-kt:coil-compose:2.5.0")
     implementation("io.coil-kt:coil-video:2.5.0")

@@ -1231,7 +1231,7 @@ public class LibTorrentWrapper {
         }
         return ext.equals("mp4") || ext.equals("mkv") || ext.equals("avi") ||
                 ext.equals("mov") || ext.equals("flv") || ext.equals("ts") ||
-                ext.equals("wmv") || ext.equals("webm");
+                ext.equals("wmv") || ext.equals("webm") || ext.equals("m3u8");
     }
 
     private String parseResolution(String path) {

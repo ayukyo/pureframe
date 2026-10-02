@@ -73,8 +73,7 @@ class LocalVideoScanner @Inject constructor(
     suspend fun scanLocalVideos(forceRefresh: Boolean = false): List<LocalVideoInfo> = withContext(Dispatchers.IO) {
         val videos = mutableListOf<LocalVideoInfo>()
 
-        try {
-            // 扫描外部存储上的视频
+        try {            // 扫描外部存储上的视频
             val collection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL)
             } else {
@@ -174,6 +173,75 @@ class LocalVideoScanner @Inject constructor(
     }
 
     /**
+     * 扫描自定义目录列表（Task #7）。
+     *
+     * 支持两种目录表示：
+     * - SAF tree URI（content://...）：用 DocumentFile 遍历（仅一层，不递归）
+     * - 绝对路径（/storage/...）：用 File 遍历
+     *
+     * @param dirs 目录列表（来自 UserPreferences.customScanDirs）
+     * @param excludePaths 需要排除的路径（MediaStore 已扫到的，用于去重）
+     */
+    suspend fun scanCustomDirs(
+        dirs: Set<String>,
+        excludePaths: Set<String> = emptySet()
+    ): List<LocalVideoInfo> = withContext(Dispatchers.IO) {
+        val videos = mutableListOf<LocalVideoInfo>()
+        var syntheticId = -1L
+        dirs.forEach { dir ->
+            try {
+                val items: List<Triple<String, Long, Long>> = if (dir.startsWith("content://")) {
+                    // SAF tree URI：DocumentFile 列目录（一层）
+                    val tree = androidx.documentfile.provider.DocumentFile.fromTreeUri(context, android.net.Uri.parse(dir))
+                    if (tree == null || !tree.exists()) {
+                        Timber.w("LocalVideoScanner: SAF 目录不可用 %s", dir)
+                        emptyList()
+                    } else {
+                        tree.listFiles().filter { it.isFile && it.name?.let { n -> isVideoFormatSupported(n) } == true }
+                            .mapNotNull { f ->
+                                val name = f.name ?: return@mapNotNull null
+                                Triple(name, f.length(), f.lastModified())
+                            }
+                    }
+                } else {
+                    // 绝对路径：File 列目录（一层）
+                    val d = File(dir)
+                    if (!d.exists() || !d.isDirectory) {
+                        Timber.w("LocalVideoScanner: 目录不可用 %s", dir)
+                        emptyList()
+                    } else {
+                        d.listFiles { f -> f.isFile && isVideoFormatSupported(f.name) }
+                            ?.map { Triple(it.name, it.length(), it.lastModified()) } ?: emptyList()
+                    }
+                }
+                items.forEach { (name, size, lastModified) ->
+                    // SAF 无法直接拿绝对路径，构造显示路径（tree URI + 文件名）
+                    val displayPath = if (dir.startsWith("content://")) "$dir/$name" else dir + "/" + name
+                    if (displayPath in excludePaths) return@forEach
+                    videos.add(
+                        LocalVideoInfo(
+                            id = syntheticId--,
+                            name = name,
+                            path = displayPath,
+                            uri = if (dir.startsWith("content://")) "$dir/document/$name" else "file://$displayPath",
+                            size = size,
+                            duration = 0L,
+                            dateAdded = lastModified / 1000,
+                            mimeType = getMimeType(name),
+                            width = 0,
+                            height = 0
+                        )
+                    )
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "LocalVideoScanner: 自定义目录扫描失败 %s", dir)
+            }
+        }
+        Timber.i("LocalVideoScanner: 自定义目录补充扫描 ${videos.size} 个视频")
+        videos
+    }
+
+    /**
      * 检查视频格式是否支持
      */
     private fun isVideoFormatSupported(path: String): Boolean {
@@ -250,7 +318,7 @@ class LocalVideoScanner @Inject constructor(
          * 支持的视频格式
          */
         val SUPPORTED_FORMATS = setOf(
-            "mp4", "mkv", "avi", "mov", "flv", "ts", "wmv", "webm", "3gp", "m4v"
+            "mp4", "mkv", "avi", "mov", "flv", "ts", "wmv", "webm", "3gp", "m4v", "m3u8"
         )
     }
 }

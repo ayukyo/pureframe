@@ -556,7 +556,7 @@ class TorrentManager @Inject constructor(
      */
     private fun resolveLargestVideo(task: DownloadTask): File? {
         val base = File(task.savePath)
-        val exts = setOf("mp4", "mkv", "avi", "mov", "flv", "ts", "wmv", "webm", "m4v", "mpg", "mpeg", "3gp")
+        val exts = setOf("mp4", "mkv", "avi", "mov", "flv", "ts", "wmv", "webm", "m4v", "mpg", "mpeg", "3gp", "m3u8")
         fun isVideo(f: File) = f.isFile && f.extension.lowercase() in exts
 
         // 引擎还在时优先用引擎路径

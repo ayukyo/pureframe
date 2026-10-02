@@ -119,7 +119,7 @@ class StreamPlaybackHelper @Inject constructor(
 
     private fun isVideoFileName(name: String): Boolean {
         val ext = name.substringAfterLast('.', "").lowercase()
-        return ext in setOf("mp4", "mkv", "avi", "mov", "flv", "ts", "wmv", "webm", "m4v", "mpg", "mpeg", "3gp")
+        return ext in setOf("mp4", "mkv", "avi", "mov", "flv", "ts", "wmv", "webm", "m4v", "mpg", "mpeg", "3gp", "m3u8")
     }
 
     /**
