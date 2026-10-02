@@ -67,7 +67,10 @@ class UserPreferencesRepository @Inject constructor(
 
             // 通知与锁屏（PR8）
             mediaNotificationEnabled = preferences[PreferencesKeys.MEDIA_NOTIFICATION_ENABLED] ?: true,
-            lockscreenMediaVisible = preferences[PreferencesKeys.LOCKSCREEN_MEDIA_VISIBLE] ?: true
+            lockscreenMediaVisible = preferences[PreferencesKeys.LOCKSCREEN_MEDIA_VISIBLE] ?: true,
+
+            // 自定义视频扫描目录
+            customScanDirs = preferences[PreferencesKeys.CUSTOM_SCAN_DIRS] ?: emptySet()
         )
     }
     
@@ -337,6 +340,29 @@ class UserPreferencesRepository @Inject constructor(
             // 通知与锁屏（PR8）
             prefs[PreferencesKeys.MEDIA_NOTIFICATION_ENABLED] = preferences.mediaNotificationEnabled
             prefs[PreferencesKeys.LOCKSCREEN_MEDIA_VISIBLE] = preferences.lockscreenMediaVisible
+
+            // 自定义视频扫描目录
+            prefs[PreferencesKeys.CUSTOM_SCAN_DIRS] = preferences.customScanDirs
+        }
+    }
+
+    /**
+     * 添加自定义视频扫描目录（SAF tree URI 或绝对路径）
+     */
+    suspend fun addCustomScanDir(dir: String) {
+        dataStore.edit { preferences ->
+            val current = preferences[PreferencesKeys.CUSTOM_SCAN_DIRS] ?: emptySet()
+            preferences[PreferencesKeys.CUSTOM_SCAN_DIRS] = current + dir
+        }
+    }
+
+    /**
+     * 移除自定义视频扫描目录
+     */
+    suspend fun removeCustomScanDir(dir: String) {
+        dataStore.edit { preferences ->
+            val current = preferences[PreferencesKeys.CUSTOM_SCAN_DIRS] ?: emptySet()
+            preferences[PreferencesKeys.CUSTOM_SCAN_DIRS] = current - dir
         }
     }
     

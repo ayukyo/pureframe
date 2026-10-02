@@ -24,6 +24,7 @@ import com.pureframe.player.i18n.LocaleManager
 class ScanLocalVideosUseCase @Inject constructor(
     private val videoRepository: VideoRepository,
     private val localVideoScanner: LocalVideoScanner,
+    private val userPreferencesRepository: com.pureframe.player.data.preferences.UserPreferencesRepository,
     @ApplicationContext private val context: Context
 ) {
     /**
@@ -39,12 +40,22 @@ class ScanLocalVideosUseCase @Inject constructor(
             // 扫描本地视频
             val localVideos = localVideoScanner.scanLocalVideos(forceRefresh)
 
+            // 自定义扫描目录（Task #7）：MediaStore 之外补充扫描，已按路径去重
+            val customDirs = userPreferencesRepository.userPreferencesFlow.first().customScanDirs
+            val customVideos = if (customDirs.isNotEmpty()) {
+                localVideoScanner.scanCustomDirs(
+                    dirs = customDirs,
+                    excludePaths = localVideos.map { it.path }.toSet()
+                )
+            } else emptyList()
+            val allVideos = localVideos + customVideos
+
             // 获取数据库中已有的视频
             val existingVideos = videoRepository.getAllVideos().first()
             val existingPaths = existingVideos.map { it.filePath }.toSet()
 
             // 获取当前扫描到的视频路径
-            val currentPaths = localVideos.map { it.path }.toSet()
+            val currentPaths = allVideos.map { it.path }.toSet()
 
             // 找出已删除的视频（数据库中有但文件已不存在）
             val deletedVideos = existingVideos.filter { it.filePath !in currentPaths }
@@ -62,13 +73,13 @@ class ScanLocalVideosUseCase @Inject constructor(
                 }
             }
 
-            if (localVideos.isEmpty()) {
+            if (allVideos.isEmpty()) {
                 Timber.d("ScanLocalVideosUseCase: 未扫描到本地视频")
                 return Result.success(0)
             }
 
             // 找出新视频
-            val newVideos = localVideos.filter { it.path !in existingPaths }
+            val newVideos = allVideos.filter { it.path !in existingPaths }
 
             if (newVideos.isEmpty()) {
                 Timber.d("ScanLocalVideosUseCase: 没有新视频需要添加")

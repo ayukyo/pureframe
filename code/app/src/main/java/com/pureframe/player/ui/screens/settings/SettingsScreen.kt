@@ -87,6 +87,49 @@ fun SettingsScreen(
         folderPickerLauncher.launch(intent)
     }
 
+    // 自定义扫描目录选择器（只读权限即可，持久化授权供后续扫描）
+    val scanDirPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            result.data?.data?.let { uri ->
+                val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                        Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
+                try {
+                    context.contentResolver.takePersistableUriPermission(uri, flags)
+                } catch (e: Exception) {
+                    Timber.w(e, "SettingsScreen: 持久化扫描目录权限失败")
+                }
+                viewModel.addCustomScanDir(uri.toString())
+            }
+        }
+    }
+
+    fun openScanDirPicker() {
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
+            flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                    Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
+        }
+        scanDirPickerLauncher.launch(intent)
+    }
+
+    /**
+     * 扫描目录显示名：SAF tree URI 解析成可读路径，解析失败回退 URI 本身
+     */
+    fun scanDirDisplayName(ctx: android.content.Context, dir: String): String {
+        return if (dir.startsWith("content://")) {
+            runCatching {
+                android.net.Uri.parse(dir).let { uri ->
+                    // tree URI 的 path 形如 /tree/primary:Movies，取冒号后的段拼成可读形式
+                    val treePath = uri.path?.substringAfter("/tree/") ?: ""
+                    val storage = treePath.substringBefore(':')
+                    val sub = treePath.substringAfter(':', "")
+                    if (sub.isEmpty()) "/$storage" else "/$storage/$sub"
+                }
+            }.getOrDefault(dir)
+        } else dir
+    }
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
@@ -230,6 +273,30 @@ fun SettingsScreen(
                     )
 
                     // 下载画质设置已移除：下载源（种子/直链文件）的画质由源文件本身决定，该设置无实际作用
+                }
+            }
+
+            // 视频库设置：自定义扫描目录
+            item {
+                SettingsSection(title = stringResource(R.string.settings_section_video_library)) {
+                    // 添加扫描目录（SAF）
+                    ClickableSettingsItem(
+                        icon = Icons.Filled.LibraryAdd,
+                        title = stringResource(R.string.settings_scan_dir_add),
+                        subtitle = stringResource(R.string.settings_scan_dir_add_desc),
+                        onClick = { openScanDirPicker() }
+                    )
+
+                    // 已添加的目录列表
+                    userPreferences.customScanDirs.forEach { dir ->
+                        Divider(color = MaterialTheme.colorScheme.outlineVariant, modifier = Modifier.padding(vertical = 8.dp))
+                        ClickableSettingsItem(
+                            icon = Icons.Filled.Folder,
+                            title = scanDirDisplayName(context, dir),
+                            subtitle = stringResource(R.string.settings_scan_dir_remove_hint),
+                            onClick = { viewModel.removeCustomScanDir(dir) }
+                        )
+                    }
                 }
             }
 

@@ -51,7 +51,10 @@ data class UserPreferences(
     val mediaNotificationEnabled: Boolean = true,
     // lockscreenMediaVisible=false：通知 visibility=SECRET，锁屏不显示通知本体；
     // 系统锁屏媒体卡片是否消失取决于 ROM，效果不保证
-    val lockscreenMediaVisible: Boolean = true
+    val lockscreenMediaVisible: Boolean = true,
+
+    // 自定义视频扫描目录（SAF tree URI 或绝对路径；空 = 只用 MediaStore 全量扫描）
+    val customScanDirs: Set<String> = emptySet()
 )
 
 /**

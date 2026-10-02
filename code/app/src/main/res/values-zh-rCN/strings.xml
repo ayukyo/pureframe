@@ -206,6 +206,10 @@
     <string name="settings_title">设置</string>
     <string name="settings_section_player">播放器</string>
     <string name="settings_section_download">下载</string>
+    <string name="settings_section_video_library">视频库</string>
+    <string name="settings_scan_dir_add">添加扫描目录</string>
+    <string name="settings_scan_dir_add_desc">额外扫描指定文件夹中的视频（点击选择）</string>
+    <string name="settings_scan_dir_remove_hint">点击移除该目录</string>
     <string name="settings_section_interface">界面</string>
     <string name="settings_section_cast">投屏</string>
     <string name="settings_section_about">关于</string>

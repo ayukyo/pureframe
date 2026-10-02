@@ -212,6 +212,10 @@
     <string name="settings_title">Settings</string>
     <string name="settings_section_player">Player</string>
     <string name="settings_section_download">Downloads</string>
+    <string name="settings_section_video_library">Video Library</string>
+    <string name="settings_scan_dir_add">Add scan folder</string>
+    <string name="settings_scan_dir_add_desc">Scan videos from an extra folder (tap to pick)</string>
+    <string name="settings_scan_dir_remove_hint">Tap to remove this folder</string>
     <string name="settings_section_interface">Interface</string>
     <string name="settings_section_cast">Casting</string>
     <string name="settings_section_about">About</string>

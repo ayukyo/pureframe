@@ -4,6 +4,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 
 /**
  * DataStore Preferences Keys
@@ -47,4 +48,7 @@ object PreferencesKeys {
     // 通知与锁屏（PR8）
     val MEDIA_NOTIFICATION_ENABLED = booleanPreferencesKey("media_notification_enabled")
     val LOCKSCREEN_MEDIA_VISIBLE = booleanPreferencesKey("lockscreen_media_visible")
+
+    // 自定义视频扫描目录（stringSet 存 URI 列表，SAF tree URI + 兼容模式存绝对路径）
+    val CUSTOM_SCAN_DIRS = stringSetPreferencesKey("custom_scan_dirs")
 }

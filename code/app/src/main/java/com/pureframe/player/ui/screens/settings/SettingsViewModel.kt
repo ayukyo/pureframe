@@ -107,6 +107,24 @@ class SettingsViewModel @Inject constructor(
             userPreferencesRepository.updateDownloadPath(path)
         }
     }
+
+    /**
+     * 添加自定义视频扫描目录（SAF tree URI）
+     */
+    fun addCustomScanDir(uri: String) {
+        viewModelScope.launch {
+            userPreferencesRepository.addCustomScanDir(uri)
+        }
+    }
+
+    /**
+     * 移除自定义视频扫描目录
+     */
+    fun removeCustomScanDir(dir: String) {
+        viewModelScope.launch {
+            userPreferencesRepository.removeCustomScanDir(dir)
+        }
+    }
     
     /**
      * 更新 WiFi 自动下载
