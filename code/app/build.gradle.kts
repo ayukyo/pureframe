@@ -2,7 +2,7 @@ import java.util.Properties
 
 plugins {
     id("com.android.application")
-    id("org.jetbrains.kotlin.android")
+    // AGP 9.0 内置 Kotlin：kotlin-android 插件已移除（内置 KGP 2.2.10 驱动编译）
     id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.devtools.ksp")
     id("com.google.dagger.hilt.android")
@@ -92,10 +92,6 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
-    }
-
     buildFeatures {
         compose = true
         // BuildConfig.DEBUG 供运行时判定是否植入日志树（release 不打日志）
@@ -160,10 +156,10 @@ dependencies {
     implementation("io.coil-kt:coil-compose:2.5.0")
     implementation("io.coil-kt:coil-video:2.5.0")
 
-    // Hilt - 依赖注入（2.56.2：KSP2 下 2.51.x 处理器报 "unexpected jvm signature V"
-    // （suspend 方法 Unit 返回值签名解析，dagger#4505），2.53.1 起修复，取最新稳定）
-    implementation("com.google.dagger:hilt-android:2.56.2")
-    ksp("com.google.dagger:hilt-compiler:2.56.2")
+    // Hilt - 依赖注入（2.60.1：2.57 及以下不支持 AGP 9.0 新 DSL（报
+    // "Android BaseExtension not found"），AGP 9 支持自 2.59 起稳定）
+    implementation("com.google.dagger:hilt-android:2.60.1")
+    ksp("com.google.dagger:hilt-compiler:2.60.1")
     implementation("androidx.hilt:hilt-navigation-compose:1.1.0")
 
     // Coroutines
