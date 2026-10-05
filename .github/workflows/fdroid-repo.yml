@@ -88,8 +88,9 @@ jobs:
           # 解 base64 index 签名密钥（PKCS12）
           echo "${{ secrets.PF_FDROID_KEYSTORE_BASE64 }}" | base64 -d > keystore.p12
           # fdroid 的 config.py 里设置 keystore 与口令（不打印到日志）
+          # fdroidserver 2.x 要求的键名：keystore / keystorepass / keypass / repo_keyalias
           # 注意：整个步骤禁用 heredoc/多行字符串 —— 顶格内容会终止 YAML 块标量导致解析失败
-          python3 -c "import os; open('config.py','a').write('keystore = \"keystore.p12\"\nkeystore_pass = %r\nkeypass = %r\n' % (os.environ['FDROID_KEYSTORE_PASS'], os.environ['FDROID_KEY_PASS']))"
+          python3 -c "import os; open('config.py','a').write('keystore = \"keystore.p12\"\nkeystorepass = %r\nkeypass = %r\nrepo_keyalias = \"fdroid\"\n' % (os.environ['FDROID_KEYSTORE_PASS'], os.environ['FDROID_KEY_PASS']))"
           fdroid update --create-metadata --verbose
           # fdroid update 生成 index-v1.json / index-v2.json / index.jar
           rm -f keystore.p12  # 清理私钥，不入 pages 产物
