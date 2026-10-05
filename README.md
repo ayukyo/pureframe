@@ -66,7 +66,10 @@ pureframe/
 
 - **GitHub Releases**：[Latest release](https://github.com/ayukyo/pureframe/releases/latest) 下载 APK 直接安装
 - **Obtainium**：添加本仓库地址 `https://github.com/ayukyo/pureframe` 即可自动跟进更新
-- **IzzyOnDroid / F-Droid**：上架后在此更新渠道链接
+- **F-Droid 自建仓库**：在 F-Droid 客户端「设置 → 仓库」添加
+  - 仓库地址：`https://ayukyo.github.io/pureframe/repo?fingerprint=466896A633FCD0210E479F6A72673D4D5FF324F20BB8062E3915491D769B755F`
+  - （也可只填 `https://ayukyo.github.io/pureframe/repo/`，然后核对指纹为上述值）
+- **IzzyOnDroid**：提交上架中，通过后在此更新渠道链接
 
 ## 🤝 参与贡献
 
