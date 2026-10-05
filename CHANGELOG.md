@@ -2,7 +2,7 @@
 
 本文件记录用户可感知的变化。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
-## [Unreleased]
+## [1.1.1] - 2026-10
 
 ### Changed
 - **移除 MANAGE_EXTERNAL_STORAGE（所有文件访问）权限**。本地视频扫描改用
