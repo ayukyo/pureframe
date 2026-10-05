@@ -69,6 +69,18 @@ jobs:
         run: ./gradlew assembleRelease --no-daemon --stacktrace
         working-directory: code
 
+      # AAB 只在正式（tag）构建时产出——Play 上架格式，快照无需白费时间
+      - name: Build Release AAB (signed, release only)
+        if: env.IS_RELEASE == 'true'
+        env:
+          PF_STOREFILE: /tmp/pureframe-release.jks
+          PF_STOREPASSWORD: ${{ secrets.PF_STOREPASSWORD }}
+          PF_KEYALIAS: ${{ secrets.PF_KEYALIAS }}
+          PF_KEYPASSWORD: ${{ secrets.PF_KEYPASSWORD }}
+          PF_SIGNING_SHA256: ${{ secrets.PF_SIGNING_SHA256 }}
+        run: ./gradlew bundleRelease --no-daemon --stacktrace
+        working-directory: code
+
       # APK 改名带上版本号 + short SHA + 日期：
       # 正式版：pureframe-<ver>.apk（tag 构建）
       # 快照：  pureframe-debug-<ver>-<sha7>-<yyyymmdd>.apk / pureframe-release-...
@@ -121,8 +133,27 @@ jobs:
           path: code/app/build/outputs/apk/release/${{ env.RELEASE_APK_NAME }}
           retention-days: 14
 
+      # 正式构建：AAB 改名并作为 artifact 留档（同时参与 Release 上传）
+      - name: Rename Release AAB with version info
+        if: env.IS_RELEASE == 'true'
+        run: |
+          AAB=$(find code/app/build/outputs/bundle/release -name "*.aab" | head -1)
+          AAB_DIR=$(dirname "$AAB")
+          AAB_DEST="pureframe-release-${VERSION}.aab"
+          mv "$AAB" "$AAB_DIR/$AAB_DEST"
+          echo "RELEASE_AAB_NAME=$AAB_DEST" >> $GITHUB_ENV
+          echo "Renamed aab to: $AAB_DIR/$AAB_DEST"
+
+      - name: Upload Release AAB (artifact)
+        if: env.IS_RELEASE == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: pureframe-release-aab-${{ env.SHA7 }}
+          path: code/app/build/outputs/bundle/release/${{ env.RELEASE_AAB_NAME }}
+          retention-days: 14
+
       # ---- 正式 Release（tag push：vX.Y.Z）----
-      # 产物：pureframe-<ver>.apk（debug 构建产物）+ release 签名 APK + SHA256SUMS
+      # 产物：pureframe-<ver>.apk（debug 构建产物）+ release 签名 APK + AAB + SHA256SUMS
       - name: Generate SHA-256 checksums
         if: env.IS_RELEASE == 'true'
         run: |
@@ -130,6 +161,8 @@ jobs:
           sha256sum "${{ env.APK_NAME }}" > "$GITHUB_WORKSPACE/SHA256SUMS"
           cd ../release
           sha256sum "${{ env.RELEASE_APK_NAME }}" >> "$GITHUB_WORKSPACE/SHA256SUMS"
+          cd ../../bundle/release
+          sha256sum "${{ env.RELEASE_AAB_NAME }}" >> "$GITHUB_WORKSPACE/SHA256SUMS"
           cat "$GITHUB_WORKSPACE/SHA256SUMS"
 
       - name: Create GitHub Release (tag)
@@ -143,12 +176,14 @@ jobs:
 
             - `pureframe-${{ env.VERSION }}.apk` — debug-signed build (sideload-friendly)
             - `pureframe-release-${{ env.VERSION }}.apk` — release-signed build
+            - `pureframe-release-${{ env.VERSION }}.aab` — Android App Bundle (Google Play upload format)
             - `SHA256SUMS` — checksums for verifying your download
 
             See [CHANGELOG.md](https://github.com/ayukyo/pureframe/blob/main/CHANGELOG.md) for what's new.
           files: |
             code/app/build/outputs/apk/debug/${{ env.APK_NAME }}
             code/app/build/outputs/apk/release/${{ env.RELEASE_APK_NAME }}
+            code/app/build/outputs/bundle/release/${{ env.RELEASE_AAB_NAME }}
             SHA256SUMS
           fail_on_unmatched_files: false
           make_latest: true
