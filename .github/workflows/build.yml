@@ -102,11 +102,14 @@ jobs:
         run: |
           APK=$(find code/app/build/outputs/apk/release -name "*.apk" ! -name "*unsigned*" | head -1)
           APK_DIR=$(dirname "$APK")
-          if [ "$IS_RELEASE" != "true" ]; then
+          if [ "$IS_RELEASE" = "true" ]; then
+            # 正式构建：与 debug 包同名约定 pureframe-<ver>.apk（内容是 release 签名）
+            REL_DEST="pureframe-${VERSION}.apk"
+          else
             DATE=$(date +%Y%m%d)
             REL_DEST="pureframe-release-${VERSION}-${SHA7}-${DATE}.apk"
-            mv "$APK" "$APK_DIR/$REL_DEST"
           fi
+          mv "$APK" "$APK_DIR/$REL_DEST"
           echo "RELEASE_APK_NAME=$REL_DEST" >> $GITHUB_ENV
           echo "Renamed release to: $APK_DIR/$REL_DEST"
 
