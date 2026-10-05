@@ -58,17 +58,18 @@ jobs:
           if [ ! -f config.py ]; then
             echo "config.py missing — one-time bootstrap required (see docs/fdroid-repo-bootstrap.md)"
             # 首次运行引导：生成最小配置
-            cat > config.py << 'EOF'
-repo_name = "PureFrame"
-repo_description = "PureFrame official repository - clean local video player"
-repo_icon = "icon.png"
-repo_url = "https://ayukyo.github.io/pureframe/fdroid/repo"
-repo_siteurl = "https://github.com/ayukyo/pureframe"
-repo_issuetracker = "https://github.com/ayukyo/pureframe/issues"
-archive_older = 0
-repo_password = ""
-keyid = "REPLACE_WITH_KEYID"
-EOF
+            # 注意：不能用 heredoc —— heredoc 顶格内容会终止 YAML 块标量导致解析失败
+            printf '%s\n' \
+              'repo_name = "PureFrame"' \
+              'repo_description = "PureFrame official repository - clean local video player"' \
+              'repo_icon = "icon.png"' \
+              'repo_url = "https://ayukyo.github.io/pureframe/fdroid/repo"' \
+              'repo_siteurl = "https://github.com/ayukyo/pureframe"' \
+              'repo_issuetracker = "https://github.com/ayukyo/pureframe/issues"' \
+              'archive_older = 0' \
+              'repo_password = ""' \
+              'keyid = "REPLACE_WITH_KEYID"' \
+              > config.py
           fi
           mkdir -p repo
           cp "/tmp/${{ steps.latest.outputs.name }}" repo/
