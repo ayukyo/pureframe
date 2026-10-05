@@ -3,6 +3,7 @@ name: Build APK
 on:
   push:
     branches: [main, master]
+    tags: ['v*']  # 语义化版本 tag（v1.0.0）→ 触发正式 Release
   pull_request:
     branches: [main, master]
   workflow_dispatch:  # 手动触发
@@ -31,6 +32,19 @@ jobs:
         run: chmod +x gradlew
         working-directory: code
 
+      # 版本号来源：tag push 用 tag 名（去掉 v 前缀），快照构建用 gradle 里的 versionName
+      - name: Determine version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+            echo "IS_RELEASE=true" >> $GITHUB_ENV
+          else
+            VERSION=$(grep -oP 'versionName\s*=\s*"\K[^"]+' code/app/build.gradle.kts)
+            echo "IS_RELEASE=false" >> $GITHUB_ENV
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "Building version: $VERSION"
+
       - name: Build Debug APK
         run: ./gradlew assembleDebug --no-daemon --stacktrace
         working-directory: code
@@ -51,8 +65,9 @@ jobs:
         run: ./gradlew assembleRelease --no-daemon --stacktrace
         working-directory: code
 
-      # APK 改名带上 short SHA + 日期，形成"阶段性快照"版本：
-      # pureframe-debug-1.0.0-<sha7>-<yyyymmdd>.apk
+      # APK 改名带上版本号 + short SHA + 日期：
+      # 正式版：pureframe-<ver>.apk（tag 构建）
+      # 快照：  pureframe-debug-<ver>-<sha7>-<yyyymmdd>.apk / pureframe-release-...
       # 注意 mv 到原目录（不改变路径），否则后续步骤找不到文件
       - name: Rename APK with version info
         run: |
@@ -60,7 +75,13 @@ jobs:
           APK_DIR=$(dirname "$APK")
           SHA7=$(git rev-parse --short=7 HEAD)
           DATE=$(date +%Y%m%d)
-          DEST="pureframe-debug-1.0.0-${SHA7}-${DATE}.apk"
+          if [ "$IS_RELEASE" = "true" ]; then
+            DEST="pureframe-${VERSION}.apk"
+            REL_DEST="pureframe-${VERSION}.apk"
+          else
+            DEST="pureframe-debug-${VERSION}-${SHA7}-${DATE}.apk"
+            REL_DEST="pureframe-release-${VERSION}-${SHA7}-${DATE}.apk"
+          fi
           mv "$APK" "$APK_DIR/$DEST"
           echo "APK_NAME=$DEST" >> $GITHUB_ENV
           echo "SHA7=$SHA7" >> $GITHUB_ENV
@@ -77,11 +98,13 @@ jobs:
         run: |
           APK=$(find code/app/build/outputs/apk/release -name "*.apk" ! -name "*unsigned*" | head -1)
           APK_DIR=$(dirname "$APK")
-          DATE=$(date +%Y%m%d)
-          DEST="pureframe-release-1.0.0-${SHA7}-${DATE}.apk"
-          mv "$APK" "$APK_DIR/$DEST"
-          echo "RELEASE_APK_NAME=$DEST" >> $GITHUB_ENV
-          echo "Renamed release to: $APK_DIR/$DEST"
+          if [ "$IS_RELEASE" != "true" ]; then
+            DATE=$(date +%Y%m%d)
+            REL_DEST="pureframe-release-${VERSION}-${SHA7}-${DATE}.apk"
+            mv "$APK" "$APK_DIR/$REL_DEST"
+          fi
+          echo "RELEASE_APK_NAME=$REL_DEST" >> $GITHUB_ENV
+          echo "Renamed release to: $APK_DIR/$REL_DEST"
 
       - name: Upload Release APK (artifact)
         uses: actions/upload-artifact@v4
@@ -90,10 +113,42 @@ jobs:
           path: code/app/build/outputs/apk/release/${{ env.RELEASE_APK_NAME }}
           retention-days: 14
 
-      # 推送到 main 时把 APK 作为 Release（tag: build-<date>-<sha>）持续替换发布，
+      # ---- 正式 Release（tag push：vX.Y.Z）----
+      # 产物：pureframe-<ver>.apk（debug 构建产物）+ release 签名 APK + SHA256SUMS
+      - name: Generate SHA-256 checksums
+        if: env.IS_RELEASE == 'true'
+        run: |
+          cd code/app/build/outputs/apk/debug
+          sha256sum "${{ env.APK_NAME }}" > "$GITHUB_WORKSPACE/SHA256SUMS"
+          cd ../release
+          sha256sum "${{ env.RELEASE_APK_NAME }}" >> "$GITHUB_WORKSPACE/SHA256SUMS"
+          cat "$GITHUB_WORKSPACE/SHA256SUMS"
+
+      - name: Create GitHub Release (tag)
+        if: env.IS_RELEASE == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: PureFrame ${{ env.VERSION }}
+          body: |
+            Official release build of PureFrame ${{ github.ref_name }}.
+
+            - `pureframe-${{ env.VERSION }}.apk` — debug-signed build (sideload-friendly)
+            - `pureframe-release-${{ env.VERSION }}.apk` — release-signed build
+            - `SHA256SUMS` — checksums for verifying your download
+
+            See [CHANGELOG.md](https://github.com/ayukyo/pureframe/blob/main/CHANGELOG.md) for what's new.
+          files: |
+            code/app/build/outputs/apk/debug/${{ env.APK_NAME }}
+            code/app/build/outputs/apk/release/${{ env.RELEASE_APK_NAME }}
+            SHA256SUMS
+          fail_on_unmatched_files: false
+          make_latest: true
+
+      # 推送到 main 时把 APK 作为快照 Release（tag: build-<sha>）持续替换发布，
       # 方便手机直接从 Releases 页下载安装，无需登录 GitHub 拉 artifact
-      - name: Upload to GitHub Releases
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      - name: Upload snapshot to GitHub Releases
+        if: env.IS_RELEASE == 'false' && github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: build-${{ env.SHA7 }}
@@ -106,7 +161,7 @@ jobs:
             code/app/build/outputs/apk/debug/${{ env.APK_NAME }}
             code/app/build/outputs/apk/release/${{ env.RELEASE_APK_NAME }}
           fail_on_unmatched_files: false
-          make_latest: true
+          make_latest: false
 
   lint:
     runs-on: ubuntu-latest

@@ -24,7 +24,9 @@ android {
     defaultConfig {
         applicationId = "com.pureframe.player"
         minSdk = 26
-        targetSdk = 34
+        // 36：Google Play 自 2026-08-31 起新应用/更新强制要求；Android 15/16
+        // 强制 edge-to-edge —— MainActivity 已 enableEdgeToEdge + Compose insets 适配
+        targetSdk = 36
         versionCode = 1
         versionName = "1.0.0"
 

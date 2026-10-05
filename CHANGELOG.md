@@ -4,11 +4,22 @@
 
 ## [Unreleased]
 
+### Changed
+- **许可证更正：Apache-2.0 → GPL-3.0**。内置的 FFmpeg 软解扩展 NextLib 以 GPL-3.0 发布，
+  按许可证要求本合并作品须整体以 GPL-3.0 分发（详见 NOTICE）
+- targetSdk 34 → 36（Google Play 2026-08-31 起新应用强制要求；Android 15/16
+  强制 edge-to-edge，应用已启用 enableEdgeToEdge + Compose insets 适配）
+
 ### Added
+- 开源分发基础设施：语义化版本 tag（vX.Y.Z）触发正式 GitHub Release
+  （含 SHA256SUMS 校验文件），快照构建流程保留
+- 隐私政策文档（零收集 / 零追踪 / 零广告声明与权限用途说明）
+
+### Added (1.0.0 时期)
 - 本地视频播放自动加载同目录同名字幕（.srt/.ass/.ssa/.vtt），半透明底色样式
 - 设置页「显示字幕」开关实时生效（无需重新进入播放页）
 - 主题模式（浅色/深色/跟随系统）真正接入 MaterialTheme
-- 仓库授权文件：LICENSE (Apache-2.0)、NOTICE、免责声明
+- 仓库授权文件：LICENSE、NOTICE、免责声明
 
 ### Changed
 - 播放页启用 edge-to-edge，全屏/非全屏下控制栏不再被系统栏遮挡

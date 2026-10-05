@@ -49,7 +49,17 @@ GitHub Actions (`.github/workflows/build.yml`) runs `assembleDebug` + `lintDebug
 
 ## 📄 License
 
-Licensed under the [Apache License 2.0](./LICENSE).
+Licensed under the [GNU General Public License v3.0](./LICENSE).
 
+- Why GPL-3.0: the bundled FFmpeg software-decoding extension [NextLib](https://github.com/anilbeesetti/nextlib) is licensed under GPL-3.0, which requires this combined work to be distributed under the same license.
 - Third-party components and their licenses: [NOTICE](./NOTICE)
 - **Please read the [disclaimer](./DISCLAIMER.md) before use**: this app is a client-side tool only. It does not host, store, or distribute any content. Users are solely responsible for complying with the laws of their jurisdiction when using the magnet download feature.
+
+## 🔒 Privacy
+
+**No data collection. No tracking. No ads.** See the [privacy policy](./docs/privacy-policy.md).
+
+## 📥 Download
+
+- **GitHub Releases**: grab the latest APK from the [releases page](https://github.com/ayukyo/pureframe/releases/latest)
+- **Obtainium**: add this repo URL `https://github.com/ayukyo/pureframe` for automatic updates

@@ -1,6 +1,11 @@
 PureFrame (纯帧)
 Copyright 2026 ayukyo
 
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
 This product includes software developed as part of the PureFrame project.
 
 ========================================================================
@@ -19,36 +24,56 @@ This application uses the following third-party libraries:
    Licensed under the Apache License, Version 2.0
    https://github.com/androidx/media
 
-3. libtorrent4j
+3. NextLib (nextlib-media3ext) — FFmpeg software decoders
+   Copyright Anil Kumar Beesetti and contributors
+   Licensed under the GNU General Public License v3.0
+   https://github.com/anilbeesetti/nextlib
+   NOTE: This is the component that makes PureFrame a whole
+   GPL-3.0 work. The bundled FFmpeg shared libraries are covered
+   by the GPL build configuration of the upstream project.
+
+4. libtorrent4j
    Copyright arvidn and contributors
    Licensed under the BSD 3-Clause License (wraps libtorrent)
    https://github.com/aldenml/libtorrent4j
-   NOTE: libtorrent is distributed under the BSD license and is NOT
-   covered by this project's license terms.
+   NOTE: libtorrent is distributed under the BSD license. The BSD
+   license is compatible with GPL-3.0 for this combined work.
 
-4. Dagger / Hilt
+5. UPnPCast
+   Copyright yinnho and contributors
+   Licensed under the MIT License
+   https://github.com/yinnho/UPnPCast
+
+6. NanoHTTPD
+   Copyright NanoHTTPD contributors
+   Licensed under the BSD 3-Clause License
+   https://github.com/NanoHttpd/NanoHttpd
+
+7. Dagger / Hilt
    Copyright Google LLC
    Licensed under the Apache License, Version 2.0
    https://github.com/google/dagger
 
-5. Kotlin / Coroutines
+8. Kotlin / Coroutines
    Copyright JetBrains s.r.o.
    Licensed under the Apache License, Version 2.0
    https://github.com/JetBrains/kotlin
 
-6. Timber
+9. Timber
    Copyright Jake Wharton
    Licensed under the Apache License, Version 2.0
    https://github.com/JakeWharton/timber
 
-7. Coil (if applicable, for image loading)
-   Copyright Coil Contributors
-   Licensed under the Apache License, Version 2.0
-   https://github.com/coil-kt/coil
+10. Coil
+    Copyright Coil Contributors
+    Licensed under the Apache License, Version 2.0
+    https://github.com/coil-kt/coil
 
-Full license texts for Apache License 2.0 can be found in the LICENSE
-file of this repository. The BSD 3-Clause license text for libtorrent
-is reproduced below.
+The full text of the GNU General Public License v3.0 is in the LICENSE
+file of this repository. Permissive-license texts of the components
+above (Apache-2.0 / BSD / MIT) are reproduced in their upstream
+repositories; BSD 3-Clause text for libtorrent is included below for
+convenience.
 
 ------------------------------------------------------------------------
 BSD 3-Clause License (libtorrent)

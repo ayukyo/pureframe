@@ -57,19 +57,30 @@ pureframe/
 ├── code/              # 源代码（Gradle 根）
 │   └── app/           # Android 应用模块
 ├── docs/              # 需求与技术设计文档
-├── LICENSE            # Apache-2.0
+├── LICENSE            # GPL-3.0
 ├── NOTICE             # 第三方组件许可声明
 └── DISCLAIMER.md      # 免责声明
 ```
+
+## 📥 下载安装
+
+- **GitHub Releases**：[Latest release](https://github.com/ayukyo/pureframe/releases/latest) 下载 APK 直接安装
+- **Obtainium**：添加本仓库地址 `https://github.com/ayukyo/pureframe` 即可自动跟进更新
+- **IzzyOnDroid / F-Droid**：上架后在此更新渠道链接
 
 ## 🤝 参与贡献
 
 欢迎 Issue 与 PR，请先阅读 [CONTRIBUTING.md](./CONTRIBUTING.md)。
 
+## 🔒 隐私
+
+**零收集、零追踪、零广告** —— 详见[隐私政策](./docs/privacy-policy.md)。
+
 ## 📄 许可证
 
-本项目基于 [Apache License 2.0](./LICENSE) 开源。
+本项目基于 [GNU General Public License v3.0](./LICENSE) 开源。
 
+- 选择 GPL-3.0 的原因：内置的 FFmpeg 软解扩展 [NextLib](https://github.com/anilbeesetti/nextlib) 以 GPL-3.0 发布，按许可证要求本项目整体以 GPL-3.0 分发
 - 第三方组件及其许可声明见 [NOTICE](./NOTICE)
 - **使用本软件前请阅读[免责声明](./DISCLAIMER.md)**：本软件仅为用户端工具，不提供、不存储、不传播任何内容；使用磁力下载功能的合法性由使用者自行负责。
 
