@@ -1,12 +1,14 @@
 name: F-Droid repo
 
-# tag 正式构建成功后，把 release 签名 APK 组装进自建 F-Droid 仓库，
+# Build APK 成功后，把 latest release 签名 APK 组装进自建 F-Droid 仓库，
 # 发布到 GitHub Pages。用户在 F-Droid 客户端添加仓库 URL 即可安装/更新。
+# 注意：不要加 branches: [main] 过滤——tag（vX.Y.Z）触发的正式构建
+# head_branch 是 tag 名，加了过滤会导致正式发布后仓库不链式更新
+# （快照构建发布新 Release 也会被 latest 立刻覆盖，两者最终一致）。
 on:
   workflow_run:
     workflows: ["Build APK"]
     types: [completed]
-    branches: [main]
   workflow_dispatch:
 
 permissions:
