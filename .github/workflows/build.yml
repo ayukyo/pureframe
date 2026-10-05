@@ -103,8 +103,9 @@ jobs:
           APK=$(find code/app/build/outputs/apk/release -name "*.apk" ! -name "*unsigned*" | head -1)
           APK_DIR=$(dirname "$APK")
           if [ "$IS_RELEASE" = "true" ]; then
-            # 正式构建：与 debug 包同名约定 pureframe-<ver>.apk（内容是 release 签名）
-            REL_DEST="pureframe-${VERSION}.apk"
+            # 正式构建：release 签名包命名须与 debug 包区分（资产扁平化，同名会互相覆盖），
+            # 与 Release body 文案一致：pureframe-release-<ver>.apk
+            REL_DEST="pureframe-release-${VERSION}.apk"
           else
             DATE=$(date +%Y%m%d)
             REL_DEST="pureframe-release-${VERSION}-${SHA7}-${DATE}.apk"
