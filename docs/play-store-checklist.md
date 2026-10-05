@@ -20,6 +20,7 @@
 
 - **内容分级问卷**：无暴力/赌博/用户生成内容分享 → 预期评 Everyone/3+
 - **数据安全表单**（最关键，必须与实际一致）：
+  - 隐私政策 URL：`https://ayukyo.github.io/pureframe/privacy-policy.html`
   - 是否收集用户数据？→ **否**（零收集是我们的核心卖点）
   - 是否分享数据？→ 否
   - 是否必需安全措施？→ 数据不收集则多数项不适用
@@ -58,8 +59,9 @@ Play 商店分发的 APK 由 Google 的密钥重签，SignatureGuard 的 hash �
 1. Play Console 注册（$25，需身份验证）
 2. 创建应用 → 填商店信息（上表素材）
 3. **封闭测试轨道**：上传 AAB/APK → 邀请 12+ 测试者（邮箱列表）→ 开始 14 天
-4. 测试期间完成数据安全表单 + 内容分级 + 隐私政策 URL（已有 docs/privacy-policy.md，
-   需挂在可达 URL——可用 GitHub Pages 或仓库 raw 链接）
+4. 测试期间完成数据安全表单 + 内容分级 + 隐私政策 URL
+   （✅ 已上线：https://ayukyo.github.io/pureframe/privacy-policy.html ——
+   GitHub Pages 托管，双语，源文件在 gh-pages 分支与 docs/privacy-policy.md 同步维护）
 5. 14 天后申请正式上架 → 审核（通常 1~7 天）
 
 ## 6. AAB 格式说明（✅ CI 已支持，2026-10-05）

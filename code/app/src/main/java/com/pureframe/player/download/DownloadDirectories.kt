@@ -22,10 +22,20 @@ import java.io.File
  */
 object DownloadDirectories {
 
-    /** 是否具备写公共外部存储的能力（API30+ 看"所有文件访问"，低版本看 WRITE 权限） */
+    /**
+     * 是否具备写公共外部存储的能力（决定下载默认落点是否用户可见）。
+     *
+     * MEES（所有文件访问）已随 manifest 移除，此判断不再依赖它：
+     * API 29- 写公共目录看 WRITE_EXTERNAL_STORAGE；API 30+ 分区存储下，
+     * 应用对公共媒体目录（Movies 等）的媒体文件写入不需要全盘权限
+     * （libtorrent native File API 写新建媒体文件同样豁免），
+     * 其余路径靠 File.canWrite() 实测兜底——写不了会自然回退应用私有目录。
+     */
     fun hasPublicStorage(context: Context): Boolean {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            Environment.isExternalStorageManager()
+            // 分区存储：Movies/PureFrame 属媒体集合目录，创建/写入媒体文件无需额外权限。
+            // 真值无本地判定 API，交给 resolve() 的 canWrite() 实测（失败回退私有目录）。
+            true
         } else {
             ContextCompat.checkSelfPermission(
                 context, Manifest.permission.WRITE_EXTERNAL_STORAGE

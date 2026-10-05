@@ -13,7 +13,9 @@
 | APK 挂在 GitHub tagged releases | ✅ v1.1.0 起 |
 | 无自更新/下载可执行文件 | ✅ 无更新器 |
 | usesCleartextTraffic | ⚠️ 提交前检查 manifest；播放器本地网络（DLNA/代理）场景政策明文允许，建议补 Network Security Config 说明 |
+| MEES（MANAGE_EXTERNAL_STORAGE） | ✅ 已移除（2026-10-06）：扫描走 READ_MEDIA_VIDEO，下载默认落 Movies/PureFrame 或应用私有目录，SAF 覆盖自定义目录——不再需要全盘访问，省一轮问询 |
 | 30MB 体积上限（rule-of-thumb） | ⚠️ 我们 ~92MB。政策允许大应用例外（播放器类常见豁免，如 VLC/mpv），须在 issue 中主动说明原因（FFmpeg 软解全编解码器 + libtorrent） |
+| 隐私政策 | ✅ https://ayukyo.github.io/pureframe/privacy-policy.html |
 | fastlane 元数据（短/长描述+图标+截图） | ✅ fastlane/metadata/android/（截图 3 张真机） |
 
 ## 提交步骤（需维护者 GitHub/GitLab 账号）
@@ -41,19 +43,19 @@ Notes:
   with other media players; happy to discuss.
 - Permission usage:
   - READ_MEDIA_VIDEO / READ_EXTERNAL_STORAGE: scan local videos (core feature)
-  - MANAGE_EXTERNAL_STORAGE: optional full-device scan, app works without it
-    (if we keep it; alternatively we drop it before submission — see checklist)
   - INTERNET: user-initiated downloads (BT/HTTP), DLNA/Cast streaming only
   - FOREGROUND_SERVICE / POST_NOTIFICATIONS: media playback notification
 - No trackers, no analytics, no ads, no self-updater.
+- Privacy policy: https://ayukyo.github.io/pureframe/privacy-policy.html
+- Fastlane screenshots and metadata are in the repo; 1080x2340 phone screenshots
+  (3) included.
 - usesCleartextTraffic (if present) is required for DLNA/UPnP and local HTTP
   streaming (media player home-network use case per your policy).
 ```
 
 4. 提交前最后两个动作：
-   - [ ] 决定 MEES 去留：**建议直接移除**（SAF + READ_MEDIA_VIDEO 已覆盖；去掉可少一轮问询）
-   - [ ] `grep usesCleartextTraffic code/app/src/main/AndroidManifest.xml` 确认现状，
-         若为 true 补一句 Network Security Config 或在 issue 说明
+   - [x] MEES 已移除（2026-10-06，见自查表）
+   - [x] usesCleartextTraffic="true" 确认在 manifest（DLNA/本地串流需要，issue 里已说明）
 5. Izzy 审核通过后，把 badge 加进 README（assets 见 IzzyOnDroid wiki）
 
 ## 时间线

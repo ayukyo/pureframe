@@ -124,7 +124,12 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.6.2")
 
     // Jetpack Compose
-    implementation(platform("androidx.compose:compose-bom:2023.10.01"))
+    // 注意：必须与运行时实际解析版本一致。media3-cast 1.10.1 传递依赖 compose-bom 2024.12.01
+    // （material3 1.3.1），若此处声明旧 BOM（如 2023.10.01/m3 1.1.2），会形成"编译期 1.1.x /
+    // 运行期 1.3.1"错位 —— AddDownloadDialog 使用的 AlertDialog(onDismissRequest, modifier) {}
+    // trailing-lambda 重载是 material3 1.2.0 新增的，在 1.1.2 编译期签名与 1.3.1 运行期不符，
+    // 运行时抛 NoSuchMethodError 闪退（其余对话框用全参重载不受影响）。
+    implementation(platform("androidx.compose:compose-bom:2024.12.01"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
@@ -212,7 +217,7 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
-    androidTestImplementation(platform("androidx.compose:compose-bom:2023.10.01"))
+    androidTestImplementation(platform("androidx.compose:compose-bom:2024.12.01"))
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")

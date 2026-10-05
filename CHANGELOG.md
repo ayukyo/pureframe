@@ -4,6 +4,18 @@
 
 ## [Unreleased]
 
+### Changed
+- **移除 MANAGE_EXTERNAL_STORAGE（所有文件访问）权限**。本地视频扫描改用
+  READ_MEDIA_VIDEO 细粒度媒体权限（1.1.0 已完成），BT/HTTP 下载写入公共
+  Movies/PureFrame 目录属媒体集合目录豁免，无需该权限；自定义下载目录仍走 SAF。
+  更贴合应用商店审核与最小权限原则
+
+### Fixed
+- 修复「添加下载链接」对话框打开即崩溃（NoSuchMethodError）：compose-bom 声明
+  （2023.10.01）与运行时实际解析版本（2024.12.01，由 media3-cast 1.10.1 传递引入）
+  错位，material3 1.1.2 编译期链接的 AlertDialog 简化重载签名在 1.3.1 运行期不存在；
+  现将 BOM 显式升级至 2024.12.01 对齐编译与运行时
+
 ## [1.1.0] - 2026-10
 
 ### Changed

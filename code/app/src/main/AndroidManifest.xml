@@ -14,10 +14,10 @@
         tools:ignore="ScopedStorage" />
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
-    <!-- 所有文件访问：用于扫描全盘本地视频（Android 11+ 分区存储下必需） -->
-    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
-        tools:ignore="ScopedStorage" />
-    
+    <!-- MEES（所有文件访问）已移除：扫描走 READ_MEDIA_VIDEO（分区存储 MediaStore），
+         下载写公共 Movies 目录走 libtorrent native File API 的媒体目录豁免，
+         自定义目录由 SAF 授权——全盘访问不再必要，也免去 Play/Izzy 的受限权限审查 -->
+
     <!-- 后台服务 -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
