@@ -1,0 +1,31 @@
+<h3>PureFrame — a clean, local-first video player</h3>
+
+<b>Playback</b>
+• Hardware decoding first, with FFmpeg software decoding fallback (H.264 / HEVC / VP9 video, DTS / AC3 / EAC3 audio)
+• Smooth playback with speed control, gesture controls (brightness / volume / seek) and position memory
+• Auto-loads external subtitles in the same folder (.srt / .ass / .ssa / .vtt) with a translucent background
+• Picture-in-Picture support
+
+<b>Queue &amp; notifications</b>
+• Videos in the same folder are automatically queued (natural numeric ordering, S01E01 → S01E02 …)
+• Full media notification and lockscreen controls: play/pause, previous/next, repeat, favorite
+
+<b>Screen casting</b>
+• Cast to DLNA and Google Cast devices on your home network
+• Follows your playback position when switching devices
+• Auto-disconnects when playback ends
+
+<b>Torrent streaming</b>
+• Open magnet links and .torrent files to stream while downloading
+• Multi-task parallel downloads, pause/resume, file selection
+• Watch the partially downloaded file with seeking limited to downloaded ranges
+
+<b>Library</b>
+• Full-device video scanning or custom folders only
+• Favorites, sorting, playback history
+
+<b>Privacy</b>
+• No ads, no analytics, no tracking, no network requests except the ones you start (downloads / casting / streaming)
+• No permissions requested beyond what the features need; see the privacy policy in the repository
+
+PureFrame is free and open source (GPL-3.0).

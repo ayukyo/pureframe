@@ -1,0 +1,98 @@
+name: F-Droid repo
+
+# tag 正式构建成功后，把 release 签名 APK 组装进自建 F-Droid 仓库，
+# 发布到 GitHub Pages。用户在 F-Droid 客户端添加仓库 URL 即可安装/更新。
+on:
+  workflow_run:
+    workflows: ["Build APK"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: fdroid-repo
+  cancel-in-progress: true
+
+jobs:
+  update-repo:
+    if: github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Checkout gh-pages branch (repo storage)
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: fdroidrepo
+
+      - name: Find latest release APK
+        id: latest
+        run: |
+          APK_URL=$(curl -sL "https://api.github.com/repos/${{ github.repository }}/releases/latest" | \
+            python3 -c "import json,sys; d=json.load(sys.stdin); print([a['browser_download_url'] for a in d['assets'] if a['name']=='pureframe-release-1.1.0.apk' or (a['name'].startswith('pureframe-release-') and a['name'].endswith('.apk'))][0])")
+          APK_NAME=$(basename "$APK_URL")
+          echo "url=$APK_URL" >> $GITHUB_OUTPUT
+          echo "name=$APK_NAME" >> $GITHUB_OUTPUT
+          echo "Latest release APK: $APK_NAME"
+
+      - name: Download release APK
+        run: |
+          curl -sL --fail -o "/tmp/${{ steps.latest.outputs.name }}" "${{ steps.latest.outputs.url }}"
+          ls -la "/tmp/${{ steps.latest.outputs.name }}"
+
+      - name: Update F-Droid repo with fdroidserver
+        run: |
+          cd fdroidrepo
+          # 仓库结构约定：
+          #   config.py      — fdroid 配置（repo 名/描述/签名密钥环境变量）
+          #   keystore.p12   — index 签名密钥（base64 解码自 Secret）
+          #   repo/          — APK 存放目录
+          if [ ! -f config.py ]; then
+            echo "config.py missing — one-time bootstrap required (see docs/fdroid-repo-bootstrap.md)"
+            # 首次运行引导：生成最小配置
+            cat > config.py << 'EOF'
+repo_name = "PureFrame"
+repo_description = "PureFrame official repository - clean local video player"
+repo_icon = "icon.png"
+repo_url = "https://ayukyo.github.io/pureframe/fdroid/repo"
+repo_siteurl = "https://github.com/ayukyo/pureframe"
+repo_issuetracker = "https://github.com/ayukyo/pureframe/issues"
+archive_older = 0
+repo_password = ""
+keyid = "REPLACE_WITH_KEYID"
+EOF
+          fi
+          mkdir -p repo
+          cp "/tmp/${{ steps.latest.outputs.name }}" repo/
+          # 去 base64 私钥
+          echo "${{ secrets.PF_FDROID_KEYSTORE_BASE64 }}" | base64 -d > keystore.p12
+          export DEBUG_KEYSTORE_URL="file://$(pwd)/keystore.p12"
+          docker run --rm \
+            -v "$(pwd):/repo" \
+            -e KEYSTORE_PASS="${{ secrets.PF_FDROID_KEYPASS }}" \
+            -e KEY_PASS="${{ secrets.PF_FDROID_KEYPASS }}" \
+            registry.gitlab.com/fdroid/docker-executable:latest \
+            /bin/bash -c "cd /repo && fdroid update --create-metadata --verbose"
+          # fdroid update 生成 index-v1.json / index-v2.json / index.jar
+          rm -f keystore.p12  # 清理私钥，不入 pages 产物
+          ls -la repo/
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: fdroidrepo
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
