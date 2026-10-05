@@ -11,8 +11,8 @@
 | 应用名称 | ≤30 字符 | ✅ PureFrame（已有 fastlane title 可复用） |
 | 简短说明 | ≤80 字符 | ✅ fastlane short_description（需微调，中文 23 字符 OK） |
 | 完整说明 | ≤4000 字符 | ✅ fastlane full_description |
-| 应用图标 | 512×512 PNG | ⚠️ 需从 192px 放大或重导出（位图放大会糊） |
-| 功能图 featureGraphic | 1024×500 PNG/JPG | ❌ 待制作（可用播放画面拼图） |
+| 应用图标 | 512×512 PNG | ✅ 已按矢量几何重渲染（fastlane icon.png，2026-10-05） |
+| 功能图 featureGraphic | 1024×500 PNG/JPG | ✅ 已制作（黑底极简：帧线+播放三角+字标，fastlane featureGraphic.png） |
 | 手机截图 | ≥2 张，16:9 或 9:16，每边 320~3840px | ✅ 已有 3 张真机截图（1080×2340，9:19.5 需确认在限内） |
 | 分类 | — | 多媒体/视频播放器 |
 
@@ -39,18 +39,19 @@
 | Edge-to-edge（Android 15+ 强制） | ✅ 已适配（真机回归通过） |
 | 签名 | Play App Signing（上传密钥用我们的 release keystore；商店分发密钥由 Google 管理） |
 
-## 4. SignatureGuard 与 Play App Signing 冲突（唯一代码改动项）
+## 4. SignatureGuard 与 Play App Signing 冲突（✅ 已完成，2026-10-05）
 
 Play 商店分发的 APK 由 Google 的密钥重签，SignatureGuard 的 hash 校验会失败 →
-启动即 killProcess。方案（上 Play 前必做）：
+启动即 killProcess。**已实现双通道 + fail-open 探针方案**（commit ca674dc）：
 
-1. 接入 Play Integrity API（免费，判定"应用未被篡改"的标准方式）
-2. SignatureGuard 逻辑改为：hash 匹配 → 通过；不匹配 → 调 Play Integrity 验证
-   正版渠道 → 通过；否则 killProcess
-3. 保留"无 Play Services 设备 + hash 不匹配"的降级策略（F-Droid/直装包不受影响，
-   因为它们的构建没有 PF_SIGNING_SHA256 注入，校验本来就关闭）
-
-工作量估计：1~2 天开发 + 真机/商店包双路验证。
+1. SignatureGuard 双通道：`ORIGINAL_SIGNING_SHA256`（直装/F-Droid 渠道）匹配 → 通过；
+   不匹配且构建注入了 `PF_EXPECTED_PLAY_SHA256`（Play 分发密钥指纹）→ 进 IntegrityFallback
+2. IntegrityFallback：Play 指纹匹配 → 通过；都不匹配 → 发 Play Integrity classic 探针
+   （integrity:1.6.0）——**当前 fail-open（结果仅日志观察，不 kill）**
+3. fail-open 理由：无后端时 token 判定客户端读不到（只能服务端解密）；Play 渠道本身
+   由 Google 管控证书，篡改包上不了架；无 GMS 设备的重签包来自 F-Droid/第三方构建
+   （校验本来就是 skip），不在判定路径上。上架后若观察到滥用再收紧为 kill
+4. 非 Play 构建两个 hash 都是 "skip"，探针永不激活——F-Droid/直装零影响
 
 ## 5. 上架步骤
 
@@ -61,11 +62,12 @@ Play 商店分发的 APK 由 Google 的密钥重签，SignatureGuard 的 hash �
    需挂在可达 URL——可用 GitHub Pages 或仓库 raw 链接）
 5. 14 天后申请正式上架 → 审核（通常 1~7 天）
 
-## 6. AAB 格式说明
+## 6. AAB 格式说明（✅ CI 已支持，2026-10-05）
 
 Play 要求新应用用 AAB（Android App Bundle）。
-`./gradlew bundleRelease` 即可产出；CI 需加一条 bundle 构建并把
-`pureframe-release-<ver>.aab` 附到 Release（届时 SHA256SUMS 同步加入）。
+CI 已在 tag 构建时执行 `bundleRelease`，`pureframe-release-<ver>.aab`
+自动附到 GitHub Release 并计入 SHA256SUMS（commit eb85429）。
+下次打 `v*` tag 即可拿到 AAB 上传 Play。
 
 ## 与商业策略的关系
 
