@@ -64,33 +64,27 @@ jobs:
           ls "$ANDROID_HOME/build-tools/" || true
           cd fdroidrepo
           # 仓库结构约定：
-          #   config.py      — fdroid 配置（repo 名/描述/签名密钥环境变量）
-          #   keystore.p12   — index 签名密钥（base64 解码自 Secret）
+          #   config.yml     — fdroid 配置（fdroidserver 2.x 只认 config.yml，
+          #                    config.py 已被弃用忽略）
+          #   keystore.p12   — index 签名密钥（base64 解码自 Secret，不入 pages 产物）
           #   repo/          — APK 存放目录
-          if [ ! -f config.py ]; then
-            echo "config.py missing — one-time bootstrap required (see docs/fdroid-repo-bootstrap.md)"
-            # 首次运行引导：生成最小配置
-            # 注意：不能用 heredoc —— heredoc 顶格内容会终止 YAML 块标量导致解析失败
-            printf '%s\n' \
-              'repo_name = "PureFrame"' \
-              'repo_description = "PureFrame official repository - clean local video player"' \
-              'repo_icon = "icon.png"' \
-              'repo_url = "https://ayukyo.github.io/pureframe/fdroid/repo"' \
-              'repo_siteurl = "https://github.com/ayukyo/pureframe"' \
-              'repo_issuetracker = "https://github.com/ayukyo/pureframe/issues"' \
-              'archive_older = 0' \
-              'repo_password = ""' \
-              'keyid = "REPLACE_WITH_KEYID"' \
-              > config.py
-          fi
+          # 注意：整个步骤禁用 heredoc/顶格内容 —— 会终止 YAML 块标量导致解析失败
+          printf '%s\n' \
+            'repo_name: PureFrame' \
+            'repo_description: PureFrame official repository - clean local video player' \
+            'repo_url: https://ayukyo.github.io/pureframe/repo' \
+            'repo_siteurl: https://github.com/ayukyo/pureframe' \
+            'repo_issuetracker: https://github.com/ayukyo/pureframe/issues' \
+            'archive_older: 0' \
+            'repo_keyalias: fdroid' \
+            'keystore: keystore.p12' \
+            > config.yml
           mkdir -p repo
           cp "/tmp/${{ steps.latest.outputs.name }}" repo/
-          # 解 base64 index 签名密钥（PKCS12）
+          # 解 base64 index 签名密钥（PKCS12），口令通过环境变量注入 config.yml
           echo "${{ secrets.PF_FDROID_KEYSTORE_BASE64 }}" | base64 -d > keystore.p12
-          # fdroid 的 config.py 里设置 keystore 与口令（不打印到日志）
-          # fdroidserver 2.x 要求的键名：keystore / keystorepass / keypass / repo_keyalias
-          # 注意：整个步骤禁用 heredoc/多行字符串 —— 顶格内容会终止 YAML 块标量导致解析失败
-          python3 -c "import os; open('config.py','a').write('keystore = \"keystore.p12\"\nkeystorepass = %r\nkeypass = %r\nrepo_keyalias = \"fdroid\"\n' % (os.environ['FDROID_KEYSTORE_PASS'], os.environ['FDROID_KEY_PASS']))"
+          printf 'keystorepass: "%s"\nkeypass: "%s"\n' \
+            "$FDROID_KEYSTORE_PASS" "$FDROID_KEY_PASS" >> config.yml
           fdroid update --create-metadata --verbose
           # fdroid update 生成 index-v1.json / index-v2.json / index.jar
           rm -f keystore.p12  # 清理私钥，不入 pages 产物
