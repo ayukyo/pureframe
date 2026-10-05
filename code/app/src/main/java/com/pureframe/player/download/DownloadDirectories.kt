@@ -13,8 +13,8 @@ import java.io.File
  *
  * 优先级：
  * 1. 用户在设置里指定的目录（前提确实可写）
- * 2. 公共媒体目录 /sdcard/Movies/PureFrame —— 需要存储权限；
- *    位于 MediaStore 收录范围，文件管理器和「本地」页都能看到
+ * 2. 公共媒体目录 /sdcard/Movies/PureFrame —— 分区存储下写入媒体文件豁免（API 29- 需
+ *    WRITE_EXTERNAL_STORAGE）；位于 MediaStore 收录范围，文件管理器和「本地」页都能看到
  * 3. 回退到应用专属外部目录（Android/data/<pkg>/files/...）——
  *    无需任何权限、一定可写，但用户在文件管理器里看不到
  *

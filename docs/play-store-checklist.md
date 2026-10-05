@@ -36,7 +36,7 @@
 | targetSdk 36（2026-08-31 起强制） | ✅ |
 | 16KB page size（2025-11 起新提交强制） | ✅ 实测 28 个 so 全部 0x4000 对齐 |
 | 64 位支持 | ✅ arm64-v8a（另有 x86_64） |
-| MEES 全盘访问权限 | ⚠️ **移除申报**：我们实际用 READ_MEDIA_VIDEO + SAF 已覆盖，MEES 是受限权限需视频演示+审查，且不必要。**提交前确认 manifest 是否已移除，未移除则先移除** |
+| MEES 全盘访问权限 | ✅ **已移除**（2026-10-06）：扫描走 READ_MEDIA_VIDEO，BT/HTTP 下载落 Movies/PureFrame 媒体目录豁免，自定义目录 SAF——无需受限权限申报 |
 | Edge-to-edge（Android 15+ 强制） | ✅ 已适配（真机回归通过） |
 | 签名 | Play App Signing（上传密钥用我们的 release keystore；商店分发密钥由 Google 管理） |
 

@@ -111,7 +111,8 @@ adb push test_video.mp4 /sdcard/Movies/
 adb root
 adb shell "chown media_rw:media_rw /data/media/0/Movies /data/media/0/Movies/test_video.mp4; \
   chmod 770 /data/media/0/Movies; chmod 660 /data/media/0/Movies/test_video.mp4"
-# 4. 触发媒体扫描 + 授予「所有文件访问」（API 30+ app 用 isExternalStorageManager 判断，pm grant 无效）
+# 4. 触发媒体扫描（appops 步骤为 MEES 时代的历史记录——2026-10-06 MEES 已移除，
+#    现走 READ_MEDIA_VIDEO，`adb install -g` 即可授予，appops 命令不再需要）
 adb shell "content call --uri content://media/none --method scan_volume --arg external_primary; \
   appops set com.pureframe.player.debug MANAGE_EXTERNAL_STORAGE allow"
 ```
@@ -123,7 +124,7 @@ adb shell "content call --uri content://media/none --method scan_volume --arg ex
 **现象**：app 启动后 `All (0)`，提示 "Grant access" 或 "No supported video files found"。
 
 **根因链**（三个独立因素叠加，逐一定位）：
-1. **API 30+ 权限模式**：app 在 API 30+ 走 `Environment.isExternalStorageManager()`（所有文件访问），`adb install -g` / `pm grant READ_EXTERNAL_STORAGE` 均无效 → 必须 `appops set <pkg> MANAGE_EXTERNAL_STORAGE allow`
+1. **API 30+ 权限模式**：（历史记录，MEES 已于 2026-10-06 移除）当时 app 在 API 30+ 走 `Environment.isExternalStorageManager()`（所有文件访问），`adb install -g` / `pm grant READ_EXTERNAL_STORAGE` 均无效 → 必须 `appops set <pkg> MANAGE_EXTERNAL_STORAGE allow`。现版本走 READ_MEDIA_VIDEO，无此问题
 2. **adb push 文件属主异常**：push 到 `/sdcard/Movies/` 的文件落盘到 `/data/media/0/` 后属主为 `u0_a64`、权限 0600（media provider 私有），app 进程 `File(path).exists()` 失败被跳过 → root 下 chown media_rw + chmod 660 修复
 3. **重装 APK 后 MediaStore 记录丢失**：卸载重装会清除该 app 相关 MediaStore 行，且不会自动重扫 → `content call --uri content://media/none --method scan_volume --arg external_primary` 重新收录
 
