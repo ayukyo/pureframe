@@ -13,7 +13,7 @@
 | 技术 | targetSdk 34 → 36（含 edge-to-edge 强制） | 未做 | 🔴 必做 |
 | 技术 | SignatureGuard 与 Play App Signing 冲突（启动即死） | 未做 | 🔴 必做 |
 | 技术 | AAB 产物（Play 只收 AAB） | 未做 | 🟡 必做 |
-| 技术 | MANAGE_EXTERNAL_STORAGE 受限权限申报 | 未决策 | 🟡 建议移除 |
+| 技术 | MANAGE_EXTERNAL_STORAGE 受限权限申报 | **已移除** ✅（2026-10-06，扫描走 READ_MEDIA_VIDEO，下载落媒体目录豁免/SAF） | — |
 | 技术 | 16KB page size（64-bit） | **已合规** ✅ | — |
 | 技术 | FGS type / READ_MEDIA_* / 64-bit / minSdk 26 | **已合规** ✅ | — |
 | 流程 | 个人账号 12+ 测试者 × 14 天封闭测试 | 未启动 | 🟡 时间门槛 |
@@ -75,14 +75,9 @@ media3/AndroidX（Apache-2.0）、UPnPCast（MIT）、nanohttpd（BSD）、libto
 - CI workflow 需要加 AAB 构建 + 签名（Play App Signing 用 upload key 签 AAB）。
 - Amazon/Samsung 商店仍收 APK，CI 可同时保留 APK 产物。
 
-### 4. MANAGE_EXTERNAL_STORAGE（建议移除，省一次受限权限审核）
-- 现状 manifest 声明了它（Android 11+ 「所有文件访问」），这是 **Play 受限权限**：必须在 Console 提交 Permissions Declaration + 使用场景演示视频，过审才能上架。视频播放器不是明文允许类别（允许的是文件管理/杀毒/备份/设备迁移），申报通过率不可控。
-- 逐项审视我们的使用场景：
-  - 媒体库扫描 → `READ_MEDIA_VIDEO`（已声明）+ MediaStore，**不需要 MEES**
-  - 自定义扫描目录 → SAF DocumentFile（已实现），**不需要 MEES**
-  - BT 下载目录 → 可写应用专属目录（`getExternalFilesDir`）或 SAF 选目录，**不需要 MEES**
-  - 侧载字幕/任意路径播放（file:// 直播放）→ 这是唯一真正需要广泛读权限的场景；可降级为「通过 SAF 选择」路径白名单机制
-- **结论：技术上可以完全移除 MEES**，把「任意路径播放」改为 SAF 收藏目录 + MediaStore 合集。代价是某些高级用户场景（直接输路径）受限，但换来上架流程顺畅。若坚持保留 MEES，需准备英文申报材料 + 演示视频走审核。
+### 4. MANAGE_EXTERNAL_STORAGE（✅ 已移除，2026-10-06）
+- **已完成移除**：manifest 不再声明 MEES；扫描走 `READ_MEDIA_VIDEO`（1.1.0 完成），BT/HTTP 下载写入公共 Movies/PureFrame 属媒体集合目录豁免（分区存储下无需额外权限，真机已回归验证），自定义目录继续走 SAF。
+- 当时的分析留档：视频播放器不是 MEES 明文允许类别（允许的是文件管理/杀毒/备份/设备迁移），申报通过率不可控；逐项审视各场景（扫描/自定义目录/下载）均不需要 MEES，唯一受益场景「任意路径播放」可降级为 SAF 收藏目录。移除换来免受限权限审核、上架流程顺畅。
 - 顺带：`REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` 也是需申报的权限（后台播放保活用）。媒体播放类 app 可改用 FGS + 通知渠道的正当路径，建议一并评估移除。
 
 ### 5. 已合规项（实测确认，无需动作）
@@ -151,5 +146,5 @@ media3/AndroidX（Apache-2.0）、UPnPCast（MIT）、nanohttpd（BSD）、libto
 ## 附：实测数据记录（2026-10-04）
 - debug APK：98,463,982 bytes，1362 条目，4 ABI × 7 so（libavcodec/libavutil/libmedia3ext/libswresample/libswscale/libtorrent4j/libandroidx.graphics.path）
 - 16KB 对齐：arm64-v8a 7/7 OK，x86_64 7/7 OK，armeabi-v7a 6/7（libtorrent4j 0x1000），x86 6/7（libtorrent4j 0x1000）——64-bit 全合规
-- manifest 权限清单：INTERNET / ACCESS_NETWORK_STATE / READ_EXTERNAL_STORAGE(maxSdk) / WRITE_EXTERNAL_STORAGE(maxSdk) / READ_MEDIA_VIDEO / READ_MEDIA_AUDIO / MANAGE_EXTERNAL_STORAGE / FOREGROUND_SERVICE(+MEDIA_PLAYBACK+DATA_SYNC) / WAKE_LOCK / REQUEST_IGNORE_BATTERY_OPTIMIZATIONS / SYSTEM_ALERT_WINDOW
+- manifest 权限清单：INTERNET / ACCESS_NETWORK_STATE / READ_EXTERNAL_STORAGE(maxSdk) / WRITE_EXTERNAL_STORAGE(maxSdk) / READ_MEDIA_VIDEO / READ_MEDIA_AUDIO / FOREGROUND_SERVICE(+MEDIA_PLAYBACK+DATA_SYNC) / WAKE_LOCK / REQUEST_IGNORE_BATTERY_OPTIMIZATIONS / SYSTEM_ALERT_WINDOW（MANAGE_EXTERNAL_STORAGE 已于 2026-10-06 移除）
 - targetSdk=34，minSdk=26，compileSdk=36（AGP 9.0.1）
