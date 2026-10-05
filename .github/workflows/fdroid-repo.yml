@@ -49,7 +49,19 @@ jobs:
           ls -la "/tmp/${{ steps.latest.outputs.name }}"
 
       - name: Update F-Droid repo with fdroidserver
+        env:
+          FDROID_KEYSTORE_PASS: ${{ secrets.PF_FDROID_KEYPASS }}
+          FDROID_KEY_PASS: ${{ secrets.PF_FDROID_KEYPASS }}
         run: |
+          # fdroidserver 直接 pip 安装（registry.gitlab.com 对 GitHub runner 匿名限流
+          # 会返回 denied: access forbidden，docker 方案不可靠）。GitHub ubuntu runner
+          # 预装 Android SDK，apksigner 位于 $ANDROID_HOME/build-tools/<ver>/，
+          # fdroidserver 通过 ANDROID_HOME 自动发现。
+          python3 -m pip install --user fdroidserver
+          export PATH="$HOME/.local/bin:$PATH"
+          fdroid --version
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          ls "$ANDROID_HOME/build-tools/" || true
           cd fdroidrepo
           # 仓库结构约定：
           #   config.py      — fdroid 配置（repo 名/描述/签名密钥环境变量）
@@ -73,15 +85,12 @@ jobs:
           fi
           mkdir -p repo
           cp "/tmp/${{ steps.latest.outputs.name }}" repo/
-          # 去 base64 私钥
+          # 解 base64 index 签名密钥（PKCS12）
           echo "${{ secrets.PF_FDROID_KEYSTORE_BASE64 }}" | base64 -d > keystore.p12
-          export DEBUG_KEYSTORE_URL="file://$(pwd)/keystore.p12"
-          docker run --rm \
-            -v "$(pwd):/repo" \
-            -e KEYSTORE_PASS="${{ secrets.PF_FDROID_KEYPASS }}" \
-            -e KEY_PASS="${{ secrets.PF_FDROID_KEYPASS }}" \
-            registry.gitlab.com/fdroid/docker-executable:latest \
-            /bin/bash -c "cd /repo && fdroid update --create-metadata --verbose"
+          # fdroid 的 config.py 里设置 keystore 与口令（不打印到日志）
+          # 注意：整个步骤禁用 heredoc/多行字符串 —— 顶格内容会终止 YAML 块标量导致解析失败
+          python3 -c "import os; open('config.py','a').write('keystore = \"keystore.p12\"\nkeystore_pass = %r\nkeypass = %r\n' % (os.environ['FDROID_KEYSTORE_PASS'], os.environ['FDROID_KEY_PASS']))"
+          fdroid update --create-metadata --verbose
           # fdroid update 生成 index-v1.json / index-v2.json / index.jar
           rm -f keystore.p12  # 清理私钥，不入 pages 产物
           ls -la repo/
