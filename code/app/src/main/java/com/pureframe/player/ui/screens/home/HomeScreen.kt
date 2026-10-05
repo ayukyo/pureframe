@@ -4,9 +4,7 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
-import android.os.Environment
 import android.provider.MediaStore
-import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -130,28 +128,32 @@ fun HomeScreen(
         }
     }
 
-    // 是否需要"所有文件访问"（Android 11+ 分区存储下扫描全盘视频必需）
-    val needManageStorage = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
-
-    // 权限状态：API 30+ 用"所有文件访问"判断；低版本用 READ_EXTERNAL_STORAGE
-    var hasStoragePermission by remember {
-        mutableStateOf(
-            if (needManageStorage) {
-                Environment.isExternalStorageManager()
-            } else {
-                ContextCompat.checkSelfPermission(
-                    context,
-                    Manifest.permission.READ_EXTERNAL_STORAGE
-                ) == PackageManager.PERMISSION_GRANTED
-            }
-        )
+    // 运行时媒体读取权限：API 33+ 用 READ_MEDIA_VIDEO，30~32 用 READ_EXTERNAL_STORAGE。
+    // 扫描走 MediaStore，分区存储下不需要"所有文件访问"。
+    val storagePermissions: Array<String> = when {
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU ->
+            arrayOf(Manifest.permission.READ_MEDIA_VIDEO)
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.R ->
+            arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
+        else ->
+            arrayOf(
+                Manifest.permission.READ_EXTERNAL_STORAGE,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE
+            )
     }
 
-    // 普通运行时权限 launcher（API < 30）
+    fun hasMediaPermission(): Boolean = storagePermissions.any {
+        ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
+    }
+
+    // 权限状态
+    var hasStoragePermission by remember { mutableStateOf(hasMediaPermission()) }
+
+    // 运行时权限 launcher（所有 API 级别统一走这里）
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
-        val allGranted = permissions.all { it.value }
+        val allGranted = permissions.any { it.value }
         hasStoragePermission = allGranted
         if (allGranted) {
             viewModel.scanVideos()
@@ -164,28 +166,11 @@ fun HomeScreen(
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                hasStoragePermission = if (needManageStorage) {
-                    Environment.isExternalStorageManager()
-                } else {
-                    ContextCompat.checkSelfPermission(
-                        context, Manifest.permission.READ_EXTERNAL_STORAGE
-                    ) == PackageManager.PERMISSION_GRANTED
-                }
+                hasStoragePermission = hasMediaPermission()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
-    }
-
-    // "所有文件访问"设置页返回 launcher（API 30+）
-    val manageStorageLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult()
-    ) {
-        val granted = !needManageStorage || Environment.isExternalStorageManager()
-        hasStoragePermission = granted
-        if (granted) {
-            viewModel.scanVideos()
-        }
     }
 
     // 首次进入时自动扫描（清理已删除的视频）
@@ -326,29 +311,9 @@ fun HomeScreen(
                         onClick = {
                             if (hasStoragePermission) {
                                 viewModel.scanVideos()
-                            } else if (needManageStorage) {
-                                // API 30+：引导开启"所有文件访问"
-                                try {
-                                    val intent = Intent(
-                                        Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
-                                        "package:${context.packageName}".toUri()
-                                    )
-                                    manageStorageLauncher.launch(intent)
-                                } catch (e: Exception) {
-                                    // 部分机型无此页面，回退到通用应用设置
-                                    manageStorageLauncher.launch(
-                                        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                                            "package:${context.packageName}".toUri())
-                                    )
-                                }
                             } else {
-                                // API < 30：请求运行时存储权限
-                                permissionLauncher.launch(
-                                    arrayOf(
-                                        Manifest.permission.READ_EXTERNAL_STORAGE,
-                                        Manifest.permission.WRITE_EXTERNAL_STORAGE
-                                    )
-                                )
+                                // 请求运行时媒体权限（READ_MEDIA_VIDEO / READ_EXTERNAL_STORAGE）
+                                permissionLauncher.launch(storagePermissions)
                             }
                         },
                         containerColor = MaterialTheme.colorScheme.primaryContainer,
@@ -392,28 +357,8 @@ fun HomeScreen(
                         null
                     } else {
                         {
-                            // 空状态里的"去授权"按钮：与刷新 FAB 相同的权限引导流程
-                            if (needManageStorage) {
-                                try {
-                                    val intent = Intent(
-                                        Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
-                                        "package:${context.packageName}".toUri()
-                                    )
-                                    manageStorageLauncher.launch(intent)
-                                } catch (e: Exception) {
-                                    manageStorageLauncher.launch(
-                                        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                                            "package:${context.packageName}".toUri())
-                                    )
-                                }
-                            } else {
-                                permissionLauncher.launch(
-                                    arrayOf(
-                                        Manifest.permission.READ_EXTERNAL_STORAGE,
-                                        Manifest.permission.WRITE_EXTERNAL_STORAGE
-                                    )
-                                )
-                            }
+                            // 空状态里的"去授权"按钮：与刷新 FAB 相同的权限请求流程
+                            permissionLauncher.launch(storagePermissions)
                         }
                     }
                 )
