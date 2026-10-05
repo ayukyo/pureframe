@@ -44,6 +44,10 @@ jobs:
           fi
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "Building version: $VERSION"
+          # 快照 Release 名称只用 commit 首行并截断（GitHub Release name 上限 256 字符，
+          # 之前把整段多行 commit message 塞进 name 导致 422 Validation Failed）
+          COMMIT_TITLE=$(git log -1 --pretty=%s | head -c 200 | iconv -c -t UTF-8)
+          echo "COMMIT_TITLE=$COMMIT_TITLE" >> $GITHUB_ENV
 
       - name: Build Debug APK
         run: ./gradlew assembleDebug --no-daemon --stacktrace
@@ -152,7 +156,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: build-${{ env.SHA7 }}
-          name: 阶段性构建 ${{ env.SHA7 }} (${{ github.event.head_commit.message }})
+          name: 阶段性构建 ${{ env.SHA7 }} (${{ env.COMMIT_TITLE }})
           body: |
             自动构建于 push 到 main（commit ${{ github.sha }}）
 
