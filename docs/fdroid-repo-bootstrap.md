@@ -3,6 +3,11 @@
 本文记录自建 F-Droid 仓库（GitHub Pages 承载）的一次性初始化步骤。
 CI workflow：`.github/workflows/fdroid-repo.yml`（Build 成功后自动/手动触发）。
 
+> 触发机制（2026-10-06 修正）：workflow_run **不加** `branches: [main]` 过滤。
+> 加了会导致 tag（vX.Y.Z）正式构建发布后仓库不链式更新（v1.1.1 当初就是
+> 手动 dispatch 才把 index 从 1.1.0 换成 1.1.1）。index 始终跟踪
+> `releases/latest`，快照构建与正式构建发布最终一致。
+
 ## 用户侧最终效果
 
 在 F-Droid 客户端（F-Droid / Droid-ify / Neo Store）添加仓库：
