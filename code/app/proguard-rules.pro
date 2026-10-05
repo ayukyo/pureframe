@@ -72,3 +72,8 @@
 # GMS 库自带 consumer rules，只需补 dontwarn（gms 内部引用的可选类在某些设备缺失）
 -dontwarn com.google.android.gms.cast.**
 -dontwarn com.google.android.gms.internal.**
+
+# Play Integrity API：库自带 consumer rules；GMS Task / Condition 类在某些
+# 无 GMS 设备上缺失引用，补 dontwarn（探针只在 Play 渠道构建运行）
+-dontwarn com.google.android.play.core.**
+-dontwarn com.google.android.gms.**

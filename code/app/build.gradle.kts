@@ -41,6 +41,12 @@ android {
             ?: System.getenv("PF_SIGNING_SHA256")
             ?: "skip"
         buildConfigField("String", "ORIGINAL_SIGNING_SHA256", "\"$sha256\"")
+        // Play 渠道分发密钥指纹（Play App Signing 重签后的证书 SHA-256）。
+        // 仅 Play 渠道构建注入；其他构建 "skip" → IntegrityFallback 永不激活。
+        val playSha256 = keystoreProps.getProperty("pureframe.playSigningSha256")
+            ?: System.getenv("PF_EXPECTED_PLAY_SHA256")
+            ?: "skip"
+        buildConfigField("String", "EXPECTED_PLAY_SIGNING_SHA256", "\"$playSha256\"")
     }
 
     signingConfigs {
@@ -169,6 +175,10 @@ dependencies {
 
     // Timber - 日志框架
     implementation("com.jakewharton.timber:timber:5.0.1")
+
+    // Play Integrity API（1.6.0：2026-10 官方最新稳定线）。
+    // 仅 IntegrityFallback 探针使用；Play 渠道构建 hash 不匹配时的二轮判定。
+    implementation("com.google.android.play:integrity:1.6.0")
 
     // libtorrent4j - BitTorrent 下载引擎
     implementation("org.libtorrent4j:libtorrent4j:2.1.0-39")

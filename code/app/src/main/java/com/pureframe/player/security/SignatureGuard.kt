@@ -17,15 +17,19 @@ import timber.log.Timber
  * 不以明文字符串存在于代码中——混淆后即使被反编译，也只是一串常量，
  * 且盗用者无法伪造与自己签名匹配的 hash。
  *
- * 注意：release 构建时由 CI/gradle 注入真实签名 hash；debug 构建跳过校验。
+ * 双通道判定（2026-10 Play Integrity 改造）：
+ * 通道 1：ORIGINAL_SIGNING_SHA256 —— 直装/F-Droid/GitHub 渠道的发布签名。
+ *         匹配 → 放行。
+ * 通道 2：EXPECTED_PLAY_SIGNING_SHA256 —— Play App Signing 分发密钥指纹
+ *         （仅 Play 渠道构建注入；其他构建为 "skip"）。通道 1 不匹配且通道 2
+ *         已配置时，交给 IntegrityFallback 二轮判定（Play 指纹匹配 → 放行；
+ *         都不匹配 → Integrity 探针观察，当前 fail-open）。
  *
  * 第三方分发兼容性（开源分发场景，如 F-Droid 生态用其他密钥重签）：
- * hash 由构建环境变量 PF_SIGNING_SHA256 / local.properties 注入——任何不持有
- * 本项目发布 keystore 的构建（F-Droid 构建机、社区 fork、第三方重打包者）
- * 都拿不到这个值，BuildConfig 里只会是 "skip"，校验天然关闭。
- * 换言之：只有「本项目官方用发布密钥签出的包」才启用自校验，无需构建期开关。
- * 唯一需要额外处理的场景是未来的 Google Play App Signing（Google 用自家密钥
- * 重签产物而构建时注入了我们的 hash）——届时叠加 Play Integrity 方案。
+ * 两个 hash 都由构建环境变量 PF_SIGNING_SHA256 / PF_EXPECTED_PLAY_SHA256 /
+ * local.properties 注入——任何不持有本项目发布 keystore 的构建（F-Droid 构建
+ * 机、社区 fork、第三方重打包者）都拿不到这些值，BuildConfig 里只会是 "skip"，
+ * 校验天然关闭。换言之：只有「本项目官方用发布密钥签出的包」才启用自校验。
  */
 object SignatureGuard {
 
@@ -42,11 +46,17 @@ object SignatureGuard {
         if (expected.isNullOrBlank() || expected == "skip") return
 
         val actual = currentSignatureSha256(context) ?: return
-        if (actual != expected) {
-            Timber.e("Signature mismatch! expected=%s actual=%s", expected, actual)
-            // 篡改包：直接结束进程（不给逆向者调试空间）
-            android.os.Process.killProcess(android.os.Process.myPid())
+        if (actual == expected) return
+
+        // 通道 1 不匹配 → 若是 Play 渠道构建，走二轮判定（Play 指纹 / Integrity）
+        if (IntegrityFallback.isPlayChannelBuild()) {
+            if (IntegrityFallback.verifyAndAllow(context, actual)) return
+            // verifyAndAllow 返回 false 才 kill（当前实现恒 true，见 fail-open 决策）
         }
+
+        Timber.e("Signature mismatch! expected=%s actual=%s", expected, actual)
+        // 篡改包：直接结束进程（不给逆向者调试空间）
+        android.os.Process.killProcess(android.os.Process.myPid())
     }
 
     /** 当前安装包签名证书的 SHA-256 十六进制（小写，无冒号） */
