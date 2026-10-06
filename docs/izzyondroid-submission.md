@@ -20,38 +20,53 @@
 
 ## 提交步骤（需维护者 GitHub/GitLab 账号）
 
-1. **确认仓库已转 public**（收录的前提）
+1. **确认仓库已转 public**（收录的前提）✅
 2. 在 https://gitlab.com/IzzyOnDroid/repo/-/issues 新建 issue，标题：
    `Add app: PureFrame (ayukyo/pureframe)`
+   > 2026-10-06 尝试：gitlab.com 网页被 Cloudflare 人机验证拦截（自动化浏览器
+   > 无法通过），API 提交需维护者 GitLab Personal Access Token（api 权限）。
+   > **issue 正文最终版已备好：`docs/izzyondroid-issue-final.txt`**，
+   > 浏览器登录 gitlab.com 后复制粘贴提交即可（约 2 分钟）。
 3. 正文模板：
 
 ```
 Repo: https://github.com/ayukyo/pureframe
 License: GPL-3.0
-APKs: attached to tagged GitHub releases (e.g. v1.1.0 → pureframe-release-1.1.0.apk)
+APKs: attached to tagged GitHub releases (e.g. v1.1.1 → pureframe-release-1.1.1.apk)
 Fastlane metadata: present in repo (fastlane/metadata/android), en-US + zh-CN
 
 App description:
 PureFrame is a clean, local-first video player — hardware decoding with
 FFmpeg software fallback (H.264/HEVC/VP9, DTS/AC3/EAC3), BT streaming
 (libtorrent4j), DLNA + Google Cast, auto-loading external subtitles,
-natural-ordered same-folder queue.
+and a natural-ordered same-folder playback queue. No trackers, no ads,
+no analytics.
 
 Notes:
-- APK is ~92 MB (FFmpeg software decoding with full codec set + libtorrent).
-  We understand the 30 MB rule of thumb and hope for an exception as seen
-  with other media players; happy to discuss.
+- APK is ~92 MB (FFmpeg software decoding with the full codec set +
+  libtorrent). We understand the 30 MB rule of thumb and hope for an
+  exception as seen with other media players; happy to discuss.
 - Permission usage:
-  - READ_MEDIA_VIDEO / READ_EXTERNAL_STORAGE: scan local videos (core feature)
-  - INTERNET: user-initiated downloads (BT/HTTP), DLNA/Cast streaming only
-  - FOREGROUND_SERVICE / POST_NOTIFICATIONS: media playback notification
+  - READ_MEDIA_VIDEO / READ_EXTERNAL_STORAGE (legacy, maxSdk 32): scan
+    local videos (core feature). No MANAGE_EXTERNAL_STORAGE — removed
+    in v1.1.1.
+  - INTERNET: user-initiated downloads (BT/HTTP) and DLNA/Cast
+    streaming on the home network only.
+  - FOREGROUND_SERVICE (+ MEDIA_PLAYBACK / DATA_SYNC) /
+    POST_NOTIFICATIONS: media playback notification and download tasks.
+  - usesCleartextTraffic="true" is required for DLNA/UPnP and the local
+    HTTP streaming proxy (media player home-network use case, allowed
+    per your policy).
 - No trackers, no analytics, no ads, no self-updater.
 - Privacy policy: https://ayukyo.github.io/pureframe/privacy-policy.html
-- Fastlane screenshots and metadata are in the repo; 1080x2340 phone screenshots
-  (3) included.
-- usesCleartextTraffic (if present) is required for DLNA/UPnP and local HTTP
-  streaming (media player home-network use case per your policy).
+- Fastlane screenshots and metadata are in the repo; 1080x2340 phone
+  screenshots (3) included.
+- The app is also distributed via our self-hosted F-Droid repo
+  (index fingerprint 466896A633FCD0210E479F6A72673D4D5FF324F20BB8062E3915491D769B755F),
+  which may be convenient for your build metadata checks.
 ```
+
+> ⚠️ 以上为历史版本；**提交时以 `docs/izzyondroid-issue-final.txt` 为准**（v1.1.1 口径）。
 
 4. 提交前最后两个动作：
    - [x] MEES 已移除（2026-10-06，见自查表）
