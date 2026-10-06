@@ -11,6 +11,8 @@ import androidx.navigation.navArgument
 import com.pureframe.player.ui.screens.home.HomeScreen
 import com.pureframe.player.ui.screens.download.DownloadScreen
 import com.pureframe.player.ui.screens.settings.SettingsScreen
+import com.pureframe.player.ui.screens.about.AcknowledgementsScreen
+import com.pureframe.player.ui.screens.about.LicensesScreen
 import com.pureframe.player.ui.screens.player.PlayerScreen
 import com.pureframe.player.ui.theme.PlayerTheme
 
@@ -53,7 +55,29 @@ fun PureFrameNavGraph(
         
         // 设置页面
         composable(Screen.Settings.route) {
-            SettingsScreen()
+            SettingsScreen(
+                onNavigateToAcknowledgements = {
+                    navController.navigate(Screen.Acknowledgements.route)
+                },
+                onNavigateToLicenses = {
+                    navController.navigate(Screen.Licenses.route)
+                }
+            )
+        }
+
+        // 致谢：第三方开源库
+        composable(Screen.Acknowledgements.route) {
+            AcknowledgementsScreen(
+                onBack = { navController.popBackStack() },
+                onOpenLicense = { navController.navigate(Screen.Licenses.route) }
+            )
+        }
+
+        // 开源许可证全文
+        composable(Screen.Licenses.route) {
+            LicensesScreen(
+                onBack = { navController.popBackStack() }
+            )
         }
         
         // 本地视频播放器

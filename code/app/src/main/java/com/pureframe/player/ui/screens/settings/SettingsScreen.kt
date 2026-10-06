@@ -1,7 +1,11 @@
 package com.pureframe.player.ui.screens.settings
 
 import android.app.Activity
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -28,7 +32,20 @@ import com.pureframe.player.data.preferences.ThemeMode
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import com.pureframe.player.R
+import com.pureframe.player.BuildConfig
 import com.pureframe.player.download.DownloadDirectories
+
+/**
+ * 用系统浏览器打开链接；无浏览器时静默忽略（Tangle 阻止异常上抛）
+ */
+internal fun openUrl(context: Context, url: String) {
+    runCatching {
+        context.startActivity(
+            Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        )
+    }
+}
 
 /**
  * 设置页面
@@ -43,6 +60,8 @@ import com.pureframe.player.download.DownloadDirectories
 @Composable
 fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel(),
+    onNavigateToAcknowledgements: () -> Unit = {},
+    onNavigateToLicenses: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val userPreferences by viewModel.userPreferences.collectAsState()
@@ -389,12 +408,108 @@ fun SettingsScreen(
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
-                                text = "1.0.0",
+                                text = BuildConfig.VERSION_NAME,
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
+
+                    Divider()
+
+                    // 作者（点击复制邮箱，方便反馈）
+                    val contactEmail = stringResource(R.string.settings_contact_email_value)
+                    val copiedMsg = stringResource(R.string.settings_copied_to_clipboard)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                cm.setPrimaryClip(ClipData.newPlainText("email", contactEmail))
+                                android.widget.Toast.makeText(
+                                    context,
+                                    copiedMsg,
+                                    android.widget.Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Person,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(24.dp)
+                        )
+
+                        Spacer(modifier = Modifier.width(16.dp))
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(R.string.settings_author),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = stringResource(R.string.settings_author_name) +
+                                        " · " + stringResource(R.string.settings_contact_email_value),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    Divider()
+
+                    // 项目源码
+                    val sourceUrl = stringResource(R.string.settings_source_code_url)
+                    ClickableSettingsItem(
+                        icon = Icons.Filled.Code,
+                        title = stringResource(R.string.settings_source_code),
+                        subtitle = sourceUrl,
+                        onClick = { openUrl(context, sourceUrl) }
+                    )
+
+                    Divider()
+
+                    // 去 GitHub 点个 Star
+                    ClickableSettingsItem(
+                        icon = Icons.Filled.Star,
+                        title = stringResource(R.string.settings_rate_star),
+                        subtitle = stringResource(R.string.settings_rate_star_desc),
+                        onClick = { openUrl(context, sourceUrl) }
+                    )
+
+                    Divider()
+
+                    // 开源许可（GPL-3.0，点击查看全文）
+                    ClickableSettingsItem(
+                        icon = Icons.Filled.Gavel,
+                        title = stringResource(R.string.settings_license),
+                        subtitle = stringResource(R.string.settings_license_value),
+                        onClick = { onNavigateToLicenses() }
+                    )
+
+                    Divider()
+
+                    // 隐私政策
+                    val privacyUrl = stringResource(R.string.settings_privacy_policy_url)
+                    ClickableSettingsItem(
+                        icon = Icons.Filled.PrivacyTip,
+                        title = stringResource(R.string.settings_privacy_policy),
+                        subtitle = privacyUrl,
+                        onClick = { openUrl(context, privacyUrl) }
+                    )
+
+                    Divider()
+
+                    // 致谢（第三方开源库）
+                    ClickableSettingsItem(
+                        icon = Icons.Filled.Favorite,
+                        title = stringResource(R.string.settings_oss_acknowledgements),
+                        subtitle = stringResource(R.string.settings_oss_acknowledgements_desc),
+                        onClick = { onNavigateToAcknowledgements() }
+                    )
                 }
             }
 

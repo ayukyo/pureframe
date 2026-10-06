@@ -24,4 +24,8 @@ sealed class Screen(val route: String, @StringRes val titleRes: Int) {
     object StreamPlayer : Screen("player/stream/{downloadId}", R.string.download_stream_play) {
         fun createRoute(downloadId: String) = "player/stream/$downloadId"
     }
+
+    // 设置子页：致谢 / 开源许可证
+    object Acknowledgements : Screen("about/acknowledgements", R.string.settings_oss_acknowledgements)
+    object Licenses : Screen("about/licenses", R.string.about_licenses_title)
 }

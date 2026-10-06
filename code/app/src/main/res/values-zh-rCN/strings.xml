@@ -268,6 +268,41 @@
     <string name="settings_language_english">English</string>
 
     <string name="settings_version">版本信息</string>
+
+    <!-- 关于分组：作者与开源信息 -->
+    <string name="settings_author">作者</string>
+    <string name="settings_author_name">ayukyo</string>
+    <string name="settings_contact_email">邮箱</string>
+    <string name="settings_contact_email_value">278395988@qq.com</string>
+    <string name="settings_source_code">项目源码</string>
+    <string name="settings_source_code_url">https://github.com/ayukyo/pureframe</string>
+    <string name="settings_license">开源许可</string>
+    <string name="settings_license_value">GPL-3.0</string>
+    <string name="settings_privacy_policy">隐私政策</string>
+    <string name="settings_privacy_policy_url">https://ayukyo.github.io/pureframe/privacy-policy.html</string>
+    <string name="settings_oss_acknowledgements">致谢</string>
+    <string name="settings_oss_acknowledgements_desc">本应用使用的开源库</string>
+    <string name="settings_copied_to_clipboard">已复制到剪贴板</string>
+    <string name="settings_rate_star">去 GitHub 点个 Star</string>
+    <string name="settings_rate_star_desc">如果觉得好用，给项目加颗星吧</string>
+    <string name="settings_open_source_notices">开源许可证</string>
+    <string name="settings_open_source_notices_desc">查看完整许可证文本</string>
+    <string name="about_licenses_title">开源许可证</string>
+    <string name="about_library_homepage">项目主页</string>
+
+    <!-- 致谢：第三方库描述 -->
+    <string name="ack_page_intro">PureFrame 站在这些优秀开源项目的肩膀上。点击许可证徽章可查看全文。</string>
+    <string name="ack_media3_desc">媒体播放引擎：硬解码、播放控制、媒体会话与投屏支持。</string>
+    <string name="ack_nextlib_desc">Media3 扩展，基于 FFmpeg 提供软解支持：H.264/HEVC/VP9 视频与 DTS/AC3/EAC3 音轨。</string>
+    <string name="ack_libtorrent_desc">BitTorrent 下载引擎，支持磁力链接与种子文件。</string>
+    <string name="ack_compose_desc">声明式 UI 框架，本应用所有界面均基于它构建。</string>
+    <string name="ack_hilt_desc">依赖注入框架。</string>
+    <string name="ack_room_desc">本地数据库，存储视频库与下载任务。</string>
+    <string name="ack_coil_desc">图片加载库，用于视频缩略图。</string>
+    <string name="ack_upnpcast_desc">DLNA/UPnP 投屏，支持电视与媒体渲染设备。</string>
+    <string name="ack_datastore_desc">键值存储，保存应用偏好设置。</string>
+    <string name="ack_timber_desc">日志辅助库。</string>
+    <string name="ack_coroutines_desc">异步编程支持。</string>
     <string name="settings_current_path">当前: %1$s</string>
     <string name="settings_browse_folder">浏览文件夹</string>
     <string name="settings_manual_path">或手动输入路径</string>

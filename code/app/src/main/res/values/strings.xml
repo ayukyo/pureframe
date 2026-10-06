@@ -274,6 +274,41 @@
     <string name="settings_language_english">English</string>
 
     <string name="settings_version">Version</string>
+
+    <!-- About section: author & open source info -->
+    <string name="settings_author">Author</string>
+    <string name="settings_author_name">ayukyo</string>
+    <string name="settings_contact_email">Email</string>
+    <string name="settings_contact_email_value">278395988@qq.com</string>
+    <string name="settings_source_code">Source code</string>
+    <string name="settings_source_code_url">https://github.com/ayukyo/pureframe</string>
+    <string name="settings_license">License</string>
+    <string name="settings_license_value">GPL-3.0</string>
+    <string name="settings_privacy_policy">Privacy policy</string>
+    <string name="settings_privacy_policy_url">https://ayukyo.github.io/pureframe/privacy-policy.html</string>
+    <string name="settings_oss_acknowledgements">Acknowledgements</string>
+    <string name="settings_oss_acknowledgements_desc">Open source libraries used in this app</string>
+    <string name="settings_copied_to_clipboard">Copied to clipboard</string>
+    <string name="settings_rate_star">Star on GitHub</string>
+    <string name="settings_rate_star_desc">If you like this app, give it a star</string>
+    <string name="settings_open_source_notices">Open source licenses</string>
+    <string name="settings_open_source_notices_desc">View full license texts</string>
+    <string name="about_licenses_title">Open source licenses</string>
+    <string name="about_library_homepage">Homepage</string>
+
+    <!-- Acknowledgements: library descriptions -->
+    <string name="ack_page_intro">PureFrame is built on the shoulders of these great open source projects. Tap a license badge to view its full text.</string>
+    <string name="ack_media3_desc">Media playback engine: hardware decoding, playback control, media session and Cast support.</string>
+    <string name="ack_nextlib_desc">Media3 extensions providing FFmpeg software decoding for H.264/HEVC/VP9 video and DTS/AC3/EAC3 audio.</string>
+    <string name="ack_libtorrent_desc">BitTorrent engine powering magnet links and .torrent downloads.</string>
+    <string name="ack_compose_desc">Declarative UI toolkit used for every screen in this app.</string>
+    <string name="ack_hilt_desc">Dependency injection framework.</string>
+    <string name="ack_room_desc">Local database for the video library and download tasks.</string>
+    <string name="ack_coil_desc">Image loading for video thumbnails.</string>
+    <string name="ack_upnpcast_desc">DLNA/UPnP casting to TVs and media renderers.</string>
+    <string name="ack_datastore_desc">Key-value storage for app preferences.</string>
+    <string name="ack_timber_desc">Logging helper.</string>
+    <string name="ack_coroutines_desc">Asynchronous programming support.</string>
     <string name="settings_current_path">Current: %1$s</string>
     <string name="settings_browse_folder">Browse folders</string>
     <string name="settings_manual_path">Or enter a path manually</string>
