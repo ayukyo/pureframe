@@ -10,24 +10,45 @@
 | 代码可公开访问 | ✅ GitHub（转 public 后） |
 | 无追踪/广告模块 | ✅ 零收集 |
 | APK 由 release key 签名，非 debuggable/testOnly | ✅ pureframe-release-*.apk |
-| APK 挂在 GitHub tagged releases | ✅ v1.1.0 起 |
-| 无自更新/下载可执行文件 | ✅ 无更新器 |
+| APK 挂在 GitHub tagged releases | ✅ v1.1.0 起 || 无自更新/下载可执行文件 | ✅ 无更新器 |
 | usesCleartextTraffic | ⚠️ 提交前检查 manifest；播放器本地网络（DLNA/代理）场景政策明文允许，建议补 Network Security Config 说明 |
 | MEES（MANAGE_EXTERNAL_STORAGE） | ✅ 已移除（2026-10-06）：扫描走 READ_MEDIA_VIDEO，下载默认落 Movies/PureFrame 或应用私有目录，SAF 覆盖自定义目录——不再需要全盘访问，省一轮问询 |
 | 30MB 体积上限（rule-of-thumb） | ⚠️ 我们 ~92MB。政策允许大应用例外（播放器类常见豁免，如 VLC/mpv），须在 issue 中主动说明原因（FFmpeg 软解全编解码器 + libtorrent） |
 | 隐私政策 | ✅ https://ayukyo.github.io/pureframe/privacy-policy.html |
 | fastlane 元数据（短/长描述+图标+截图） | ✅ fastlane/metadata/android/（截图 3 张真机） |
 
-## 提交步骤（需维护者 GitHub/GitLab 账号）
+## 提交入口（2026-10-06 更新：已迁移至 Codeberg）
 
-1. **确认仓库已转 public**（收录的前提）✅
-2. 在 https://gitlab.com/IzzyOnDroid/repo/-/issues 新建 issue，标题：
-   `Add app: PureFrame (ayukyo/pureframe)`
-   > 2026-10-06 尝试：gitlab.com 网页被 Cloudflare 人机验证拦截（自动化浏览器
-   > 无法通过），API 提交需维护者 GitLab Personal Access Token（api 权限）。
-   > **issue 正文最终版已备好：`docs/izzyondroid-issue-final.txt`**，
-   > 浏览器登录 gitlab.com 后复制粘贴提交即可（约 2 分钟）。
-3. 正文模板：
+> ⚠️ **gitlab.com/IzzyOnDroid/repo 已归档**，提交入口迁移至 Codeberg：
+> **https://codeberg.org/IzzyOnDroid/repodata** → New Issue，标题：
+> `[AppRequest] PureFrame`
+>
+> 2026-10-06 尝试：gitlab.com 网页被 Cloudflare 人机验证拦截（自动化浏览器无法
+> 通过），随后发现仓库已归档。Codeberg API 匿名 POST 需 token，故仍走浏览器
+> 复制粘贴。**issue 正文最终版（按 Codeberg 官方模板重写，含 AI 声明）：
+> `docs/izzyondroid-issue-final.txt`**，浏览器登录 codeberg.org 后复制粘贴
+> 提交即可（约 2 分钟）。若用户有 Codeberg Personal Access Token（repo 权限），
+> 也可由 agent 通过 API 直接代提。
+
+<!-- 历史入口（已失效）：gitlab.com/IzzyOnDroid/repo/-/issues，
+     标题 `Add app: PureFrame (ayukyo/pureframe)` -->
+
+### Codeberg 模板要点（final.txt 已按此重写）
+
+- 标题格式：`[AppRequest] AppName`
+- Guidelines 四勾选（开发者本人 / 符合 Inclusion Policy / 未重复收录 / Fastlane 就绪）
+- App meta-data：源码链接 / 其他商店链接 / License / Categories / Summary / Description
+  （Description 末行附 Version / Package / License / Source / Signing key SHA256）
+- Technical instructions：Build instructions（完整可复现命令）
+- **AI Tools Usage（2026 起成为惯例，30 条新 issue 中绝大多数含此节）**：
+  政策原文「vibe-coded apps will be rejected；LLM 用于研究/头脑风暴/调试等
+  只读任务可接受，前提是输出不进代码」。我们按「Moderate 辅助 + 人类开发者
+  审核全部产出 + 真机手动测试回归」如实声明，勾选 AI Accountability 两项。
+  同类先例：OptiCast #659（同为视频播放器，Moderate 辅助，已收录）
+- Further Notices：92MB 豁免说明（引用 OptiCast 先例）、权限用途、无 MEES、
+  cleartext 说明、隐私政策 URL、自建 F-Droid 仓库指纹
+
+正文模板（历史 GitLab 版，仅存档）：
 
 ```
 Repo: https://github.com/ayukyo/pureframe
