@@ -1,0 +1,84 @@
+Subject: App inclusion request: PureFrame (no Codeberg account — email submission)
+
+=== 发送至 team@izzyondroid.org（用你的邮箱发送）===
+
+Hi IzzyOnDroid team,
+
+I'd like to request the inclusion of my app PureFrame in the IzzyOnDroid repository. Since I don't maintain a Codeberg account, I'm submitting via email — please feel free to file this into your tracker on my behalf, or let me know your preferred alternative channel.
+
+=== App meta-data ===
+
+Name:           PureFrame
+Package:        com.pureframe.player
+Version:        1.1.1 (3)
+Source code:    https://github.com/ayukyo/pureframe
+License:        GPL-3.0-only
+Releases:       https://github.com/ayukyo/pureframe/releases (tagged; APKs + SHA256SUMS)
+Also on:        self-hosted F-Droid repo
+                https://ayukyo.github.io/pureframe/repo?fingerprint=466896A633FCD0210E479F6A72673D4D5FF324F20BB8062E3915491D769B755F
+Categories:     Multimedia
+Signing key
+SHA256:         BD:17:38:13:8F:C0:7F:66:92:BA:74:D5:7B:B0:24:B5:DA:76:25:16:4C:0D:FD:7D:87:42:CC:0A:E2:DC:3E:4F
+Privacy policy: https://ayukyo.github.io/pureframe/privacy-policy.html
+Fastlane:       present in repo (fastlane/metadata/android, en-US + zh-CN, 3 phone screenshots)
+
+Summary:
+Clean, local-first video player with FFmpeg software decoding fallback,
+BT streaming, DLNA & Google Cast — no trackers, no ads.
+
+Description:
+PureFrame is a clean, local-first video player. Hardware decoding with
+FFmpeg software fallback (H.264/HEVC/VP9, DTS/AC3/EAC3 audio), BT
+streaming (libtorrent4j), DLNA + Google Cast to TVs, auto-loading
+external subtitles, and a natural-ordered same-folder playback queue.
+Works fully offline. No trackers, no analytics, no ads, no accounts.
+Media stays on your device.
+
+=== Notes (per App Inclusion Policy) ===
+
+- APK is ~92 MB — above the 30 MB rule of thumb. Reason: bundled FFmpeg
+  software decoding with the full codec set (H.264/HEVC/VP9 +
+  DTS/AC3/EAC3) plus libtorrent4j. Size is inherent to soft-decode media
+  players; an exception as granted for comparable players would be
+  appreciated.
+- Permissions: READ_MEDIA_VIDEO (+ legacy READ_EXTERNAL_STORAGE,
+  maxSdk 32) to scan local videos (core feature). No
+  MANAGE_EXTERNAL_STORAGE (removed in v1.1.1). INTERNET for
+  user-initiated BT/HTTP downloads and DLNA/Cast on the home network.
+  FOREGROUND_SERVICE (+ MEDIA_PLAYBACK / DATA_SYNC) / POST_NOTIFICATIONS
+  for playback notification and download tasks.
+- usesCleartextTraffic="true": required for DLNA/UPnP and the local HTTP
+  streaming proxy (media player home-network use case).
+- No trackers, no analytics, no ads, no self-updater. Zero data
+  collection.
+
+=== AI Tools Usage ===
+
+Assistance level: Moderate – used for specific tasks or modules.
+Tools: Claude (CodeBuddy/WorkBuddy agent mode).
+What it helped with: refactoring, CI workflow setup, documentation and
+metadata drafts, debugging. All AI-generated outputs were reviewed,
+edited and manually verified by me; every release was regression-tested
+on a real device (MI 9 SE / Android 11). I take full responsibility for
+the codebase.
+- [x] The human developer reviewed and edited all "AI"-generated outputs
+- [x] The human developer ran manual tests and manually verified all changes
+
+=== Build instructions ===
+
+git clone https://github.com/ayukyo/pureframe
+cd pureframe/code
+./gradlew assembleRelease
+
+Requires JDK 17, compileSdk 36, minSdk 26, targetSdk 36. AGP 9.0.1 /
+Gradle 9.1.0 / Kotlin 2.2.10 (built-in KGP). No prebuilt binaries — all
+dependencies from Maven Central / Google. Official APKs are built and
+signed by GitHub Actions CI and attached to tagged releases together
+with SHA256SUMS.
+
+Thank you for your time and for maintaining IzzyOnDroid!
+
+Best regards,
+<你的署名>
+
+=== 复制到此处为止 ===

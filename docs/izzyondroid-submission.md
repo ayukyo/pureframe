@@ -17,18 +17,31 @@
 | 隐私政策 | ✅ https://ayukyo.github.io/pureframe/privacy-policy.html |
 | fastlane 元数据（短/长描述+图标+截图） | ✅ fastlane/metadata/android/（截图 3 张真机） |
 
-## 提交入口（2026-10-06 更新：已迁移至 Codeberg）
+## 提交入口（2026-10-06 最终决定：**不上 Codeberg，走邮件渠道**）
 
-> ⚠️ **gitlab.com/IzzyOnDroid/repo 已归档**，提交入口迁移至 Codeberg：
-> **https://codeberg.org/IzzyOnDroid/repodata** → New Issue，标题：
-> `[AppRequest] PureFrame`
+> **决策记录**：gitlab.com/IzzyOnDroid/repo 已归档，官方新入口是 Codeberg
+> （IzzyOnDroid/repodata）。但调查发现 Codeberg 最新 Terms of Use §2 (1) 7
+> 明确禁止托管「mostly consist of code written by generative AI-tools
+> (including services such as Claude, OpenAI Codex)」的项目（违反可移除内容
+> 甚至封号）。PureFrame 为 AI 深度参与开发的项目，为避免任何条款风险，
+> **用户决定不注册/使用 Codeberg**（2026-10-06）。
 >
-> 2026-10-06 尝试：gitlab.com 网页被 Cloudflare 人机验证拦截（自动化浏览器无法
-> 通过），随后发现仓库已归档。Codeberg API 匿名 POST 需 token，故仍走浏览器
-> 复制粘贴。**issue 正文最终版（按 Codeberg 官方模板重写，含 AI 声明）：
-> `docs/izzyondroid-issue-final.txt`**，浏览器登录 codeberg.org 后复制粘贴
-> 提交即可（约 2 分钟）。若用户有 Codeberg Personal Access Token（repo 权限），
-> 也可由 agent 通过 API 直接代提。
+> **替代渠道**：官方 Contact 页（izzyondroid.org/contact/）注明 issue tracker
+> 之外的邮箱渠道——非公开/无对应版块事务可发 **team@izzyondroid.org**。
+> 收录请求虽惯例走 issue tracker，但邮件说明情况（不愿注册 Codeberg 及其
+> ToS 考量）+ 附完整材料请其代录，是合理且诚实的做法。
+>
+> **邮件草稿（定稿）：`docs/izzyondroid-email-draft.txt`** —— 用个人邮箱
+> 发送即可；Codeberg 版 issue 正文（`docs/izzyondroid-issue-final.txt`）
+> 保留作存档，若团队回复要求走 tracker 再议。
+>
+> 附：Codeberg 注册页有 Anubis PoW 挑战 + 表单验证码（真实浏览器可过）；
+> issue tracker 搜索接口限流严重（"high influx of requests"）——这些是
+> 当时放弃自动化提交的次要原因，主要原因是 ToS AI 条款。
+
+<!-- 历史入口（已失效）：gitlab.com/IzzyOnDroid/repo/-/issues，
+     标题 `Add app: PureFrame (ayukyo/pureframe)` -->
+
 
 <!-- 历史入口（已失效）：gitlab.com/IzzyOnDroid/repo/-/issues，
      标题 `Add app: PureFrame (ayukyo/pureframe)` -->
