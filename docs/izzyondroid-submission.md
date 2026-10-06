@@ -1,6 +1,24 @@
-# IzzyOnDroid 提交指引（批次 B）
+# IzzyOnDroid 提交指引（已归档：**最终决定不上 IzzyOnDroid**，2026-10-06）
 
-对应分发地图 Tier 1。元数据（fastlane 结构）已在仓库 `fastlane/` 就绪。
+> **⚠️ 本文档保留作历史存档，分发计划中 IzzyOnDroid 已整体放弃**
+> （见 `docs/oss-distribution-plan.md` Tier 1 决策记录）。下文调研结论
+> （准入自查、模板、AI 政策口径、入口迁移史）如将来重启提交可直接复用。
+
+---
+
+## 决策时间线
+
+1. 最初计划：向 gitlab.com/IzzyOnDroid/repo 提 issue → 仓库归档
+2. 迁移调查：新入口为 Codeberg IzzyOnDroid/repodata → 发现 Codeberg ToS
+   §2(1)7 禁止托管 mostly-AI-written 项目 → **用户决定不上 Codeberg**
+3. 评估官方邮箱渠道（team@izzyondroid.org，邮件草稿已备好）→
+   **用户最终决定连 IzzyOnDroid 本身也不上**（2026-10-06）
+4. 现有分发渠道：GitHub Releases（版本化）+ 自建 F-Droid 仓库（已上线）
+   + Obtainium 兼容 —— 覆盖原有 Izzy 目标受众的大部分
+
+---
+
+以下为历史调研内容（存档）：
 
 ## 准入自查（对照官方 App Inclusion Policy）
 

@@ -16,12 +16,13 @@
 - **顺带收益**：**Obtainium 自动兼容**——Obtainium 用户把仓库 URL 加进去就永久自动更新，零额外工作。这是海外 FOSS 玩家目前最流行的安装方式
 - 成本：CI 脚本半天
 
-### Tier 1 — IzzyOnDroid 仓库（最务实的商店入口）
-- F-Droid 生态里最大的第三方仓库，欧美 FOSS 用户的常备源
-- **审核轻量**：接受开发者自构建的二进制（不要求他们侧从源码构建），APK 必须来自官方渠道（GitHub Releases ✓）
-- 上架方式：向 izzyondroid 的 metadata 仓库提 PR；**之后每次我们发 GitHub Release，他们的机器人自动跟进同步**——接近全自动
-- 我们的预编译 so（nextlib/libtorrent4j）在 Izzy 不构成障碍
-- 成本：1-2 天（元数据 + 截图 + 提交 + 沟通）
+### Tier 1 — ~~IzzyOnDroid 仓库~~ ❌ 已放弃（2026-10-06）
+- **决策记录**：经完整调研后决定不提交 IzzyOnDroid。原因链：
+  1. 原入口 gitlab.com/IzzyOnDroid/repo 已归档，收录请求迁移至 Codeberg（IzzyOnDroid/repodata）
+  2. Codeberg 最新 ToS §2 (1) 7 明确禁止托管「mostly consist of code written by generative AI-tools」的项目（点名 Claude/Codex）——PureFrame 为 AI 深度参与开发，用户决定**完全不使用 Codeberg**（注册账号也不做）
+  3. 曾评估官方邮箱渠道（team@izzyondroid.org，材料已备好：`docs/izzyondroid-email-draft.txt`），用户最终决定**连 IzzyOnDroid 本身也不上**
+- 留档：`docs/izzyondroid-issue-final.txt`（Codeberg 版正文）、`docs/izzyondroid-email-draft.txt`（邮件版）、`docs/izzyondroid-submission.md`（完整调研与决策链）——若将来改变主意可直接复用
+- 影响评估：损失一个欧美 FOSS 常备分发源；**自建 F-Droid 仓库（Tier 2，已上线）+ GitHub Releases + Obtainium 覆盖了同类受众**， Obtainium 用户加仓库 URL 即自动更新，实际触达损失有限
 
 ### Tier 2 — 自建 F-Droid 仓库（真·全自动发布）
 - fdroidserver 在 CI 里生成仓库索引，GitHub Pages 托管
@@ -77,7 +78,7 @@
 | 批次 | 内容 |
 |---|---|
 | **批次 A（起步）** | 适配 #1/#3/#4/#7/#8 + 版本化 CI（Tier 0 完成）→ 打 v1.0.0 → 仓库转 public |
-| **批次 B** | fastlane 素材 + IzzyOnDroid 提交（Tier 1）+ Accrescent/APKPure 顺手提交 |
+| **批次 B** | ~~fastlane 素材 + IzzyOnDroid 提交（Tier 1）~~ fastlane 素材已完成（fastlane/metadata/android 就绪）；**IzzyOnDroid 已放弃（见 Tier 1 决策记录）**；Accrescent/APKPure 顺手提交（可选，未做） |
 | **批次 C** | 自建 F-Droid 仓库 CI（Tier 2） |
 | **批次 D（口碑起量后）** | F-Droid 主仓库配方攻坚（Tier 3）；评估 Play 免费上架（Tier 4） |
 
