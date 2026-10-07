@@ -2,6 +2,16 @@
 
 本文件记录用户可感知的变化。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
+## [1.1.3] - 2026-10
+
+### Changed
+- 「设置 → 关于」精简为 4 项（版本信息 / 作者 / 项目源码 / 分享应用），
+  条目排版对齐其他设置分组的间距规范
+- 媒体通知强调色跟随主题（浅色 #1A1A1A / 深色白色），移除 colorized
+  （MIUI 媒体卡背景由图标取色决定，colorized 无效；原生 colorized 亦忽略 color）
+- 中英文 README 更新至当前状态（补齐投屏/画中画/队列连播/收藏等，
+  移除 IzzyOnDroid 渠道，更新 CI 与下载渠道说明）
+
 ## [1.1.2] - 2026-10
 
 ### Added
