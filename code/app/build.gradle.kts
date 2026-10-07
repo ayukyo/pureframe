@@ -27,8 +27,8 @@ android {
         // 36：Google Play 自 2026-08-31 起新应用/更新强制要求；Android 15/16
         // 强制 edge-to-edge —— MainActivity 已 enableEdgeToEdge + Compose insets 适配
         targetSdk = 36
-        versionCode = 3
-        versionName = "1.1.1"
+        versionCode = 4
+        versionName = "1.1.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

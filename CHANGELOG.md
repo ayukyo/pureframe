@@ -2,6 +2,19 @@
 
 本文件记录用户可感知的变化。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
+## [1.1.2] - 2026-10
+
+### Added
+- **设置 → 关于 新增作者与开源信息**：版本号、作者（ayukyo，点击复制邮箱）、
+  项目源码链接、「去 GitHub 点个 Star」、开源许可（GPL-3.0）、隐私政策
+- **新增「致谢」页面**：列出应用使用的第三方开源库（Media3/ExoPlayer、nextlib、
+  libtorrent4j、Jetpack Compose、Hilt、Room、Coil、UPnPCast 等），附版本、
+  许可证徽章（可点开查看 GPL-3.0 / Apache-2.0 全文）与项目主页链接
+- **新增「分享应用」**：通过系统分享面板把 PureFrame 推荐给朋友
+
+### Fixed
+- 关于页版本号此前硬编码为 1.0.0，现从构建配置读取（与实际版本一致）
+
 ## [1.1.1] - 2026-10
 
 ### Changed
