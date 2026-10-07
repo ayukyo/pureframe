@@ -384,10 +384,10 @@ fun SettingsScreen(
             item {
                 SettingsSection(title = stringResource(R.string.settings_section_about)) {
                     // 版本信息（仅展示，无箭头）
+                    // 行距与其他分组一致：条目不加垂直 padding，间距由分隔线的
+                    // vertical = 8.dp 提供（排版规范见播放器/下载等分组）
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
+                        modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
@@ -413,7 +413,7 @@ fun SettingsScreen(
                         }
                     }
 
-                    Divider()
+                    Divider(color = MaterialTheme.colorScheme.outlineVariant, modifier = Modifier.padding(vertical = 8.dp))
 
                     // 作者（点击复制邮箱，方便反馈）
                     val contactEmail = stringResource(R.string.settings_contact_email_value)
@@ -429,8 +429,7 @@ fun SettingsScreen(
                                     copiedMsg,
                                     android.widget.Toast.LENGTH_SHORT
                                 ).show()
-                            }
-                            .padding(vertical = 4.dp),
+                            },
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
@@ -457,7 +456,7 @@ fun SettingsScreen(
                         }
                     }
 
-                    Divider()
+                    Divider(color = MaterialTheme.colorScheme.outlineVariant, modifier = Modifier.padding(vertical = 8.dp))
 
                     // 项目源码
                     val sourceUrl = stringResource(R.string.settings_source_code_url)
@@ -468,7 +467,7 @@ fun SettingsScreen(
                         onClick = { openUrl(context, sourceUrl) }
                     )
 
-                    Divider()
+                    Divider(color = MaterialTheme.colorScheme.outlineVariant, modifier = Modifier.padding(vertical = 8.dp))
 
                     // 分享应用（系统分享面板）
                     val shareText = stringResource(R.string.settings_share_app_text, sourceUrl)

@@ -25,6 +25,7 @@ import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.pureframe.player.R
 import com.pureframe.player.data.preferences.UserPreferencesRepository
+import com.pureframe.player.data.preferences.ThemeMode
 import com.pureframe.player.data.repository.VideoRepository
 import com.pureframe.player.ui.MainActivity
 import dagger.hilt.android.AndroidEntryPoint
@@ -83,6 +84,25 @@ class PlaybackService : MediaSessionService() {
 
     /** 锁屏是否显示通知内容（PR8 语义 B，由设置驱动） */
     private val lockscreenVisible = MutableStateFlow(true)
+
+    /** 浅色主题的通知强调色：与 LightPrimary 一致（0xFF1A1A1A） */
+    private val lightThemeAccent: Int = android.graphics.Color.parseColor("#1A1A1A")
+
+    // 通知强调色跟随设置里的主题模式：浅色主题用浅色主题 primary（深灰），
+    // 深色/系统深色用白色。主题切换时由 observePreferences 触发通知重建
+    @Volatile
+    private var notificationAccentColor: Int = android.graphics.Color.WHITE
+
+    private fun resolveAccentColor(mode: ThemeMode): Int {
+        // 与 MainActivity 的 darkTheme 解析逻辑一致：SYSTEM 跟随系统
+        val dark = when (mode) {
+            ThemeMode.LIGHT -> false
+            ThemeMode.DARK -> true
+            ThemeMode.SYSTEM, null -> resources.configuration.uiMode and
+                    android.content.res.Configuration.UI_MODE_NIGHT_MASK == android.content.res.Configuration.UI_MODE_NIGHT_YES
+        }
+        return if (dark) android.graphics.Color.WHITE else lightThemeAccent
+    }
 
     /** 当前 MediaItem 是否已收藏（PR8 收藏按钮图标状态） */
     private var isCurrentFavorite = false
@@ -198,6 +218,20 @@ class PlaybackService : MediaSessionService() {
                     // visibility 只在 createNotification 时应用：开关变化后主动触发
                     // 一次通知重建，否则要等下一次 player 状态变化才生效
                     if (mediaSession != null) {
+                        runCatching { triggerNotificationUpdate() }
+                    }
+                }
+        }
+        // 通知强调色跟随主题模式：设置变化时更新颜色并触发通知重建
+        serviceScope.launch {
+            userPreferencesRepository.userPreferencesFlow
+                .map { it.themeMode }
+                .distinctUntilChanged()
+                .collect { mode ->
+                    val newColor = resolveAccentColor(mode)
+                    val changed = newColor != notificationAccentColor
+                    notificationAccentColor = newColor
+                    if (changed && mediaSession != null) {
                         runCatching { triggerNotificationUpdate() }
                     }
                 }
@@ -324,12 +358,18 @@ class PlaybackService : MediaSessionService() {
             val mediaNotification = defaultNotificationProvider.createNotification(
                 mediaSession, customLayout, actionFactory, callback
             )
-            if (lockscreenVisible.value) return mediaNotification
-
+            // 强调色 + 锁屏可见性统一走 recoverBuilder 重构：
+            // accent 跟随设置里的主题模式（浅色=深灰 / 深色=白），
+            // 部分 ROM（MIUI 等）把 setColor 的颜色用作通知背景
             val rebuilt: Notification = Notification.Builder.recoverBuilder(
                 this@PlaybackService, mediaNotification.notification
             )
-                .setVisibility(Notification.VISIBILITY_SECRET)
+                .setColor(notificationAccentColor)
+                .setColorized(true)
+                .setVisibility(
+                    if (lockscreenVisible.value) Notification.VISIBILITY_PUBLIC
+                    else Notification.VISIBILITY_SECRET
+                )
                 .build()
             return MediaNotification(mediaNotification.notificationId, rebuilt)
         }
