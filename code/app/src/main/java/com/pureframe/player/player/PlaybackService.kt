@@ -85,13 +85,18 @@ class PlaybackService : MediaSessionService() {
     /** 锁屏是否显示通知内容（PR8 语义 B，由设置驱动） */
     private val lockscreenVisible = MutableStateFlow(true)
 
-    /** 浅色主题的通知强调色：与 LightPrimary 一致（0xFF1A1A1A） */
+    /**
+     * 通知强调色跟随设置里的主题模式：
+     * 浅色主题 → 深灰（与 LightPrimary 一致，0xFF1A1A1A）；
+     * 深色/系统深色 → 白色。
+     * 注意：MIUI 媒体通知卡背景由 app 图标取色决定（实测 color/colorized
+     * 均无法改变），此 color 在原生 Android colorized 场景/锁屏媒体控件
+     * /Wear 等支持强调色的场合生效。主题切换时由 observePreferences 触发通知重建
+     */
     private val lightThemeAccent: Int = android.graphics.Color.parseColor("#1A1A1A")
 
-    // 通知强调色跟随设置里的主题模式：浅色主题用浅色主题 primary（深灰），
-    // 深色/系统深色用白色。主题切换时由 observePreferences 触发通知重建
     @Volatile
-    private var notificationAccentColor: Int = android.graphics.Color.WHITE
+    private var notificationAccentColor: Int = lightThemeAccent
 
     private fun resolveAccentColor(mode: ThemeMode): Int {
         // 与 MainActivity 的 darkTheme 解析逻辑一致：SYSTEM 跟随系统
@@ -358,14 +363,13 @@ class PlaybackService : MediaSessionService() {
             val mediaNotification = defaultNotificationProvider.createNotification(
                 mediaSession, customLayout, actionFactory, callback
             )
-            // 强调色 + 锁屏可见性统一走 recoverBuilder 重构：
-            // accent 跟随设置里的主题模式（浅色=深灰 / 深色=白），
-            // 部分 ROM（MIUI 等）把 setColor 的颜色用作通知背景
+            // 强调色跟随主题 + 锁屏可见性统一走 recoverBuilder 重构。
+            // 不 setColorized：MIUI 媒体卡背景走图标取色，colorized 无效；
+            // 原生 Android 上 colorized 会忽略 color 用 MediaStyle 取色，同样无意义
             val rebuilt: Notification = Notification.Builder.recoverBuilder(
                 this@PlaybackService, mediaNotification.notification
             )
                 .setColor(notificationAccentColor)
-                .setColorized(true)
                 .setVisibility(
                     if (lockscreenVisible.value) Notification.VISIBILITY_PUBLIC
                     else Notification.VISIBILITY_SECRET
