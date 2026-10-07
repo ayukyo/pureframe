@@ -60,8 +60,6 @@ internal fun openUrl(context: Context, url: String) {
 @Composable
 fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel(),
-    onNavigateToAcknowledgements: () -> Unit = {},
-    onNavigateToLicenses: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val userPreferences by viewModel.userPreferences.collectAsState()
@@ -382,7 +380,7 @@ fun SettingsScreen(
                 }
             }
 
-            // 关于
+            // 关于（精简版：版本 / 作者 / 源码 / 分享）
             item {
                 SettingsSection(title = stringResource(R.string.settings_section_about)) {
                     // 版本信息（仅展示，无箭头）
@@ -472,16 +470,6 @@ fun SettingsScreen(
 
                     Divider()
 
-                    // 去 GitHub 点个 Star
-                    ClickableSettingsItem(
-                        icon = Icons.Filled.Star,
-                        title = stringResource(R.string.settings_rate_star),
-                        subtitle = stringResource(R.string.settings_rate_star_desc),
-                        onClick = { openUrl(context, sourceUrl) }
-                    )
-
-                    Divider()
-
                     // 分享应用（系统分享面板）
                     val shareText = stringResource(R.string.settings_share_app_text, sourceUrl)
                     ClickableSettingsItem(
@@ -500,37 +488,6 @@ fun SettingsScreen(
                                 )
                             }
                         }
-                    )
-
-                    Divider()
-
-                    // 开源许可（GPL-3.0，点击查看全文）
-                    ClickableSettingsItem(
-                        icon = Icons.Filled.Gavel,
-                        title = stringResource(R.string.settings_license),
-                        subtitle = stringResource(R.string.settings_license_value),
-                        onClick = { onNavigateToLicenses() }
-                    )
-
-                    Divider()
-
-                    // 隐私政策
-                    val privacyUrl = stringResource(R.string.settings_privacy_policy_url)
-                    ClickableSettingsItem(
-                        icon = Icons.Filled.PrivacyTip,
-                        title = stringResource(R.string.settings_privacy_policy),
-                        subtitle = privacyUrl,
-                        onClick = { openUrl(context, privacyUrl) }
-                    )
-
-                    Divider()
-
-                    // 致谢（第三方开源库）
-                    ClickableSettingsItem(
-                        icon = Icons.Filled.Favorite,
-                        title = stringResource(R.string.settings_oss_acknowledgements),
-                        subtitle = stringResource(R.string.settings_oss_acknowledgements_desc),
-                        onClick = { onNavigateToAcknowledgements() }
                     )
                 }
             }

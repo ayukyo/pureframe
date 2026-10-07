@@ -53,16 +53,10 @@ fun PureFrameNavGraph(
             )
         }
         
-        // 设置页面
+        // 设置页面（关于子页入口已精简；Acknowledgements/Licenses 路由保留，
+        // 供将来从其他入口（如致谢卡片）恢复使用）
         composable(Screen.Settings.route) {
-            SettingsScreen(
-                onNavigateToAcknowledgements = {
-                    navController.navigate(Screen.Acknowledgements.route)
-                },
-                onNavigateToLicenses = {
-                    navController.navigate(Screen.Licenses.route)
-                }
-            )
+            SettingsScreen()
         }
 
         // 致谢：第三方开源库
