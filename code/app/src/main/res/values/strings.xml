@@ -291,6 +291,9 @@
     <string name="settings_copied_to_clipboard">Copied to clipboard</string>
     <string name="settings_rate_star">Star on GitHub</string>
     <string name="settings_rate_star_desc">If you like this app, give it a star</string>
+    <string name="settings_share_app">Share this app</string>
+    <string name="settings_share_app_desc">Recommend PureFrame to your friends</string>
+    <string name="settings_share_app_text">PureFrame — a clean, local-first video player with FFmpeg software decoding, BT streaming, DLNA &amp; Google Cast. Free &amp; open source: %1$s</string>
     <string name="settings_open_source_notices">Open source licenses</string>
     <string name="settings_open_source_notices_desc">View full license texts</string>
     <string name="about_licenses_title">Open source licenses</string>

@@ -285,6 +285,9 @@
     <string name="settings_copied_to_clipboard">已复制到剪贴板</string>
     <string name="settings_rate_star">去 GitHub 点个 Star</string>
     <string name="settings_rate_star_desc">如果觉得好用，给项目加颗星吧</string>
+    <string name="settings_share_app">分享应用</string>
+    <string name="settings_share_app_desc">把 PureFrame 推荐给朋友</string>
+    <string name="settings_share_app_text">PureFrame — 干净纯粹的本地视频播放器：FFmpeg 软解、BT 下载、DLNA 与 Google Cast 投屏。免费开源：%1$s</string>
     <string name="settings_open_source_notices">开源许可证</string>
     <string name="settings_open_source_notices_desc">查看完整许可证文本</string>
     <string name="about_licenses_title">开源许可证</string>

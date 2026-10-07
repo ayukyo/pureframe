@@ -482,6 +482,28 @@ fun SettingsScreen(
 
                     Divider()
 
+                    // 分享应用（系统分享面板）
+                    val shareText = stringResource(R.string.settings_share_app_text, sourceUrl)
+                    ClickableSettingsItem(
+                        icon = Icons.Filled.Share,
+                        title = stringResource(R.string.settings_share_app),
+                        subtitle = stringResource(R.string.settings_share_app_desc),
+                        onClick = {
+                            val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_TEXT, shareText)
+                            }
+                            runCatching {
+                                context.startActivity(
+                                    Intent.createChooser(sendIntent, null)
+                                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                )
+                            }
+                        }
+                    )
+
+                    Divider()
+
                     // 开源许可（GPL-3.0，点击查看全文）
                     ClickableSettingsItem(
                         icon = Icons.Filled.Gavel,
