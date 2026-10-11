@@ -5,6 +5,9 @@ import com.yinnho.upnpcast.DLNACast
 import dagger.hilt.android.qualifiers.ApplicationContext
 import fi.iki.elonen.NanoHTTPD
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.io.File
@@ -220,18 +223,60 @@ class DlnaCastController @Inject constructor(
         withContext(Dispatchers.IO) {
             ensureInit()
             try {
-                DLNACast.search(timeout = timeoutMs).map { d ->
-                    CastDevice(
-                        id = d.id,
-                        name = d.name.ifBlank { "DLNA 设备" },
-                        type = RouteType.DLNA,
-                        isTv = d.isTV
-                    )
+                // 只保留真正的渲染设备：UPnPCast 的 M-SEARCH 目标含
+                // upnp:rootdevice/ssdp:all，会把 MediaServer（路由器、NAS 等）一并
+                // 扫进来；部分路由器甚至对任意 ST 都应答，按 ST 白名单拦不住。
+                // 库公开的 Device 模型不暴露 services，但 id 就是设备描述 XML 的
+                // LOCATION URL → 逐台拉描述、校验含 AVTransport 控制服务才展示
+                //（没有 AVTransport 的设备本来也无法投屏）。
+                val devices = DLNACast.search(timeout = timeoutMs)
+                coroutineScope {
+                    devices.map { d -> async { d to isMediaRenderer(d.id) } }
+                        .awaitAll()
+                        .filter { it.second }
+                        .map { it.first.toCastDevice() }
                 }
             } catch (e: Exception) {
                 Timber.e(e, "DLNA 设备扫描失败")
                 emptyList()
             }
+        }
+
+    private fun DLNACast.Device.toCastDevice() = CastDevice(
+        id = id,
+        name = name.ifBlank { "DLNA 设备" },
+        type = RouteType.DLNA,
+        isTv = isTV
+    )
+
+    /**
+     * 拉取设备描述 XML 判断是否 MediaRenderer（具备 AVTransport 服务）。
+     * 描述拉取失败按非 renderer 处理——拿不到描述的设备同样无法投屏。
+     */
+    private suspend fun isMediaRenderer(locationUrl: String): Boolean =
+        runCatching {
+            withContext(Dispatchers.IO) {
+                val conn = (java.net.URL(locationUrl).openConnection() as java.net.HttpURLConnection).apply {
+                    connectTimeout = 2_500
+                    readTimeout = 2_500
+                    instanceFollowRedirects = true
+                }
+                val body = try {
+                    conn.inputStream.use { stream ->
+                        stream.readBytes().toString(Charsets.UTF_8)
+                    }
+                } finally {
+                    conn.disconnect()
+                }
+                val isRenderer = body.contains("AVTransport", ignoreCase = true)
+                if (!isRenderer) {
+                    Timber.d("DLNA: 非 renderer 设备（无 AVTransport），过滤: %s", locationUrl)
+                }
+                isRenderer
+            }
+        }.getOrElse { e ->
+            Timber.w("DLNA: 设备描述拉取失败，按非 renderer 过滤 %s: %s", locationUrl, e.message)
+            false
         }
 
     override suspend fun connect(device: CastDevice): PlaybackRoute? {

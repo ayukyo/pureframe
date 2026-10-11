@@ -173,6 +173,19 @@ class PlayerViewModel @Inject constructor(
     private val _isScanningDevices = MutableStateFlow(false)
     val isScanningDevices: StateFlow<Boolean> = _isScanningDevices.asStateFlow()
 
+    /** 正在连接的设备 id（面板对应行显示「连接中…」并禁重复点击） */
+    private val _connectingDeviceId = MutableStateFlow<String?>(null)
+    val connectingDeviceId: StateFlow<String?> = _connectingDeviceId.asStateFlow()
+
+    /**
+     * 投屏连接错误（面板内联横幅展示）
+     *
+     * 不复用 uiState.errorMessage：那是播放错误，ErrorOverlay 的「重试」会去
+     * 重新 prepare 本机播放器、「返回」会退出播放页，对投屏失败语义全错。
+     */
+    private val _castError = MutableStateFlow<String?>(null)
+    val castError: StateFlow<String?> = _castError.asStateFlow()
+
     /** 当前内容快照（投屏时构建 RouteContent 用） */
     private var currentRouteContent: RouteContent? = null
     private var currentStreamProxyUrl: String? = null
@@ -833,6 +846,7 @@ class PlayerViewModel @Inject constructor(
      */
     fun openCastDialog() {
         _showCastDialog.value = true
+        _castError.value = null
         refreshCastDevices()
         maybeAutoConnectLastDevice()
     }
@@ -854,6 +868,7 @@ class PlayerViewModel @Inject constructor(
 
     fun dismissCastDialog() {
         _showCastDialog.value = false
+        _castError.value = null
     }
 
     /**
@@ -861,6 +876,7 @@ class PlayerViewModel @Inject constructor(
      */
     fun refreshCastDevices() {
         viewModelScope.launch {
+            _castError.value = null
             _isScanningDevices.value = true
             _discoveredDevices.value = routeManager.discoverDevices()
             _isScanningDevices.value = false
@@ -875,25 +891,47 @@ class PlayerViewModel @Inject constructor(
      * 应以当前远端进度为起点，避免回跳。
      */
     fun castToDevice(device: CastDevice) {
-        val content = currentRouteContent ?: return
+        val content = currentRouteContent ?: run {
+            Timber.w("castToDevice: 无可投屏内容，忽略")
+            return
+        }
         val startPos = routeManager.routeState.value?.positionMs
             ?.takeIf { routeManager.isCasting && it > 0L }
             ?: playerManager.currentPosition.value
+        // 连接前本机是否在播：castTo 会先暂停本机，若随后失败必须恢复播放
+        //（否则用户点了设备、投屏没成功，本机却白停一下）
+        val localWasPlaying = !routeManager.isCasting && playerManager.isPlaying.value
         viewModelScope.launch {
-            val ok = routeManager.castTo(
-                device = device,
-                content = content,
-                startPositionMs = startPos,
-                onLocalPause = { playerManager.pause() }
-            )
+            _connectingDeviceId.value = device.id
+            _castError.value = null
+            val ok = try {
+                routeManager.castTo(
+                    device = device,
+                    content = content,
+                    startPositionMs = startPos,
+                    onLocalPause = { playerManager.pause() }
+                )
+            } catch (e: Exception) {
+                Timber.e(e, "castTo 异常: %s", device.name)
+                false
+            } finally {
+                _connectingDeviceId.value = null
+            }
             if (ok) {
                 _showCastDialog.value = false
+                // 投屏接管后本机播放器处于暂停/静默状态，其历史错误态（如断网时的
+                // Source error）不应继续遮挡投屏会话，进入投屏即清除本机错误
+                clearError()
                 // 记住本次投屏设备（供「自动连接上次设备」用）
                 userPreferencesRepository.updateCastLastDevice(device)
             } else {
-                _uiState.update {
-                    it.copy(errorMessage = LocaleManager.getString(appContext, R.string.cast_connect_failed))
-                }
+                // 失败回退：恢复本机播放（castTo 已把它暂停了）
+                if (localWasPlaying) playerManager.play()
+                // 失败反馈常驻面板（面板不关闭），直到用户重试/刷新/关闭面板，
+                // 避免自动消失导致用户错过提示（此前的静默失败就是这个问题）
+                val msg = LocaleManager.getString(appContext, R.string.cast_connect_failed)
+                Timber.w("castToDevice 失败，展示内联错误: %s -> %s", device.name, msg)
+                _castError.value = msg
             }
         }
     }

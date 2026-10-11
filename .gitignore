@@ -40,3 +40,7 @@ local.properties
 Thumbs.db
 NUL
 _NUL*
+
+# ---- 本地测试产物（截图、生成的测试视频等，不入库） ----
+tmp/
+testmedia/

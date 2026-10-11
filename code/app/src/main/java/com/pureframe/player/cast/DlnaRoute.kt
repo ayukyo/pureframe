@@ -36,7 +36,10 @@ class DlnaRoute(
 
     private var progressJob: Job? = null
     private var currentContent: RouteContent? = null
+
+    /** 最近一次确认的远端位置 + 取得该位置时的本机时钟（插值兜底用） */
     private var lastPositionMs = 0L
+    private var lastPositionWallClock = 0L
 
     override suspend fun activate(content: RouteContent, startPositionMs: Long): Boolean {
         _state.value = _state.value.copy(phase = RoutePhase.CONNECTING)
@@ -84,11 +87,34 @@ class DlnaRoute(
                 fail("设备拒绝了投屏请求")
                 return false
             }
+            // 确认远端真的接管了媒体：部分设备的 UPnP 栈会接受 SetAVTransportURI
+            // 却不真正播放（残缺实现/非 renderer 设备），表现为静默黑屏。
+            // 观察 TransportState，进入 PLAYING/PAUSED/TRANSITIONING 才算成功。
+            var confirmed = false
+            val confirmDeadline = System.currentTimeMillis() + 6_000L
+            while (System.currentTimeMillis() < confirmDeadline) {
+                delay(600)
+                val ts = runCatching { DLNACast.getPlaybackState() }.getOrNull()
+                if (ts == DLNACast.PlaybackState.PLAYING ||
+                    ts == DLNACast.PlaybackState.PAUSED ||
+                    ts == DLNACast.PlaybackState.BUFFERING
+                ) {
+                    confirmed = true
+                    break
+                }
+            }
+            if (!confirmed) {
+                Timber.w("DLNA: 设备接受指令但未开始播放: %s", device.name)
+                fail("设备未开始播放")
+                return false
+            }
             if (startPositionMs > 0) {
                 // 部分电视在 SetAVTransportURI 后立刻 seek 会丢指令，稍等再发
                 delay(800)
                 DLNACast.seek(startPositionMs)
             }
+            lastPositionMs = startPositionMs
+            lastPositionWallClock = System.currentTimeMillis()
             _state.value = _state.value.copy(
                 phase = RoutePhase.PLAYING,
                 isPlaying = true,
@@ -122,6 +148,7 @@ class DlnaRoute(
             .onSuccess {
                 _state.value = _state.value.copy(positionMs = positionMs)
                 lastPositionMs = positionMs
+                lastPositionWallClock = System.currentTimeMillis()
             }
             .onFailure { Timber.e(it, "DLNA seek 失败") }
     }
@@ -147,15 +174,20 @@ class DlnaRoute(
     /**
      * 轮询远端进度（1s 间隔）。
      * DLNA 无推送事件，只能拉；getProgress 自带缓存+插值，频率安全。
+     * 兜底：部分电视 GetPositionInfo 响应不稳定（返回 null/超时），
+     * PLAYING 期间用本机时钟从最后确认位置插值推进，避免本机进度条冻结。
      */
     private fun startProgressPolling() {
         progressJob?.cancel()
         progressJob = scope.launch {
+            var wasPlaying = false
             while (isActive) {
                 val progress = runCatching { DLNACast.getProgress() }.getOrNull()
                 val remoteState = runCatching { DLNACast.getPlaybackState() }.getOrNull()
-                if (progress != null) {
+                val now = System.currentTimeMillis()
+                if (progress != null && progress.second > 0L) {
                     lastPositionMs = progress.first
+                    lastPositionWallClock = now
                     _state.value = _state.value.copy(
                         positionMs = progress.first,
                         durationMs = progress.second
@@ -172,6 +204,27 @@ class DlnaRoute(
                         else -> _state.value.phase
                     }
                     _state.value = _state.value.copy(isPlaying = playing, phase = phase)
+                    if (playing) {
+                        if (!wasPlaying) {
+                            // 从暂停/缓冲恢复：插值起点重置，避免把暂停时长算进进度
+                            lastPositionWallClock = now
+                        }
+                        if (progress == null || progress.second <= 0L) {
+                            // 远端位置查询不可用：本地插值推进（封顶在时长）
+                            val interpolated = lastPositionMs + (now - lastPositionWallClock)
+                            val capped = _state.value.durationMs
+                                .takeIf { it > 0 }
+                                ?.let { interpolated.coerceAtMost(it) }
+                                ?: interpolated
+                            lastPositionMs = capped
+                            lastPositionWallClock = now
+                            _state.value = _state.value.copy(positionMs = capped)
+                        }
+                    } else {
+                        // 暂停/停止：冻结插值基准，恢复播放时不跳变
+                        lastPositionWallClock = now
+                    }
+                    wasPlaying = playing
                 }
                 delay(1_000L)
             }

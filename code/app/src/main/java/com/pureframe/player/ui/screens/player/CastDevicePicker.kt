@@ -52,6 +52,8 @@ fun CastDevicePicker(
     isScanning: Boolean,
     isCasting: Boolean,
     currentDeviceName: String?,
+    connectingDeviceId: String?,
+    castError: String?,
     onDeviceClick: (CastDevice) -> Unit,
     onDisconnect: () -> Unit,
     onRefresh: () -> Unit,
@@ -98,6 +100,24 @@ fun CastDevicePicker(
             }
 
             Spacer(Modifier.height(8.dp))
+
+            // 连接失败横幅：必须放在设备列表之前——列表是固定 280dp 高度，
+            // 弹层可视高度有限，放在列表下方会被挤出可视区域而看不到。
+            if (castError != null) {
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = Color(0xFFEF5350).copy(alpha = 0.12f),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = castError,
+                        color = Color(0xFFEF5350),
+                        fontSize = 13.sp,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)
+                    )
+                }
+                Spacer(Modifier.height(8.dp))
+            }
 
             // 已连接状态：给断开入口
             if (isCasting && currentDeviceName != null) {
@@ -164,10 +184,14 @@ fun CastDevicePicker(
                     modifier = Modifier.height(280.dp)
                 ) {
                     items(devices, key = { it.id }) { device ->
+                        val isConnecting = device.id == connectingDeviceId
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { onDeviceClick(device) }
+                                // 连接中禁点其他行（避免并发连接），也禁当前行重复点击
+                                .clickable(enabled = connectingDeviceId == null) {
+                                    onDeviceClick(device)
+                                }
                                 .padding(horizontal = 8.dp, vertical = 14.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -200,12 +224,27 @@ fun CastDevicePicker(
                                     fontSize = 11.sp
                                 )
                             }
-                            if (isCasting && device.name == currentDeviceName) {
-                                Text(
-                                    text = stringResource(R.string.cast_active_label),
-                                    color = Color(0xFF7CB342),
-                                    fontSize = 12.sp
-                                )
+                            when {
+                                isConnecting -> {
+                                    CircularProgressIndicator(
+                                        color = dlg.onContainer,
+                                        strokeWidth = 2.dp,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Text(
+                                        text = stringResource(R.string.cast_connecting),
+                                        color = dlg.onContainerMuted,
+                                        fontSize = 12.sp,
+                                        modifier = Modifier.padding(start = 8.dp)
+                                    )
+                                }
+                                isCasting && device.name == currentDeviceName -> {
+                                    Text(
+                                        text = stringResource(R.string.cast_active_label),
+                                        color = Color(0xFF7CB342),
+                                        fontSize = 12.sp
+                                    )
+                                }
                             }
                         }
                     }

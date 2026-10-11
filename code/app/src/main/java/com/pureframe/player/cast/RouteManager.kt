@@ -101,9 +101,12 @@ class RouteManager @Inject constructor(
         _activeRoute.value = route
         _routeState.value = route.state.value
 
-        // 观察路由状态流；远端播完（ENDED）时自动断开会话
-        scope.launch {
+        // 观察路由状态流；远端播完（ENDED）时自动断开会话。
+        // 守卫：会话失效（失败清理/断开/切换设备）后丢弃后续状态，避免残留
+        // collector 把 _routeState 从 null 污染回旧值
+        val stateJob = scope.launch {
             route.state.collect { st ->
+                if (_activeRoute.value != route) return@collect
                 _routeState.value = st
                 if (st.phase == RoutePhase.ENDED) {
                     Timber.i("远端播放结束，自动断开投屏: %s", device.name)
@@ -117,6 +120,10 @@ class RouteManager @Inject constructor(
         val ok = route.activate(content, startPositionMs)
         if (!ok) {
             Timber.w("投屏激活失败，回退本机: %s", device.name)
+            // 失败清理：停掉状态收集（残留 collector 会在 route 后续发状态时
+            // 污染 _routeState）并释放路由资源（轮询、controller 缓存等）
+            stateJob.cancel()
+            runCatching { route.release() }
             _activeRoute.value = null
             _routeState.value = null
         }

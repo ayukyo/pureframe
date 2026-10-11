@@ -113,6 +113,8 @@ fun PlayerScreen(
     val showCastDialog by viewModel.showCastDialog.collectAsStateWithLifecycle()
     val discoveredDevices by viewModel.discoveredDevices.collectAsStateWithLifecycle()
     val isScanningDevices by viewModel.isScanningDevices.collectAsStateWithLifecycle()
+    val connectingDeviceId by viewModel.connectingDeviceId.collectAsStateWithLifecycle()
+    val castError by viewModel.castError.collectAsStateWithLifecycle()
     // 投屏时播放控制走远程，显示的进度/播放态取远程值
     val effIsPlaying = if (isCasting) (castState?.isPlaying ?: false) else isPlaying
     val effPosition = if (isCasting) (castState?.positionMs ?: 0L) else currentPosition
@@ -433,8 +435,8 @@ fun PlayerScreen(
             )
         }
         
-        // 错误显示
-        if (playerError != null || uiState.errorMessage != null) {
+        // 错误显示（投屏中本机播放器静默，其错误态不遮挡投屏会话）
+        if (!isCasting && (playerError != null || uiState.errorMessage != null)) {
             ErrorOverlay(
                 message = playerError ?: uiState.errorMessage ?: stringResource(R.string.player_error_unknown),
                 onRetry = { viewModel.retryPlayback() },
@@ -468,6 +470,8 @@ fun PlayerScreen(
                 isScanning = isScanningDevices,
                 isCasting = isCasting,
                 currentDeviceName = castState?.deviceName,
+                connectingDeviceId = connectingDeviceId,
+                castError = castError,
                 onDeviceClick = { viewModel.castToDevice(it) },
                 onDisconnect = {
                     viewModel.disconnectCast()
