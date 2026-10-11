@@ -2,7 +2,7 @@
 
 本文件记录用户可感知的变化。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
-## [未发布]
+## [1.1.5] - 2026-10-11
 
 ### Fixed
 - **投屏设备列表只显示可投屏设备**：按设备描述中的 AVTransport 能力过滤，
@@ -106,6 +106,8 @@
 ### Fixed
 - 下载任务「更多」菜单弹出位置错误（原锚定到整行左上角）
 
-[Unreleased]: https://github.com/ayukyo/pureframe/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/ayukyo/pureframe/compare/v1.1.5...HEAD
+[1.1.5]: https://github.com/ayukyo/pureframe/compare/v1.1.4...v1.1.5
+[1.1.4]: https://github.com/ayukyo/pureframe/releases/tag/v1.1.4
 [1.1.0]: https://github.com/ayukyo/pureframe/releases/tag/v1.1.0
 [1.0.0]: https://github.com/ayukyo/pureframe/releases/tag/v1.0.0
