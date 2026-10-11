@@ -307,8 +307,10 @@ fun PlayerScreen(
             )
 
             // 右侧音量控制区域（右 30% 宽，扩大热区，避免划不到）
+            // initialVolume 用系统媒体音量归一值，手势起点与当前音量一致
             VolumeGestureArea(
                 onVolumeChange = { viewModel.setVolume(it) },
+                initialVolume = volume,
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
                     .fillMaxHeight(0.8f)
@@ -435,7 +437,7 @@ fun PlayerScreen(
         if (playerError != null || uiState.errorMessage != null) {
             ErrorOverlay(
                 message = playerError ?: uiState.errorMessage ?: stringResource(R.string.player_error_unknown),
-                onRetry = { viewModel.clearError() },
+                onRetry = { viewModel.retryPlayback() },
                 onBack = onBack,
                 modifier = Modifier.align(Alignment.Center)
             )
@@ -587,9 +589,10 @@ fun BrightnessGestureArea(
 @Composable
 fun VolumeGestureArea(
     onVolumeChange: (Float) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    initialVolume: Float = 1f
 ) {
-    var currentVolume by remember { mutableFloatStateOf(1f) }
+    var currentVolume by remember { mutableFloatStateOf(initialVolume.coerceIn(0f, 1f)) }
     
     Box(
         modifier = modifier

@@ -672,6 +672,14 @@ class PlayerViewModel @Inject constructor(
         _uiState.update { it.copy(errorMessage = null) }
         playerManager.clearError()
     }
+
+    /**
+     * 播放页「重试」：清错误并对当前 MediaItem 重新 prepare（从出错位置续播）
+     */
+    fun retryPlayback() {
+        _uiState.update { it.copy(errorMessage = null) }
+        playerManager.retryPlayback()
+    }
     
     /**
      * 获取 ExoPlayer 实例（用于 UI 绑定）

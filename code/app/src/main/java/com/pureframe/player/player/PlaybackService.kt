@@ -5,6 +5,7 @@ import android.app.PendingIntent
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.view.KeyEvent
 import android.os.Build
 import android.os.Bundle
 import androidx.core.app.NotificationCompat
@@ -183,6 +184,36 @@ class PlaybackService : MediaSessionService() {
                 ): ListenableFuture<SessionResult> {
                     return handleCustomCommand(session, customCommand)
                 }
+
+                // 自行处理媒体按键（KeyEvent 语义显式化）。
+                // 已知限制：`cmd media_session dispatch` 等空 packageName 来源会在
+                // media3 MediaSessionLegacyStub.onMediaButtonEvent 内部（转发到本
+                // callback 之前）抛 IllegalArgumentException 崩溃，属 media3 上游
+                // 限制，本 override 无法拦截；实测真实用户路径（耳机键 keyevent、
+                // 通知栏按钮、蓝牙 AVRCP）均不走该崩溃分支，功能正常。
+                override fun onMediaButtonEvent(
+                    session: MediaSession,
+                    controller: MediaSession.ControllerInfo,
+                    intent: Intent
+                ): Boolean {
+                    val keyEvent = intent.getParcelableExtra<KeyEvent>(Intent.EXTRA_KEY_EVENT)
+                    if (keyEvent != null && keyEvent.action == KeyEvent.ACTION_DOWN) {
+                        when (keyEvent.keyCode) {
+                            KeyEvent.KEYCODE_MEDIA_PLAY -> player.play()
+                            KeyEvent.KEYCODE_MEDIA_PAUSE -> player.pause()
+                            KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE ->
+                                if (player.isPlaying) player.pause() else player.play()
+                            KeyEvent.KEYCODE_MEDIA_NEXT -> player.seekToNext()
+                            KeyEvent.KEYCODE_MEDIA_PREVIOUS -> player.seekToPrevious()
+                            KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> player.seekForward()
+                            KeyEvent.KEYCODE_MEDIA_REWIND -> player.seekBack()
+                            KeyEvent.KEYCODE_MEDIA_STOP -> player.stop()
+                            else -> return true
+                        }
+                        return true
+                    }
+                    return true
+                }
             })
             .build()
 
@@ -195,6 +226,44 @@ class PlaybackService : MediaSessionService() {
         setMediaNotificationProvider(LockscreenAwareProvider())
 
         Timber.i("PlaybackService onCreate, MediaSession 已建立")
+    }
+
+    /**
+     * 防御：媒体键（耳机/`cmd media_session dispatch`）通过 mediaButtonReceiver 以
+     * startForegroundService 拉起服务时，若 player 没有可恢复的播放内容，media3
+     * 不会 post 前台通知，系统 5 秒超时抛 RemoteServiceException（"did not then
+     * call Service.startForeground()"）直接崩溃。
+     * 单纯 stopSelf 不够（media3 的 playback resumption 是异步的，检查窗口抓不准），
+     * 这里在无内容时立即用最小静默通知 startForeground 满足系统要求，随后
+     * stopSelf —— 服务销毁后通知随之移除，用户无感知。
+     */
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        val result = super.onStartCommand(intent, flags, startId)
+        if (player.currentMediaItem == null) {
+            runCatching {
+                val nm = getSystemService(android.app.NotificationManager::class.java)
+                val channel = android.app.NotificationChannel(
+                    FOREGROUND_TIMEOUT_CHANNEL_ID,
+                    getString(R.string.app_name),
+                    android.app.NotificationManager.IMPORTANCE_MIN
+                )
+                nm.createNotificationChannel(channel)
+                val notification = android.app.Notification.Builder(
+                    this, FOREGROUND_TIMEOUT_CHANNEL_ID
+                )
+                    .setSmallIcon(R.drawable.ic_notif_repeat_off)
+                    .setContentTitle(getString(R.string.app_name))
+                    .setShowWhen(false)
+                    .setOngoing(true)
+                    .build()
+                startForeground(FOREGROUND_TIMEOUT_NOTIFICATION_ID, notification)
+            }.onFailure {
+                Timber.w(it, "PlaybackService: 防御通知 startForeground 失败")
+            }
+            Timber.w("PlaybackService: media button 拉起但无播放内容 → 防御 startForeground + stopSelf")
+            stopSelf()
+        }
+        return result
     }
 
     /** PR8：设置变化观察（总开关动态关闭方向 + 锁屏可见性） */
@@ -425,6 +494,8 @@ class PlaybackService : MediaSessionService() {
     companion object {
         const val COMMAND_TOGGLE_REPEAT = "com.pureframe.player.command.TOGGLE_REPEAT"
         const val COMMAND_TOGGLE_FAVORITE = "com.pureframe.player.command.TOGGLE_FAVORITE"
+        private const val FOREGROUND_TIMEOUT_CHANNEL_ID = "pf_defensive_fg"
+        private const val FOREGROUND_TIMEOUT_NOTIFICATION_ID = 1002
 
         /**
          * 同步构造 [SessionToken]，无需 ListenableFuture。

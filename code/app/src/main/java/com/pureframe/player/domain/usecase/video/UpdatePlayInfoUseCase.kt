@@ -25,6 +25,8 @@ class UpdatePlayInfoUseCase @Inject constructor(
     )
     
     override suspend fun invoke(params: Params) {
+        // 防御：未入库条目（id=-1）不更新，避免无意义的 DB 写与外键类问题
+        if (params.videoId <= 0L) return
         videoRepository.updatePlayInfo(params.videoId, params.playTime)
     }
     

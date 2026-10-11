@@ -30,6 +30,11 @@ class SavePlaybackProgressUseCase @Inject constructor(
     )
     
     override suspend fun invoke(params: Params): Long {
+        // 防御：连播切到未入库条目时 PlayerViewModel 会构造 id=-1 的临时 Video，
+        // playback_history.videoId 外键指向 videos 表，插入 id=-1 会触发
+        // SQLiteConstraintException(FOREIGN KEY) 且协程未捕获导致进程崩溃。
+        // 未入库条目不落播放历史（UI 标题/进度仍正常显示）。
+        if (params.videoId <= 0L) return -1L
         val history = PlaybackHistory(
             videoId = params.videoId,
             videoTitle = params.videoTitle,

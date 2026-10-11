@@ -78,8 +78,8 @@ class PlayerManager @Inject constructor(
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
     
-    // 音量
-    private val _volume = MutableStateFlow(1f)
+    // 音量（系统媒体音量 STREAM_MUSIC 的归一化值，初始从系统读取）
+    private val _volume = MutableStateFlow(readSystemVolume())
     val volume: StateFlow<Float> = _volume.asStateFlow()
     
     // 是否循环播放
@@ -428,13 +428,36 @@ class PlayerManager @Inject constructor(
     }
     
     /**
-     * 设置音量
-     * 
+     * 设置音量（系统媒体音量 STREAM_MUSIC）
+     *
+     * 之前实现调的是 ExoPlayer.volume（流内音量/仅影响本 app 输出衰减），
+     * 用户手势滑完系统音量纹丝不动，与主流播放器习惯不符。
+     * 现改为 AudioManager 媒体音量，HUD 显示归一化值。
+     *
      * @param volume 音量 (0-1)
      */
     fun setVolume(volume: Float) {
-        exoPlayer.volume = volume.coerceIn(0f, 1f)
-        _volume.value = exoPlayer.volume
+        val audioManager = context.getSystemService(android.content.Context.AUDIO_SERVICE)
+            as android.media.AudioManager
+        val max = audioManager.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC)
+        val target = (volume.coerceIn(0f, 1f) * max).toInt()
+        runCatching {
+            audioManager.setStreamVolume(android.media.AudioManager.STREAM_MUSIC, target, 0)
+            _volume.value = target.toFloat() / max
+        }.onFailure {
+            Timber.w(it, "setVolume: 设置系统媒体音量失败")
+        }
+    }
+
+    /** 读取当前系统媒体音量的归一化值 (0-1)，供手势初始位置使用 */
+    fun getSystemVolume(): Float = readSystemVolume()
+
+    private fun readSystemVolume(): Float {
+        val audioManager = context.getSystemService(android.content.Context.AUDIO_SERVICE)
+            as android.media.AudioManager
+        val max = audioManager.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC)
+        if (max <= 0) return 1f
+        return audioManager.getStreamVolume(android.media.AudioManager.STREAM_MUSIC).toFloat() / max
     }
     
     /**
@@ -510,7 +533,25 @@ class PlayerManager @Inject constructor(
         _errorMessage.value = null
         _playbackState.value = PlayerState.IDLE
     }
-    
+
+    /**
+     * 播放页「重试」：清除错误后对当前 MediaItem 重新 prepare。
+     * 仅 clearError 会把状态重置为 IDLE，但 player 内部仍停留在出错前的
+     * 加载挂起态（如 HLS 分片不可达时卡在 SKIPPING_TO_NEXT），必须重新
+     * prepare 才会再次触发加载；从出错位置续播。
+     */
+    fun retryPlayback() {
+        clearError()
+        runCatching {
+            val resumePosition = exoPlayer.currentPosition.coerceAtLeast(0L)
+            exoPlayer.prepare()
+            if (resumePosition > 0L) exoPlayer.seekTo(resumePosition)
+            exoPlayer.play()
+        }.onFailure {
+            Timber.w(it, "retryPlayback: 重新 prepare 失败")
+        }
+    }
+
     /**
      * 停止播放
      */
