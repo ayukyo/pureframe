@@ -24,6 +24,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
@@ -126,6 +127,18 @@ fun PlayerScreen(
             else -> PlayerState.READY
         }
     } else playbackState
+
+    // ---- feed 模式（上下滑切换视频，抖音式）----
+    // 开关来自设置；投屏中 / 边下边播不启用（滑动切条只对本机本地视频有意义）
+    val verticalSwipeSetting by viewModel.verticalSwipeSwitch.collectAsStateWithLifecycle()
+    val feedMode = verticalSwipeSetting && !isCasting && !isStreamPlayback
+    var feedSwipeToast by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(feedSwipeToast) {
+        if (feedSwipeToast != null) {
+            kotlinx.coroutines.delay(1500)
+            feedSwipeToast = null
+        }
+    }
     
     // 控制栏显示状态
     var showControls by remember { mutableStateOf(true) }
@@ -280,57 +293,116 @@ fun PlayerScreen(
             modifier = Modifier.fillMaxSize()
         )
         
-        // 水平滑动进度控制区域（中间 40% 宽）—— 悬浮窗方案：播放页手势常开
-        run {
-            SeekGestureOverlay(
-                currentPosition = currentPosition,
-                duration = duration,
-                onSeekRelative = { deltaMs ->
-                    viewModel.seekRelative(deltaMs)
+        // 手势区域二选一：
+        // - feed 模式（设置「上下滑切换视频」开启且本机播放非投屏）：全屏 VerticalPager
+        //   跟手上下滑切上/下一条视频，亮度/音量手势禁用（互斥）
+        // - 传统模式：中间水平 seek + 左亮度 + 右音量（现状）
+        if (feedMode) {
+            FeedGesturePager(
+                onSwipeUp = {
+                    if (viewModel.canSwipeToNext()) {
+                        viewModel.playNext()
+                    } else {
+                        feedSwipeToast = context.getString(R.string.feed_no_next)
+                    }
                 },
-                onSeekStart = { showControls = false },
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .fillMaxWidth(0.4f)
-                    .fillMaxHeight(0.6f)
-            )
-
-            // 左侧亮度控制区域（左 30% 宽，扩大热区，避免划不到）
-            BrightnessGestureArea(
-                onBrightnessChange = { value ->
-                    viewModel.setBrightness(value)
-                    // 真正写入系统窗口亮度，否则手势只改了状态、屏幕不会变
-                    activity?.applyWindowBrightness(value)
+                onSwipeDown = {
+                    if (viewModel.canSwipeToPrevious()) {
+                        viewModel.playPrevious()
+                    } else {
+                        feedSwipeToast = context.getString(R.string.feed_no_previous)
+                    }
                 },
-                modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .fillMaxHeight(0.8f)
-                    .fillMaxWidth(0.3f)
+                modifier = Modifier.fillMaxSize()
             )
+        } else {
+            // 水平滑动进度控制区域（中间 40% 宽）—— 悬浮窗方案：播放页手势常开
+            run {
+                SeekGestureOverlay(
+                    currentPosition = currentPosition,
+                    duration = duration,
+                    onSeekRelative = { deltaMs ->
+                        viewModel.seekRelative(deltaMs)
+                    },
+                    onSeekStart = { showControls = false },
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .fillMaxWidth(0.4f)
+                        .fillMaxHeight(0.6f)
+                )
 
-            // 右侧音量控制区域（右 30% 宽，扩大热区，避免划不到）
-            // initialVolume 用系统媒体音量归一值，手势起点与当前音量一致
-            VolumeGestureArea(
-                onVolumeChange = { viewModel.setVolume(it) },
-                initialVolume = volume,
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .fillMaxHeight(0.8f)
-                    .fillMaxWidth(0.3f)
-            )
+                // 左侧亮度控制区域（左 30% 宽，扩大热区，避免划不到）
+                BrightnessGestureArea(
+                    onBrightnessChange = { value ->
+                        viewModel.setBrightness(value)
+                        // 真正写入系统窗口亮度，否则手势只改了状态、屏幕不会变
+                        activity?.applyWindowBrightness(value)
+                    },
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .fillMaxHeight(0.8f)
+                        .fillMaxWidth(0.3f)
+                )
 
-            // 手势指示器：靠边显示，避免遮挡画面中心
-            gestureIndicator?.let { indicator ->
-                val alignment = when (indicator) {
-                    is GestureIndicator.Brightness -> Alignment.CenterStart
-                    is GestureIndicator.Volume -> Alignment.CenterEnd
-                    is GestureIndicator.Seek -> Alignment.TopCenter
+                // 右侧音量控制区域（右 30% 宽，扩大热区，避免划不到）
+                // initialVolume 用系统媒体音量归一值，手势起点与当前音量一致
+                VolumeGestureArea(
+                    onVolumeChange = { viewModel.setVolume(it) },
+                    initialVolume = volume,
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .fillMaxHeight(0.8f)
+                        .fillMaxWidth(0.3f)
+                )
+
+                // 手势指示器：靠边显示，避免遮挡画面中心
+                gestureIndicator?.let { indicator ->
+                    val alignment = when (indicator) {
+                        is GestureIndicator.Brightness -> Alignment.CenterStart
+                        is GestureIndicator.Volume -> Alignment.CenterEnd
+                        is GestureIndicator.Seek -> Alignment.TopCenter
+                    }
+                    GestureIndicatorOverlay(
+                        indicator = indicator,
+                        modifier = Modifier.align(alignment)
+                    )
                 }
-                GestureIndicatorOverlay(
-                    indicator = indicator,
-                    modifier = Modifier.align(alignment)
+            }
+        }
+
+        // feed 模式滑动边界提示（滑到队列尽头时显示，自动消失）
+        androidx.compose.animation.AnimatedVisibility(
+            visible = feedSwipeToast != null,
+            enter = fadeIn(animationSpec = tween(150)),
+            exit = fadeOut(animationSpec = tween(300)),
+            modifier = Modifier.align(Alignment.Center)
+        ) {
+            Surface(
+                shape = RoundedCornerShape(20.dp),
+                color = Color.Black.copy(alpha = 0.7f),
+                modifier = Modifier.padding(horizontal = 32.dp)
+            ) {
+                Text(
+                    text = feedSwipeToast ?: "",
+                    color = Color.White,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)
                 )
             }
+        }
+
+        // feed 模式底部常显迷你进度条（控制栏隐藏时可见，可拖动 seek）
+        if (feedMode && !controlsVisible) {
+            FeedMiniProgressBar(
+                currentPosition = effPosition,
+                duration = effDuration,
+                onSeek = {
+                    if (isCasting) viewModel.castSeekTo(it) else viewModel.seekTo(it)
+                },
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+            )
         }
 
         // 投屏结束提示条（远端播完自动断开后显示，自动消失）
@@ -859,5 +931,118 @@ fun setFullscreenMode(activity: Activity, fullscreen: Boolean) {
         // 否则会覆盖 MainActivity 的 enableEdgeToEdge()，导致退出播放页后
         // 全 App 顶部多出一块状态栏高度的空白（系统栏 inset 被二次叠加）。
         // 全局始终保持 edge-to-edge，由各页面的 TopAppBar/statusBarsPadding 自行消费 inset。
+    }
+}
+/**
+ * feed 模式上下滑手势层（抖音式）。
+ *
+ * 设计：单 PlayerView 架构下不做真·多页视频预渲染（Surface 归属冲突 + 内存开销），
+ * 手势层用固定 3 页（上/当前/下）VerticalPager 承担跟手位移与 snap：
+ * - 拖动中相邻页可见（黑底占位，与抖音上滑露出的「下一页黑底」一致）
+ * - settle 到相邻页后触发 onSwipeUp/onSwipeDown（内部 canSwipeToNext/Previous
+ *   边界检查，失败提示 toast），切换完成后 snap 回中页等待下一次手势
+ *
+ * 与传统手势互斥：feed 模式下不挂载亮度/音量手势区域（见 PlayerScreen 分支）。
+ */
+@Composable
+fun FeedGesturePager(
+    onSwipeUp: () -> Unit,
+    onSwipeDown: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val pagerState = androidx.compose.foundation.pager.rememberPagerState(
+        initialPage = 1, pageCount = { 3 }
+    )
+    val scope = rememberCoroutineScope()
+
+    androidx.compose.foundation.pager.VerticalPager(
+        state = pagerState,
+        modifier = modifier,
+        userScrollEnabled = true,
+        beyondViewportPageCount = 0
+    ) { page ->
+        // 中页（page==1）透明：露出底下真正的 PlayerView（视频画面 + 点击/双击手势）。
+        // 相邻页黑底：拖动时露出，形成「黑幕滑入盖住当前视频」的转场——
+        // settle 后 playNext/Previous 已把底下视频切好，snap 回中页即露出新视频
+        if (page != 1) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black)
+            )
+        }
+    }
+
+    // settle 到非中页 → 触发切换并 snap 回中页（等待下一次手势）
+    LaunchedEffect(pagerState.settledPage) {
+        val settled = pagerState.settledPage
+        if (settled != 1) {
+            if (settled < 1) onSwipeDown() else onSwipeUp()
+            // 等切换动画起播后再回中页，避免 snap 抢在切换前闪烁
+            kotlinx.coroutines.delay(150)
+            scope.launch { pagerState.scrollToPage(1) }
+        }
+    }
+}
+
+/**
+ * feed 模式底部常显迷你进度条（抖音样式：屏幕最底部细线，控制栏隐藏时可见）。
+ *
+ * 可拖动：拖动中显示预览位置，松手执行 onSeek；不做拖动中实时 seek（避免频繁转码点）。
+ */
+@Composable
+fun FeedMiniProgressBar(
+    currentPosition: Long,
+    duration: Long,
+    onSeek: (Long) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var dragFraction by remember { mutableStateOf<Float?>(null) }
+    var widthPx by remember { mutableFloatStateOf(0f) }
+
+    val progress = if (duration > 0) {
+        (currentPosition.toFloat() / duration).coerceIn(0f, 1f)
+    } else 0f
+    val displayProgress = dragFraction ?: progress
+
+    Column(modifier = modifier.fillMaxWidth()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(20.dp)   // 触控热区；视觉线只有 3dp
+                .onSizeChanged { widthPx = it.width.toFloat().coerceAtLeast(1f) }
+                .pointerInput(duration) {
+                    detectHorizontalDragGestures(
+                        onHorizontalDrag = { change, _ ->
+                            change.consume()
+                            if (duration > 0) {
+                                dragFraction = (change.position.x / widthPx).coerceIn(0f, 1f)
+                            }
+                        },
+                        onDragEnd = {
+                            dragFraction?.let { f -> onSeek((f * duration).toLong()) }
+                            dragFraction = null
+                        },
+                        onDragCancel = { dragFraction = null }
+                    )
+                }
+        ) {
+            // 背景轨道
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth()
+                    .height(3.dp)
+                    .background(Color.White.copy(alpha = 0.25f))
+            )
+            // 播放进度
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth(displayProgress)
+                    .height(3.dp)
+                    .background(Color.White)
+            )
+        }
     }
 }

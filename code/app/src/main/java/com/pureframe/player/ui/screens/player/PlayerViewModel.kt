@@ -118,6 +118,12 @@ class PlayerViewModel @Inject constructor(
     val keepScreenOn: StateFlow<Boolean> = userPreferencesRepository.userPreferencesFlow
         .map { it.keepScreenOn }
         .stateIn(viewModelScope, SharingStarted.Eagerly, true)
+
+    // 上下滑切换视频（抖音式 feed 交互，用户设置，默认开启）。
+    // 开启时播放页上下滑 = 切上/下一条，亮度/音量手势禁用（互斥，见 PlayerScreen）
+    val verticalSwipeSwitch: StateFlow<Boolean> = userPreferencesRepository.userPreferencesFlow
+        .map { it.verticalSwipeSwitch }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
     
     // 倍速状态
     private val _playbackSpeed = MutableStateFlow(1f)
@@ -554,7 +560,16 @@ class PlayerViewModel @Inject constructor(
     fun playPrevious() {
         playerManager.playPrevious()
     }
-    
+
+    /**
+     * feed 模式下滑动切换前的边界检查。
+     *
+     * @return true 表示可以切换（已执行）；false 表示已到队列边缘（UI 提示后回弹）
+     */
+    fun canSwipeToNext(): Boolean = playerManager.hasNext()
+
+    fun canSwipeToPrevious(): Boolean = playerManager.hasPrevious()
+
     /**
      * 播放
      */

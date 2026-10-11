@@ -241,6 +241,17 @@ fun SettingsScreen(
 
                     Divider(color = MaterialTheme.colorScheme.outlineVariant, modifier = Modifier.padding(vertical = 8.dp))
 
+                    // 上下滑切换视频（抖音式 feed 交互，与上面两个手势互斥）
+                    SwitchSettingsItem(
+                        icon = Icons.Filled.SwipeVertical,
+                        title = stringResource(R.string.settings_vertical_swipe_switch),
+                        subtitle = stringResource(R.string.settings_vertical_swipe_switch_desc),
+                        checked = userPreferences.verticalSwipeSwitch,
+                        onCheckedChange = { viewModel.setVerticalSwipeSwitch(it) }
+                    )
+
+                    Divider(color = MaterialTheme.colorScheme.outlineVariant, modifier = Modifier.padding(vertical = 8.dp))
+
                     SwitchSettingsItem(
                         icon = Icons.Filled.PictureInPicture,
                         title = stringResource(R.string.settings_system_pip_on_home),

@@ -208,6 +208,15 @@ class SettingsViewModel @Inject constructor(
     }
 
     /**
+     * 更新上下滑切换视频开关（抖音式 feed 交互，与亮度/音量手势互斥）
+     */
+    fun setVerticalSwipeSwitch(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.updateVerticalSwipeSwitch(enabled)
+        }
+    }
+
+    /**
      * 更新解码器类型
      */
     fun setDecoderType(type: DecoderType) {

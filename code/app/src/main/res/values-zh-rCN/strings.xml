@@ -248,6 +248,11 @@
     <string name="settings_volume_gesture_desc">在屏幕右侧上下滑动调节音量</string>
     <string name="settings_system_pip_on_home">回桌面时系统画中画</string>
     <string name="settings_system_pip_on_home_desc">返回桌面时显示系统画中画小窗</string>
+    <string name="settings_vertical_swipe_switch">上下滑切换视频</string>
+    <string name="settings_vertical_swipe_switch_desc">像短视频一样上下滑动切换上/下一条视频，播放结束自动播下一条；开启后亮度/音量手势停用</string>
+    <string name="feed_no_previous">已经是第一个视频了</string>
+    <string name="feed_no_next">没有更多视频了</string>
+    <string name="feed_swipe_hint">上下滑动切换视频</string>
 
     <string name="settings_download_path">下载保存位置</string>
     <string name="settings_default_location">默认位置</string>

@@ -39,6 +39,10 @@ data class UserPreferences(
     // 默认 true 保持现状；关闭后回桌面只保活前台服务，UI 仍由 PlayerScreen 负责
     val systemPipOnHome: Boolean = true,
 
+    // 上下滑切换视频（抖音式）：默认开。开启时播放页上下滑 = 切上/下一条，
+    // 亮度/音量手势禁用（互斥）；关闭则恢复左侧亮度 / 右侧音量的传统手势
+    val verticalSwipeSwitch: Boolean = true,
+
     // 投屏设置
     val castAutoConnect: Boolean = false,
     val castLastDeviceId: String = "",

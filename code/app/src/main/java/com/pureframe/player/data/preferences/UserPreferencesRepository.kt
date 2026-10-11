@@ -58,6 +58,7 @@ class UserPreferencesRepository @Inject constructor(
             brightnessGesture = preferences[PreferencesKeys.BRIGHTNESS_GESTURE] ?: true,
             volumeGesture = preferences[PreferencesKeys.VOLUME_GESTURE] ?: true,
             systemPipOnHome = preferences[PreferencesKeys.SYSTEM_PIP_ON_HOME] ?: true,
+            verticalSwipeSwitch = preferences[PreferencesKeys.VERTICAL_SWIPE_SWITCH] ?: true,
 
             // 投屏设置
             castAutoConnect = preferences[PreferencesKeys.CAST_AUTO_CONNECT] ?: false,
@@ -254,7 +255,16 @@ class UserPreferencesRepository @Inject constructor(
             preferences[PreferencesKeys.SYSTEM_PIP_ON_HOME] = enabled
         }
     }
-    
+
+    /**
+     * 更新上下滑切换视频开关（抖音式 feed 交互，与亮度/音量手势互斥）
+     */
+    suspend fun updateVerticalSwipeSwitch(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[PreferencesKeys.VERTICAL_SWIPE_SWITCH] = enabled
+        }
+    }
+
     /**
      * 更新投屏自动连接开关
      */
@@ -330,6 +340,7 @@ class UserPreferencesRepository @Inject constructor(
             prefs[PreferencesKeys.BRIGHTNESS_GESTURE] = preferences.brightnessGesture
             prefs[PreferencesKeys.VOLUME_GESTURE] = preferences.volumeGesture
             prefs[PreferencesKeys.SYSTEM_PIP_ON_HOME] = preferences.systemPipOnHome
+            prefs[PreferencesKeys.VERTICAL_SWIPE_SWITCH] = preferences.verticalSwipeSwitch
 
             // 投屏设置
             prefs[PreferencesKeys.CAST_AUTO_CONNECT] = preferences.castAutoConnect

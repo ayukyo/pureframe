@@ -254,6 +254,11 @@
     <string name="settings_volume_gesture_desc">Swipe up or down on the right side to adjust volume</string>
     <string name="settings_system_pip_on_home">System PiP when leaving app</string>
     <string name="settings_system_pip_on_home_desc">Show a system-managed picture-in-picture window when returning to home</string>
+    <string name="settings_vertical_swipe_switch">Vertical swipe to switch videos</string>
+    <string name="settings_vertical_swipe_switch_desc">Swipe up/down to switch to the previous/next video like short-video apps; playback auto-advances. Disables brightness/volume gestures while on</string>
+    <string name="feed_no_previous">This is the first video</string>
+    <string name="feed_no_next">No more videos</string>
+    <string name="feed_swipe_hint">Swipe up/down to switch videos</string>
 
     <string name="settings_download_path">Download location</string>
     <string name="settings_default_location">Default location</string>

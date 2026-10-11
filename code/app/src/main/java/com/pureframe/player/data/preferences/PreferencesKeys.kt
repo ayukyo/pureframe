@@ -38,6 +38,9 @@ object PreferencesKeys {
     val BRIGHTNESS_GESTURE = booleanPreferencesKey("brightness_gesture")
     val VOLUME_GESTURE = booleanPreferencesKey("volume_gesture")
     val SYSTEM_PIP_ON_HOME = booleanPreferencesKey("system_pip_on_home")
+    // 上下滑切换视频（抖音式 feed 交互）。开启时播放页上下滑 = 切上/下一条，
+    // 亮度/音量手势自动禁用（两者互斥，见 PlayerScreen 手势区域挂载逻辑）
+    val VERTICAL_SWIPE_SWITCH = booleanPreferencesKey("vertical_swipe_switch")
 
     // 投屏设置
     val CAST_AUTO_CONNECT = booleanPreferencesKey("cast_auto_connect")
