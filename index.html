@@ -5,118 +5,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>纯帧 PureFrame — 纯粹观影，只留帧影</title>
 <meta name="description" content="纯帧 PureFrame：无广告、极简的 Android 本地视频播放器。FFmpeg 软解、磁力/直链下载、边下边播、DLNA 与 Google Cast 投屏、抖音式滑动连播。免费开源，零收集零追踪。">
+<link rel="canonical" href="https://ayukyo.github.io/pureframe/">
+<link rel="alternate" hreflang="zh-CN" href="https://ayukyo.github.io/pureframe/">
+<link rel="alternate" hreflang="en" href="https://ayukyo.github.io/pureframe/en/">
+<link rel="alternate" hreflang="x-default" href="https://ayukyo.github.io/pureframe/">
 <meta property="og:title" content="纯帧 PureFrame — 纯粹观影，只留帧影">
 <meta property="og:description" content="无广告、极简的 Android 本地视频播放器 · 免费开源">
 <meta property="og:image" content="screenshots/player.png">
-<style>
-  :root {
-    --bg: #0a0a0c;
-    --surface: #141417;
-    --surface2: #1c1c21;
-    --border: #26262c;
-    --text: #f5f5f7;
-    --text-dim: #9b9ba3;
-    --accent: #ffffff;
-    --radius: 16px;
-  }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  html { scroll-behavior: smooth; }
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", "Segoe UI", Roboto, sans-serif;
-    line-height: 1.6;
-    -webkit-font-smoothing: antialiased;
-  }
-  a { color: inherit; text-decoration: none; }
-  .container { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
-
-  /* ---- nav ---- */
-  nav {
-    position: sticky; top: 0; z-index: 10;
-    background: rgba(10,10,12,.8); backdrop-filter: blur(12px);
-    border-bottom: 1px solid var(--border);
-  }
-  .nav-inner { display: flex; align-items: center; justify-content: space-between; height: 60px; }
-  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; }
-  .brand img { width: 28px; height: 28px; border-radius: 6px; }
-  .nav-links { display: flex; gap: 28px; font-size: 14px; color: var(--text-dim); }
-  .nav-links a:hover { color: var(--text); }
-
-  /* ---- hero ---- */
-  .hero { padding: 88px 0 64px; text-align: center; }
-  .hero img.logo { width: 96px; height: 96px; border-radius: 22px; margin-bottom: 28px; box-shadow: 0 8px 40px rgba(0,0,0,.6); }
-  .hero h1 { font-size: 52px; letter-spacing: 2px; margin-bottom: 10px; }
-  .hero .slogan { font-size: 20px; color: var(--text-dim); margin-bottom: 6px; }
-  .hero .slogan-en { font-size: 14px; color: #6c6c74; font-style: italic; margin-bottom: 30px; }
-  .badges { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin-bottom: 36px; }
-  .badge {
-    font-size: 12px; color: var(--text-dim);
-    border: 1px solid var(--border); border-radius: 999px;
-    padding: 4px 14px; background: var(--surface);
-  }
-  .cta { display: flex; justify-content: center; gap: 14px; flex-wrap: wrap; }
-  .btn {
-    display: inline-flex; align-items: center; gap: 8px;
-    padding: 13px 30px; border-radius: 12px; font-size: 15px; font-weight: 600;
-    transition: transform .15s ease, opacity .15s ease;
-  }
-  .btn:hover { transform: translateY(-2px); }
-  .btn-primary { background: var(--accent); color: #000; }
-  .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
-
-  /* ---- screenshots ---- */
-  .shots { padding: 40px 0 24px; }
-  .shots-row { display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; }
-  .shot {
-    width: 250px; border-radius: 20px; overflow: hidden;
-    border: 1px solid var(--border);
-    box-shadow: 0 12px 48px rgba(0,0,0,.55);
-    transition: transform .2s ease;
-  }
-  .shot:hover { transform: translateY(-6px); }
-  .shot img { width: 100%; display: block; }
-
-  /* ---- features ---- */
-  section { padding: 72px 0; }
-  .sec-title { text-align: center; font-size: 32px; margin-bottom: 8px; }
-  .sec-sub { text-align: center; color: var(--text-dim); font-size: 14px; margin-bottom: 48px; }
-  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
-  @media (max-width: 860px) { .grid { grid-template-columns: repeat(2, 1fr); } }
-  @media (max-width: 560px) { .grid { grid-template-columns: 1fr; } .hero h1 { font-size: 38px; } }
-  .card {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 26px 24px;
-  }
-  .card .emoji { font-size: 26px; margin-bottom: 14px; display: block; }
-  .card h3 { font-size: 17px; margin-bottom: 8px; }
-  .card p { font-size: 14px; color: var(--text-dim); }
-  .card.wide { grid-column: span 3; background: linear-gradient(135deg, var(--surface) 0%, var(--surface2) 100%); }
-  @media (max-width: 860px) { .card.wide { grid-column: span 2; } }
-  @media (max-width: 560px) { .card.wide { grid-column: span 1; } }
-
-  /* ---- download ---- */
-  .dl-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
-  @media (max-width: 860px) { .dl-grid { grid-template-columns: 1fr; } }
-  .dl-card {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 28px 24px; text-align: center;
-    display: flex; flex-direction: column; gap: 8px;
-  }
-  .dl-card h3 { font-size: 18px; }
-  .dl-card p { font-size: 13px; color: var(--text-dim); flex: 1; }
-  .dl-card .btn { justify-content: center; }
-  .fp {
-    font-family: ui-monospace, Consolas, monospace; font-size: 10.5px;
-    color: #6c6c74; word-break: break-all; margin-top: 6px;
-  }
-
-  /* ---- footer ---- */
-  footer { border-top: 1px solid var(--border); padding: 36px 0 48px; text-align: center; }
-  footer .links { display: flex; justify-content: center; gap: 26px; font-size: 14px; color: var(--text-dim); margin-bottom: 14px; flex-wrap: wrap; }
-  footer .links a:hover { color: var(--text); }
-  footer .fine { font-size: 12px; color: #55555c; }
-</style>
+<meta property="og:locale" content="zh-CN">
+<meta property="og:locale:alternate" content="en_US">
+<link rel="stylesheet" href="style.css">
+<script src="locale.js"></script>
 </head>
 <body>
 
@@ -128,6 +27,7 @@
       <a href="#download">下载</a>
       <a href="https://github.com/ayukyo/pureframe">GitHub</a>
       <a href="privacy-policy.html">隐私政策</a>
+      <a class="lang-switch" href="en/?lang=en" lang="en">English</a>
     </div>
   </div>
 </nav>
