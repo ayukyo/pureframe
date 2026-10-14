@@ -6,9 +6,23 @@
 
 **PureFrame** is a minimalist Android local video player with magnet / direct-link download and stream-while-downloading support.
 
+[![Latest Release](https://img.shields.io/github/v/release/ayukyo/pureframe?label=latest&color=white)](https://github.com/ayukyo/pureframe/releases/latest)
+[![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-white.svg)](./LICENSE)
+[![Platform](https://img.shields.io/badge/Platform-Android%208.0%2B-3DDC84.svg)](https://github.com/ayukyo/pureframe/releases/latest)
+[![F-Droid](https://img.shields.io/badge/F--Droid-self--hosted%20repo-1976D2.svg)](https://ayukyo.github.io/pureframe/repo?fingerprint=466896A633FCD0210E479F6A72673D4D5FF324F20BB8062E3915491D769B755F)
+[![GitHub Stars](https://img.shields.io/github/stars/ayukyo/pureframe?style=flat&color=F5C518)](https://github.com/ayukyo/pureframe/stargazers)
+
 - **Ad-free** - zero promotion, zero interruption
 - **Immersive black** - a premium viewing experience
 - **Minimal design** - clean and restrained UI
+
+<p align="center">
+  <img src="https://ayukyo.github.io/pureframe/screenshots/library.png" width="250" alt="Library"/>
+  &nbsp;
+  <img src="https://ayukyo.github.io/pureframe/screenshots/player.png" width="250" alt="Player"/>
+  &nbsp;
+  <img src="https://ayukyo.github.io/pureframe/screenshots/settings.png" width="250" alt="Settings"/>
+</p>
 
 ## ✨ Features
 
